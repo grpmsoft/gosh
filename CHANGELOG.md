@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Supports arbitrary FD numbers (0-255)
 - **Comprehensive FD tests**: Added tests for FD duplication (2>&1), multiple redirections
 
-### Fixed - Critical cd Bug 🐛
+### Fixed - Critical Bugs 🐛
 - **cd command**: Now executes in shell process instead of subprocess
   - Issue: cd was running in subprocess, so `os.Chdir()` didn't affect parent shell
   - Impact: cd simply didn't work at all
@@ -39,6 +39,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - All builtin commands (cd, export, unset, pwd, etc.) now execute correctly in shell process
   - Reporter: Community user on Alpine Linux
   - Tests: All 9 cd tests passing, plus manual verification
+- **export display in interactive mode**: Fixed text overlapping issue
+  - Issue: Running `export` in interactive mode caused output lines to overlap
+  - Impact: Output was unreadable, each line started where previous ended
+  - Root Cause: No visual separation between prompt+command and output
+  - Solution: Added empty line before command output
+  - Reporter: Community user on Alpine Linux
+  - Non-interactive mode (`gosh -c "export"`) always worked correctly
 
 ### Changed
 - **Builtin command execution**: Refactored to execute synchronously through ExecuteCommandUseCase

@@ -9,10 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 - Ctrl+R fuzzy search UI
+- Gather community feedback on beta.2
+- v0.1.0-rc.1 (after feedback collection)
+- v0.1.0 stable release
 
-## [0.1.0-beta.2] - 2025-01-11
+## [0.1.0-beta.2] - 2025-10-12
 
-### Added
+### Repository Publication 🎉
+- **Published**: GoSh repository is now public at https://github.com/grpmsoft/gosh
+- **Status**: Beta.2 - gathering feedback, breaking changes still possible
+- **Clean git history**: Repository starts with clean commit history (single initial commit)
+- **Professional infrastructure**: Complete CI/CD, linting, testing, documentation
+
+### Repository Infrastructure
+- **License**: MIT License added
+- **Documentation**: CONTRIBUTING.md, NOTICE (third-party licenses)
+- **Development Workflow**: .golangci.yml v2, Makefile (build/test/lint/fmt/clean)
+- **CI/CD**: GitHub Actions workflows for testing (Linux/macOS/Windows) and releases
+- **Automated Releases**: GoReleaser configuration for cross-platform binaries
+- **Quality Assurance**: 130+ tests passing, 0 linter warnings
+
+### Fixed
+- **Test reliability**: Fixed CI test failures by using `t.TempDir()` instead of `os.Getwd()` in test session creation
+- **Windows compatibility**: Changed coverage file from `.out` to `.txt` to avoid PowerShell path interpretation issues
+- **Workflow updates**: Updated GitHub Actions to reference `main` branch only (removed `master`)
+
+### Technical
+- Git history cleaned: 28 commits squashed into professional initial commit
+- Branch strategy: `main` as primary branch
+- All linter issues resolved (51 errors fixed)
+- GoReleaser tested locally: successful builds for all target platforms
+  - Linux (amd64, 386, arm64)
+  - macOS (amd64, arm64)
+  - Windows (amd64, 386)
+
+### Quality Metrics
+- ✅ 130+ tests passing
+- ✅ 0 golangci-lint warnings
+- ✅ CI/CD working on 3 platforms
+- ✅ Professional repository structure
+- ✅ Ready for community feedback collection
+
+### Added (Previous beta.2 features)
 - **Glob Pattern Expansion**: Full support for Unix-style filename wildcards
 - **Wildcard patterns**: `*` (any characters), `?` (single character), `[]` (character sets/ranges)
 - **Pattern examples**:
@@ -196,7 +234,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Native POSIX shell interpreter (mvdan.cc/sh v3.12.0)
 
 [unreleased]: https://github.com/grpmsoft/gosh/compare/v0.1.0-beta.2...HEAD
-[0.1.0-beta.2]: https://github.com/grpmsoft/gosh/compare/v0.1.0-beta.1...v0.1.0-beta.2
+[0.1.0-beta.2]: https://github.com/grpmsoft/gosh/releases/tag/v0.1.0-beta.2
 [0.1.0-beta.1]: https://github.com/grpmsoft/gosh/compare/v0.1.0-alpha.6...v0.1.0-beta.1
 [0.1.0-alpha.6]: https://github.com/grpmsoft/gosh/compare/v0.1.0-alpha.5...v0.1.0-alpha.6
 [0.1.0-alpha.5]: https://github.com/grpmsoft/gosh/compare/v0.1.0-alpha.4...v0.1.0-alpha.5

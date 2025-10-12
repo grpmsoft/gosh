@@ -5,9 +5,11 @@
 *.so
 *.dylib
 
-# Test binaries
+# Test binaries and coverage
 *.test
 *.out
+coverage.txt
+coverage.out
 
 # Go workspace file (optional)
 go.work

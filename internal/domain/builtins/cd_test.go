@@ -189,8 +189,8 @@ func TestNewCdCommand_NilSession(t *testing.T) {
 
 // Helper function
 func createTestSession(t *testing.T) *session.Session {
-	workingDir, err := os.Getwd()
-	require.NoError(t, err)
+	// Use a safe working directory (temp dir or home)
+	workingDir := t.TempDir()
 
 	env := make(shared.Environment)
 	env["PATH"] = "/usr/bin"

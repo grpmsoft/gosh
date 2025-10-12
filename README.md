@@ -1,7 +1,7 @@
 # 🐚 GoSh - Cross-Platform Go Shell
 
-**Version**: 0.1.0-alpha.2
-**Status**: Alpha - Active Development
+**Version**: 0.1.0-beta.2
+**Status**: Beta - Gathering Feedback (breaking changes possible)
 **License**: MIT
 
 A modern, cross-platform shell written in Go with beautiful TUI and native script execution.
@@ -169,26 +169,38 @@ go test ./internal/domain/history/...
 
 ## 🗺️ Roadmap
 
-### Current Version: v0.1.0-alpha.2 ✅
-- [x] History persistence and navigation
-- [x] Rich domain model
-- [x] Auto-save functionality
+### Current Version: v0.1.0-beta.2 ✅
+**Status**: Published - Gathering community feedback (breaking changes possible)
 
-### Next: v0.1.0-alpha.3 (Planned)
-- [ ] Built-in commands (cd, pwd, export)
-- [ ] Proper cd with ~ expansion
-- [ ] export/unset environment variables
+**Implemented Features**:
+- [x] History persistence and navigation (alpha.1-2)
+- [x] Built-in commands: cd, pwd, export, unset, type (alpha.3)
+- [x] Aliases and .goshrc configuration (alpha.4)
+- [x] Unix-style pipelines (|) (alpha.5)
+- [x] File redirections (>, >>, <, 2>) (alpha.6)
+- [x] Background jobs (&, jobs, fg, bg) (beta.1)
+- [x] Glob patterns (*, ?, [], {}) (beta.2)
+- [x] 4 UI modes (Classic, Warp, Compact, Chat)
+- [x] 130+ tests, CI/CD on 3 platforms
 
-### Future Versions
-- **v0.1.0-alpha.4**: Aliases & persistent environment
-- **v0.1.0-alpha.5**: Unix-style pipelines (|)
-- **v0.1.0-alpha.6**: File redirections (>, >>, <)
-- **v0.1.0-beta.1**: Background jobs (&)
-- **v0.1.0-beta.2**: Glob patterns (*, ?, [])
-- **v0.1.0-beta.3**: Enhanced scripting support
-- **v0.1.0-beta.4**: Configuration & customization
-- **v0.1.0-rc.1**: Performance & polish
-- **v0.1.0**: Stable release
+### Next: v0.1.0-rc.1 (After Feedback)
+- [ ] Address community feedback from beta.2
+- [ ] Fix critical bugs reported by users
+- [ ] Performance optimizations if needed
+- [ ] Final polish and documentation updates
+
+### Future: v0.1.0 (Stable Release)
+- [ ] No critical bugs
+- [ ] Community-validated features
+- [ ] Complete documentation
+- [ ] Production-ready
+
+### Post-Release: v0.2.0
+Based on community feedback:
+- Ctrl+R fuzzy search UI
+- Enhanced scripting support
+- Advanced configuration
+- Features requested by community
 
 See [RELEASE_ROADMAP.md](docs/dev/RELEASE_ROADMAP.md) for detailed roadmap.
 
@@ -229,10 +241,16 @@ Third-party library licenses - see [NOTICE](NOTICE) for details.
 
 ## 🙏 Acknowledgments
 
+### Special Thanks
+
+**Professor Ancha Baranova** - This project would not have been possible without her invaluable help and support. Her assistance was crucial in bringing GoSh to life.
+
+### Open Source Libraries
+
 - **Bubbletea** - Charm's excellent TUI framework
 - **mvdan.cc/sh** - Native POSIX shell interpreter
-- **Cobra** - CLI framework
-- **Viper** - Configuration management
+- **Lipgloss** - Terminal styling library
+- **Bubbles** - TUI components
 
 ## 📞 Support
 

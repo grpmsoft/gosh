@@ -312,6 +312,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Показываем output (stdout + stderr) если есть
 		if msg.output != "" {
+			// ВАЖНО: Добавляем пустую строку перед выводом команды
+			// для визуального разделения prompt+command от output
+			m.addOutputRaw("")
+
 			// Разбиваем вывод на строки и выводим как есть (без стилей)
 			lines := strings.Split(strings.TrimRight(msg.output, "\n"), "\n")
 			for _, line := range lines {

@@ -842,6 +842,13 @@ func (m Model) executeCommand() (tea.Model, tea.Cmd) {
 		return m, m.execInteractiveCommand(value)
 	}
 
+	// Проверяем является ли это builtin командой (cd, export, unset)
+	// Они должны выполняться синхронно в процессе shell'а
+	if m.isBuiltinCommand(cmdName) {
+		m.executing = true
+		return m, m.execBuiltinCommand(value)
+	}
+
 	// Обычная команда - выполняем асинхронно с захватом вывода
 	m.executing = true
 	return m, m.execCommandAsync(value)
@@ -1988,5 +1995,85 @@ func makeProfessionalStyles() Styles {
 
 		SyntaxString: lipgloss.NewStyle().
 			Foreground(lipgloss.Color("14")), // Cyan (строки)
+	}
+}
+
+// isBuiltinCommand проверяет является ли команда builtin (cd, export, unset)
+// Эти команды должны выполняться синхронно в процессе shell'а
+func (m *Model) isBuiltinCommand(cmdName string) bool {
+	builtinCommands := map[string]bool{
+		"cd":      true,
+		"export":  true,
+		"unset":   true,
+		"pwd":     true,
+		"echo":    true,
+		"env":     true,
+		"alias":   true,
+		"unalias": true,
+		"type":    true,
+		"jobs":    true,
+		"fg":      true,
+		"bg":      true,
+	}
+
+	return builtinCommands[cmdName]
+}
+
+// execBuiltinCommand выполняет builtin команду синхронно через executeUseCase
+func (m *Model) execBuiltinCommand(commandLine string) tea.Cmd {
+	return func() tea.Msg {
+		// Парсим команду
+		cmd, _, err := parser.ParseCommandLine(commandLine)
+		if err != nil {
+			return commandExecutedMsg{
+				err:      err,
+				exitCode: 1,
+			}
+		}
+
+		if cmd == nil {
+			return commandExecutedMsg{
+				output:   "",
+				exitCode: 0,
+			}
+		}
+
+		// Выполняем через executeUseCase который правильно делегирует в BuiltinExecutor
+		resp, err := m.executeUseCase.Execute(
+			m.ctx,
+			execute.ExecuteCommandRequest{
+				CommandLine: commandLine,
+				SessionID:   m.currentSession.ID(),
+			},
+			m.currentSession,
+		)
+
+		if err != nil {
+			return commandExecutedMsg{
+				err:      err,
+				exitCode: 1,
+			}
+		}
+
+		// Возвращаем результат
+		output := ""
+		exitCode := 0
+
+		if resp != nil {
+			output = resp.Stdout
+			if resp.Stderr != "" {
+				if output != "" {
+					output += "\n"
+				}
+				output += resp.Stderr
+			}
+			exitCode = int(resp.ExitCode)
+		}
+
+		return commandExecutedMsg{
+			output:   output,
+			err:      err,
+			exitCode: exitCode,
+		}
 	}
 }

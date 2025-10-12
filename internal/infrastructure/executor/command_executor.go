@@ -226,7 +226,7 @@ func (e *OSCommandExecutor) handleRedirections(
 	for _, redir := range redirections {
 		switch redir.Type {
 		case command.RedirectInput:
-			// < - input redirection from file
+			// N< - input redirection from file to FD N (default FD 0)
 			file, err := os.Open(redir.Target)
 			if err != nil {
 				e.closeFiles(openFiles)
@@ -236,12 +236,20 @@ func (e *OSCommandExecutor) handleRedirections(
 					fmt.Sprintf("failed to open input file '%s': %v", redir.Target, err),
 				)
 			}
-			osCmd.Stdin = file
+
+			// Only stdin (FD 0) is supported in os/exec
+			if redir.SourceFD == 0 {
+				osCmd.Stdin = file
+			} else {
+				e.logger.Warn("input redirection to FD other than 0 not fully supported",
+					"fd", redir.SourceFD, "file", redir.Target)
+			}
+
 			openFiles = append(openFiles, file)
-			e.logger.Debug("input redirected", "file", redir.Target)
+			e.logger.Debug("input redirected", "fd", redir.SourceFD, "file", redir.Target)
 
 		case command.RedirectOutput:
-			// > - output redirection to file (overwrite)
+			// N> - output redirection to file from FD N (default FD 1)
 			file, err := os.Create(redir.Target)
 			if err != nil {
 				e.closeFiles(openFiles)
@@ -251,12 +259,22 @@ func (e *OSCommandExecutor) handleRedirections(
 					fmt.Sprintf("failed to create output file '%s': %v", redir.Target, err),
 				)
 			}
-			osCmd.Stdout = file
+
+			// os/exec only supports stdout (FD 1) and stderr (FD 2)
+			if redir.SourceFD == 1 {
+				osCmd.Stdout = file
+			} else if redir.SourceFD == 2 {
+				osCmd.Stderr = file
+			} else {
+				e.logger.Warn("output redirection from FD other than 1 or 2 not fully supported",
+					"fd", redir.SourceFD, "file", redir.Target)
+			}
+
 			openFiles = append(openFiles, file)
-			e.logger.Debug("output redirected", "file", redir.Target)
+			e.logger.Debug("output redirected", "fd", redir.SourceFD, "file", redir.Target)
 
 		case command.RedirectAppend:
-			// >> - output redirection to file (append)
+			// N>> - append redirection to file from FD N (default FD 1)
 			file, err := os.OpenFile(redir.Target, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
 			if err != nil {
 				e.closeFiles(openFiles)
@@ -266,24 +284,34 @@ func (e *OSCommandExecutor) handleRedirections(
 					fmt.Sprintf("failed to open file for append '%s': %v", redir.Target, err),
 				)
 			}
-			osCmd.Stdout = file
-			openFiles = append(openFiles, file)
-			e.logger.Debug("output redirected (append)", "file", redir.Target)
 
-		case command.RedirectError:
-			// 2> - stderr redirection to file
-			file, err := os.Create(redir.Target)
-			if err != nil {
-				e.closeFiles(openFiles)
-				return nil, shared.NewDomainError(
-					"handleRedirections",
-					shared.ErrProcessFailed,
-					fmt.Sprintf("failed to create error file '%s': %v", redir.Target, err),
-				)
+			if redir.SourceFD == 1 {
+				osCmd.Stdout = file
+			} else if redir.SourceFD == 2 {
+				osCmd.Stderr = file
+			} else {
+				e.logger.Warn("append redirection from FD other than 1 or 2 not fully supported",
+					"fd", redir.SourceFD, "file", redir.Target)
 			}
-			osCmd.Stderr = file
+
 			openFiles = append(openFiles, file)
-			e.logger.Debug("stderr redirected", "file", redir.Target)
+			e.logger.Debug("output redirected (append)", "fd", redir.SourceFD, "file", redir.Target)
+
+		case command.RedirectDup:
+			// N>&M - duplicate FD M to FD N (e.g., 2>&1)
+			// Note: os/exec has limitations here, we handle common case 2>&1
+			if redir.SourceFD == 2 && redir.Target == "1" {
+				// 2>&1 - redirect stderr to stdout
+				osCmd.Stderr = osCmd.Stdout
+				e.logger.Debug("stderr duplicated to stdout", "fd", redir.SourceFD)
+			} else if redir.SourceFD == 1 && redir.Target == "2" {
+				// 1>&2 - redirect stdout to stderr
+				osCmd.Stdout = osCmd.Stderr
+				e.logger.Debug("stdout duplicated to stderr", "fd", redir.SourceFD)
+			} else {
+				e.logger.Warn("FD duplication not fully supported",
+					"source_fd", redir.SourceFD, "target", redir.Target)
+			}
 
 		case command.RedirectPipe:
 			// Pipes are handled in OSPipelineExecutor, ignore here

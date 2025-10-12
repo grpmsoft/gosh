@@ -125,6 +125,8 @@ func (p *Parser) parseCommand() (*command.Command, error) {
 		token := p.current()
 
 		var redirType command.RedirectionType
+		sourceFD := token.FD
+
 		switch token.Type {
 		case TokenRedirectIn:
 			redirType = command.RedirectInput
@@ -132,30 +134,33 @@ func (p *Parser) parseCommand() (*command.Command, error) {
 			redirType = command.RedirectOutput
 		case TokenRedirectAppend:
 			redirType = command.RedirectAppend
-		case TokenRedirectErr:
-			redirType = command.RedirectError
+		case TokenRedirectDup:
+			// N>&M - FD duplication
+			redirType = command.RedirectDup
 		default:
 			goto done
 		}
 
 		p.advance()
 
-		// Next token must be a filename
+		// For FD duplication (N>&M), target is &M
+		// For file redirections, target is filename
 		if p.isAtEnd() || p.current().Type != TokenWord {
 			return nil, shared.NewDomainError(
 				"parseCommand",
 				shared.ErrInvalidCommand,
-				"expected filename after redirection",
+				"expected filename or &N after redirection",
 			)
 		}
 
 		target := p.current().Value
 		p.advance()
 
-		// Add redirection
+		// Add redirection with FD support
 		err := cmd.AddRedirection(command.Redirection{
-			Type:   redirType,
-			Target: target,
+			Type:     redirType,
+			SourceFD: sourceFD,
+			Target:   target,
 		})
 		if err != nil {
 			return nil, err

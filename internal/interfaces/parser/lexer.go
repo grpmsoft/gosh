@@ -11,10 +11,10 @@ type TokenType int
 const (
 	TokenWord           TokenType = iota
 	TokenPipe                     // |
-	TokenRedirectIn               // <
-	TokenRedirectOut              // >
-	TokenRedirectAppend           // >>
-	TokenRedirectErr              // 2>
+	TokenRedirectIn               // N< (file descriptor input)
+	TokenRedirectOut              // N> (file descriptor output)
+	TokenRedirectAppend           // N>> (file descriptor append)
+	TokenRedirectDup              // N>&M (file descriptor duplication)
 	TokenBackground               // &
 	TokenSemicolon                // ;
 	TokenAnd                      // &&
@@ -26,7 +26,8 @@ const (
 // Token represents a lexical token
 type Token struct {
 	Type  TokenType
-	Value string
+	Value string // For redirections: filename or "&N" for FD duplication
+	FD    int    // File descriptor for redirections (0 for stdin, 1 for stdout, 2 for stderr, etc.)
 	Pos   int
 }
 
@@ -55,36 +56,33 @@ func (l *Lexer) Tokenize() ([]Token, error) {
 			continue
 		}
 
+		// Check for file descriptor redirections (N>, N<, N>>, N>&M)
+		if l.tryParseRedirection() {
+			continue
+		}
+
 		// Check special characters
 		switch {
 		case l.match("|"):
-			l.addToken(TokenPipe, "|")
-		case l.match(">>"):
-			l.addToken(TokenRedirectAppend, ">>")
-		case l.match("2>"):
-			l.addToken(TokenRedirectErr, "2>")
-		case l.match(">"):
-			l.addToken(TokenRedirectOut, ">")
-		case l.match("<"):
-			l.addToken(TokenRedirectIn, "<")
+			l.addToken(TokenPipe, "", -1)
 		case l.match("&&"):
-			l.addToken(TokenAnd, "&&")
+			l.addToken(TokenAnd, "", -1)
 		case l.match("||"):
-			l.addToken(TokenOr, "||")
+			l.addToken(TokenOr, "", -1)
 		case l.match("&"):
-			l.addToken(TokenBackground, "&")
+			l.addToken(TokenBackground, "", -1)
 		case l.match(";"):
-			l.addToken(TokenSemicolon, ";")
+			l.addToken(TokenSemicolon, "", -1)
 		default:
 			// Read word
 			word := l.readWord()
 			if word != "" {
-				l.addToken(TokenWord, word)
+				l.addToken(TokenWord, word, -1)
 			}
 		}
 	}
 
-	l.addToken(TokenEOF, "")
+	l.addToken(TokenEOF, "", -1)
 	return l.tokens, nil
 }
 
@@ -159,11 +157,66 @@ func (l *Lexer) readWord() string {
 	return word
 }
 
+// tryParseRedirection tries to parse file descriptor redirections
+// Supports: N<, N>, N>>, N>&M where N and M are digits
+// Defaults: < = 0<, > = 1>, >> = 1>>
+func (l *Lexer) tryParseRedirection() bool {
+	start := l.pos
+	fd := -1
+
+	// Check if we have a digit followed by redirection
+	if l.pos < len(l.input) && l.input[l.pos] >= '0' && l.input[l.pos] <= '9' {
+		// Parse FD number
+		fd = 0
+		for l.pos < len(l.input) && l.input[l.pos] >= '0' && l.input[l.pos] <= '9' {
+			fd = fd*10 + int(l.input[l.pos]-'0')
+			l.pos++
+		}
+	}
+
+	// Now check for redirection operators
+	switch {
+	case l.match(">>"):
+		if fd == -1 {
+			fd = 1 // default stdout
+		}
+		l.addToken(TokenRedirectAppend, "", fd)
+		return true
+
+	case l.match(">&"):
+		// N>&M duplication
+		if fd == -1 {
+			fd = 1 // default stdout
+		}
+		l.addToken(TokenRedirectDup, "", fd)
+		return true
+
+	case l.match(">"):
+		if fd == -1 {
+			fd = 1 // default stdout
+		}
+		l.addToken(TokenRedirectOut, "", fd)
+		return true
+
+	case l.match("<"):
+		if fd == -1 {
+			fd = 0 // default stdin
+		}
+		l.addToken(TokenRedirectIn, "", fd)
+		return true
+	}
+
+	// No redirection found, restore position
+	l.pos = start
+	return false
+}
+
 // addToken adds a token to the list
-func (l *Lexer) addToken(tokenType TokenType, value string) {
+func (l *Lexer) addToken(tokenType TokenType, value string, fd int) {
 	l.tokens = append(l.tokens, Token{
 		Type:  tokenType,
 		Value: value,
+		FD:    fd,
 		Pos:   l.pos,
 	})
 }

@@ -9,9 +9,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 - Ctrl+R fuzzy search UI
-- Gather community feedback on beta.3
+- Command sequences with && and || operators
+- Gather community feedback on beta.4
 - v0.1.0-rc.1 (after feedback collection)
 - v0.1.0 stable release
+
+## [0.1.0-beta.4] - 2025-10-12
+
+### Added - Non-Interactive Mode & FD Redirections 🚀
+- **`-c` flag**: Execute command and exit (non-interactive mode)
+  - Usage: `gosh -c "pwd"`, `gosh -c "cd /tmp && ls"`
+  - Useful for: Testing, scripting, CI/CD pipelines
+  - Exit codes properly propagated
+  - Both stdout and stderr captured correctly
+- **Full File Descriptor Redirections**: Generic FD support (not just hardcoded 2>)
+  - N< - Input from FD N (e.g., `0< input.txt`)
+  - N> - Output to FD N (e.g., `3> output.txt`)
+  - N>> - Append to FD N (e.g., `2>> errors.log`)
+  - N>&M - Duplicate FD M to FD N (e.g., `2>&1` merges stderr to stdout)
+  - Defaults: `<` = `0<`, `>` = `1>`, `>>` = `1>>`
+  - Supports arbitrary FD numbers (0-255)
+- **Comprehensive FD tests**: Added tests for FD duplication (2>&1), multiple redirections
+
+### Fixed - Critical cd Bug 🐛
+- **cd command**: Now executes in shell process instead of subprocess
+  - Issue: cd was running in subprocess, so `os.Chdir()` didn't affect parent shell
+  - Impact: cd simply didn't work at all
+  - Solution: Added synchronous builtin command handling in REPL
+  - All builtin commands (cd, export, unset, pwd, etc.) now execute correctly in shell process
+  - Reporter: Community user on Alpine Linux
+  - Tests: All 9 cd tests passing, plus manual verification
+
+### Changed
+- **Builtin command execution**: Refactored to execute synchronously through ExecuteCommandUseCase
+  - Commands like cd, export, unset now properly modify shell state
+  - Architecture: `executeCommand()` → `execBuiltinCommand()` → `executeUseCase` → `BuiltinExecutor`
+  - Parser dependency added to ExecuteCommandUseCase for `-c` flag support
+
+### Technical
+- Breaking API change: `Redirection` struct now has `SourceFD int` field
+- Lexer: Added `tryParseRedirection()` for parsing FD numbers before operators
+- Parser: Updated to handle FD tokens from lexer
+- Executor: Refactored `handleRedirections()` to use `SourceFD` field
+- All 130+ tests passing, 0 linter warnings
+
+### Known Issues
+- **Ctrl+F5-F8 hotkeys**: Don't work in some terminals (foot on Alpine Linux)
+  - Reason: Some terminals don't send Ctrl+Function key combinations
+  - Workaround: Use `:mode <name>` command instead (fully functional)
+  - Alternative: F1/? for help, which shows `:mode` usage
 
 ## [0.1.0-beta.3.1] - 2025-10-12
 

@@ -53,3 +53,23 @@ func bootstrapREPL(logger *slog.Logger, ctx context.Context) (*repl.Model, error
 	// Создаем REPL с конфигурацией
 	return repl.NewBubbleteaREPL(sessionManager, executeUseCase, logger, ctx, cfg)
 }
+
+// bootstrapNonInteractive создает зависимости для non-interactive режима (-c flag)
+func bootstrapNonInteractive(logger *slog.Logger) (*appsession.SessionManager, *execute.ExecuteCommandUseCase, error) {
+	// Создаем зависимости (Dependency Injection)
+	fs := filesystem.NewOSFileSystem()
+	builtinExec := builtin.NewBuiltinExecutor(fs, logger)
+	commandExec := executor.NewOSCommandExecutor(logger)
+	pipelineExec := executor.NewOSPipelineExecutor(logger)
+
+	// Создаем use cases
+	sessionManager := appsession.NewSessionManager(logger)
+	executeUseCase := execute.NewExecuteCommandUseCase(
+		builtinExec,
+		commandExec,
+		pipelineExec,
+		logger,
+	)
+
+	return sessionManager, executeUseCase, nil
+}

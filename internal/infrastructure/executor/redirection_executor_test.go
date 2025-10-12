@@ -36,8 +36,9 @@ func TestOSCommandExecutor_RedirectOutput(t *testing.T) {
 		require.NoError(t, err)
 
 		err = cmd.AddRedirection(command.Redirection{
-			Type:   command.RedirectOutput,
-			Target: outputFile,
+			Type:     command.RedirectOutput,
+			SourceFD: 1, // stdout
+			Target:   outputFile,
 		})
 		require.NoError(t, err)
 
@@ -90,8 +91,9 @@ func TestOSCommandExecutor_RedirectAppend(t *testing.T) {
 		cmd1, err := command.NewCommand("cat", []string{input1File}, command.TypeExternal)
 		require.NoError(t, err)
 		err = cmd1.AddRedirection(command.Redirection{
-			Type:   command.RedirectAppend,
-			Target: outputFile,
+			Type:     command.RedirectAppend,
+			SourceFD: 1, // stdout
+			Target:   outputFile,
 		})
 		require.NoError(t, err)
 
@@ -103,8 +105,9 @@ func TestOSCommandExecutor_RedirectAppend(t *testing.T) {
 		cmd2, err := command.NewCommand("cat", []string{input2File}, command.TypeExternal)
 		require.NoError(t, err)
 		err = cmd2.AddRedirection(command.Redirection{
-			Type:   command.RedirectAppend,
-			Target: outputFile,
+			Type:     command.RedirectAppend,
+			SourceFD: 1, // stdout
+			Target:   outputFile,
 		})
 		require.NoError(t, err)
 
@@ -141,8 +144,9 @@ func TestOSCommandExecutor_RedirectInput(t *testing.T) {
 		require.NoError(t, err)
 
 		err = cmd.AddRedirection(command.Redirection{
-			Type:   command.RedirectInput,
-			Target: inputFile,
+			Type:     command.RedirectInput,
+			SourceFD: 0, // stdin
+			Target:   inputFile,
 		})
 		require.NoError(t, err)
 
@@ -174,8 +178,9 @@ func TestOSCommandExecutor_RedirectError(t *testing.T) {
 		require.NoError(t, err)
 
 		err = cmd.AddRedirection(command.Redirection{
-			Type:   command.RedirectError,
-			Target: errorFile,
+			Type:     command.RedirectOutput, // 2> is now handled as output with FD 2
+			SourceFD: 2,
+			Target:   errorFile,
 		})
 		require.NoError(t, err)
 
@@ -213,8 +218,9 @@ func TestOSCommandExecutor_RedirectInputError(t *testing.T) {
 		require.NoError(t, err)
 
 		err = cmd.AddRedirection(command.Redirection{
-			Type:   command.RedirectInput,
-			Target: nonexistentFile,
+			Type:     command.RedirectInput,
+			SourceFD: 0, // stdin
+			Target:   nonexistentFile,
 		})
 		require.NoError(t, err)
 
@@ -249,14 +255,16 @@ func TestOSCommandExecutor_MultipleRedirections(t *testing.T) {
 		require.NoError(t, err)
 
 		err = cmd.AddRedirection(command.Redirection{
-			Type:   command.RedirectInput,
-			Target: inputFile,
+			Type:     command.RedirectInput,
+			SourceFD: 0, // stdin
+			Target:   inputFile,
 		})
 		require.NoError(t, err)
 
 		err = cmd.AddRedirection(command.Redirection{
-			Type:   command.RedirectOutput,
-			Target: outputFile,
+			Type:     command.RedirectOutput,
+			SourceFD: 1, // stdout
+			Target:   outputFile,
 		})
 		require.NoError(t, err)
 
@@ -272,5 +280,49 @@ func TestOSCommandExecutor_MultipleRedirections(t *testing.T) {
 
 		// Процесс не должен иметь stdout (он перенаправлен)
 		assert.Empty(t, proc.Stdout())
+	})
+}
+
+// TestOSCommandExecutor_FDDuplication проверяет дупликацию FD (2>&1)
+func TestOSCommandExecutor_FDDuplication(t *testing.T) {
+	t.Run("command 2>&1 - merge stderr to stdout", func(t *testing.T) {
+		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
+		exec := executor.NewOSCommandExecutor(logger)
+
+		tmpDir := t.TempDir()
+		env := make(shared.Environment)
+		sess, err := session.NewSession("test", tmpDir, env)
+		require.NoError(t, err)
+
+		// Команда которая пишет и в stdout и в stderr
+		// ls существующий_файл несуществующий_файл 2>&1
+		existingFile := filepath.Join(tmpDir, "exists.txt")
+		err = os.WriteFile(existingFile, []byte("test"), 0644)
+		require.NoError(t, err)
+
+		cmd, err := command.NewCommand("ls", []string{existingFile, "nonexistent_file_xyz"}, command.TypeExternal)
+		require.NoError(t, err)
+
+		// Добавляем 2>&1 - перенаправляем stderr в stdout
+		err = cmd.AddRedirection(command.Redirection{
+			Type:     command.RedirectDup,
+			SourceFD: 2, // stderr
+			Target:   "1", // к stdout
+		})
+		require.NoError(t, err)
+
+		// Выполняем команду
+		proc, err := exec.Execute(context.Background(), cmd, sess)
+		require.NoError(t, err)
+
+		// Команда может зафейлиться или нет в зависимости от ls поведения
+		// Главное что stderr и stdout объединены
+		output := proc.Stdout()
+
+		// stderr должен быть пустым (перенаправлен в stdout)
+		assert.Empty(t, proc.Stderr(), "stderr should be empty because of 2>&1")
+
+		// stdout должен содержать оба вывода
+		assert.NotEmpty(t, output, "stdout should contain both stdout and stderr")
 	})
 }

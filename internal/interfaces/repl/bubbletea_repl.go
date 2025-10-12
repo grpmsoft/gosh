@@ -334,7 +334,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateGitInfo()
 
 		// Обновляем viewport content и скроллим вниз если autoScroll
-		m.updateViewportContent()
+		// Classic mode: НЕ обновляем viewport здесь - он сам строит content
+		if m.config.UI.Mode != config.UIModeClassic {
+			m.updateViewportContent()
+		}
 		if m.autoScroll {
 			m.viewport.GotoBottom()
 		}

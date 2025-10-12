@@ -80,6 +80,9 @@ type Model struct {
 	// Scrolling
 	autoScroll bool // Автопрокрутка вниз при новых сообщениях
 
+	// Help overlay
+	showingHelp bool // Флаг отображения help overlay
+
 	// Styles
 	styles Styles
 }
@@ -227,6 +230,7 @@ func NewBubbleteaREPL(
 		inputText:        "",
 		cursorPos:        0,
 		autoScroll:       true, // По умолчанию авто-скролл вниз
+		showingHelp:      false,
 	}
 
 	// Определяем Git статус
@@ -234,13 +238,13 @@ func NewBubbleteaREPL(
 
 	// Welcome message (цветное через ANSI)
 	m.addOutputRaw("\033[1;33mGoSh\033[0m - Go Shell \033[90m(Git Bash inspired)\033[0m")
-	m.addOutputRaw("Type \033[1;32m'help'\033[0m for commands, \033[1;31m'exit'\033[0m to quit")
+	m.addOutputRaw("Press \033[1;36mF1\033[0m or \033[1;36m?\033[0m for help, \033[1;31m'exit'\033[0m to quit")
 	m.addOutputRaw("\033[90mSyntax: \033[1;33mcommands\033[0m yellow, \033[90moptions\033[0m gray, \033[32marguments\033[0m green\033[0m")
 	m.addOutputRaw("\033[90mScroll: PgUp/PgDn or Mouse Wheel\033[0m")
 
 	// Подсказка про переключение режимов
 	if cfg.UI.AllowModeSwitching {
-		m.addOutputRaw("\033[90mUI Modes: F1=Classic, F2=Warp, F3=Compact, F4=Chat\033[0m")
+		m.addOutputRaw("\033[90mUI Modes: Ctrl+F5=Classic, Ctrl+F6=Warp, Ctrl+F7=Compact, Ctrl+F8=Chat\033[0m")
 	}
 	m.addOutputRaw("")
 
@@ -355,6 +359,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleKeyPress обрабатывает нажатия клавиш
 func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// ESC - закрыть help overlay (если открыт)
+	if msg.String() == "esc" && m.showingHelp {
+		m.showingHelp = false
+		return m, nil
+	}
+
+	// F1 или ? - открыть help overlay
+	if msg.String() == "f1" || msg.String() == "?" {
+		m.showingHelp = true
+		return m, nil
+	}
+
+	// Если показываем help - блокируем остальные клавиши
+	if m.showingHelp {
+		return m, nil
+	}
+
 	switch msg.String() {
 	case "ctrl+c":
 		m.quitting = true
@@ -404,8 +425,8 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.viewport, cmd = m.viewport.Update(msg)
 		return m, cmd
 
-	// Горячие клавиши для переключения UI режимов
-	case "f1", "f2", "f3", "f4":
+	// Горячие клавиши для переключения UI режимов (Ctrl+F5-F8)
+	case "ctrl+f5", "ctrl+f6", "ctrl+f7", "ctrl+f8":
 		if m.config.UI.AllowModeSwitching {
 			return m.switchUIMode(msg.String())
 		}
@@ -434,13 +455,13 @@ func (m Model) switchUIMode(key string) (tea.Model, tea.Cmd) {
 	var newMode config.UIMode
 
 	switch key {
-	case "f1":
+	case "ctrl+f5":
 		newMode = config.UIModeClassic
-	case "f2":
+	case "ctrl+f6":
 		newMode = config.UIModeWarp
-	case "f3":
+	case "ctrl+f7":
 		newMode = config.UIModeCompact
-	case "f4":
+	case "ctrl+f8":
 		newMode = config.UIModeChat
 	default:
 		return m, nil
@@ -474,6 +495,99 @@ func (m Model) switchUIMode(key string) (tea.Model, tea.Cmd) {
 
 	// Логируем переключение
 	m.logger.Info("UI mode switched", "from", oldMode, "to", newMode)
+
+	// Добавляем уведомление в output
+	m.addOutputRaw(fmt.Sprintf("\033[90m[UI Mode: %s]\033[0m", newMode))
+	m.updateViewportContent()
+
+	// Скроллим вниз если включен автоскролл
+	if m.autoScroll {
+		m.viewport.GotoBottom()
+	}
+
+	return m, nil
+}
+
+// handleModeCommand обрабатывает команду :mode для переключения UI режимов
+func (m Model) handleModeCommand(commandLine string) (tea.Model, tea.Cmd) {
+	// Проверяем включено ли переключение режимов
+	if !m.config.UI.AllowModeSwitching {
+		m.addOutputRaw("\033[31mError: UI mode switching is disabled in config\033[0m")
+		m.updateViewportContent()
+		if m.autoScroll {
+			m.viewport.GotoBottom()
+		}
+		return m, nil
+	}
+
+	// Парсим аргументы команды
+	parts := strings.Fields(commandLine)
+
+	// Если только ":mode" без аргументов - показываем текущий режим
+	if len(parts) == 1 {
+		m.addOutputRaw(fmt.Sprintf("\033[90mCurrent UI mode: \033[1;32m%s\033[0m", m.config.UI.Mode))
+		m.addOutputRaw("\033[90mAvailable modes: classic, warp, compact, chat\033[0m")
+		m.addOutputRaw("\033[90mUsage: :mode <name>\033[0m")
+		m.updateViewportContent()
+		if m.autoScroll {
+			m.viewport.GotoBottom()
+		}
+		return m, nil
+	}
+
+	// Получаем имя режима
+	modeName := strings.ToLower(parts[1])
+
+	// Маппинг имён на режимы
+	var newMode config.UIMode
+	switch modeName {
+	case "classic":
+		newMode = config.UIModeClassic
+	case "warp":
+		newMode = config.UIModeWarp
+	case "compact":
+		newMode = config.UIModeCompact
+	case "chat":
+		newMode = config.UIModeChat
+	default:
+		m.addOutputRaw(fmt.Sprintf("\033[31mError: unknown mode '%s'\033[0m", modeName))
+		m.addOutputRaw("\033[90mAvailable modes: classic, warp, compact, chat\033[0m")
+		m.updateViewportContent()
+		if m.autoScroll {
+			m.viewport.GotoBottom()
+		}
+		return m, nil
+	}
+
+	// Если уже в этом режиме - просто уведомляем
+	if m.config.UI.Mode == newMode {
+		m.addOutputRaw(fmt.Sprintf("\033[90mAlready in %s mode\033[0m", newMode))
+		m.updateViewportContent()
+		if m.autoScroll {
+			m.viewport.GotoBottom()
+		}
+		return m, nil
+	}
+
+	// Меняем режим
+	oldMode := m.config.UI.Mode
+	m.config.UI.Mode = newMode
+
+	// ВАЖНО: пересчитываем размер viewport в зависимости от нового режима
+	var viewportHeight int
+	if newMode == config.UIModeClassic {
+		viewportHeight = m.height
+	} else {
+		viewportHeight = m.height - 3
+	}
+
+	if viewportHeight < 1 {
+		viewportHeight = 1
+	}
+	m.viewport.Height = viewportHeight
+
+	// Логируем переключение
+	m.logger.Info("UI mode switched via :mode command", "from", oldMode, "to", newMode)
 
 	// Добавляем уведомление в output
 	m.addOutputRaw(fmt.Sprintf("\033[90m[UI Mode: %s]\033[0m", newMode))
@@ -686,6 +800,11 @@ func (m Model) executeCommand() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// Встроенная команда :mode для переключения UI режимов
+	if strings.HasPrefix(value, ":mode ") || value == ":mode" {
+		return m.handleModeCommand(value)
+	}
+
 	// Раскрываем алиасы (если команда является алиасом)
 	expandedValue, err := m.expandAliases(value, 0)
 	if err != nil {
@@ -728,7 +847,7 @@ func (m Model) executeCommand() (tea.Model, tea.Cmd) {
 	return m, m.execCommandAsync(value)
 }
 
-// showHelp показывает справку
+// showHelp показывает справку (текстовая версия для команды help)
 func (m *Model) showHelp() {
 	m.addOutputRaw("\033[1;33mGoSh - Built-in Commands:\033[0m")
 	m.addOutputRaw("  cd <dir>     - Change directory")
@@ -738,18 +857,24 @@ func (m *Model) showHelp() {
 	m.addOutputRaw("  unset VAR    - Unset environment variable")
 	m.addOutputRaw("  env          - Show environment")
 	m.addOutputRaw("  type <cmd>   - Show command type")
+	m.addOutputRaw("  alias        - List/create aliases")
+	m.addOutputRaw("  unalias      - Remove alias")
+	m.addOutputRaw("  jobs         - List background jobs")
+	m.addOutputRaw("  fg, bg       - Foreground/background job control")
 	m.addOutputRaw("  clear, cls   - Clear screen")
 	m.addOutputRaw("  help         - Show this help")
 	m.addOutputRaw("  exit, quit   - Exit shell")
 	m.addOutputRaw("")
-	m.addOutputRaw("\033[1;32mKeyboard shortcuts:\033[0m")
-	m.addOutputRaw("  Tab          - Auto-complete")
-	m.addOutputRaw("  ↑/↓          - History")
-	m.addOutputRaw("  PgUp/PgDn    - Scroll output")
-	m.addOutputRaw("  Mouse Wheel  - Scroll output")
-	m.addOutputRaw("  Alt+Enter    - New line (multiline)")
-	m.addOutputRaw("  Ctrl+L       - Clear screen")
-	m.addOutputRaw("  Ctrl+C/D     - Exit")
+
+	// UI режимы (если разрешено переключение)
+	if m.config.UI.AllowModeSwitching {
+		m.addOutputRaw("\033[1;33mUI Mode Switching:\033[0m")
+		m.addOutputRaw("  :mode        - Show current UI mode")
+		m.addOutputRaw("  :mode <name> - Switch UI mode (classic/warp/compact/chat)")
+		m.addOutputRaw("")
+	}
+
+	m.addOutputRaw("\033[1;36mPress F1 or ? for visual keyboard shortcuts\033[0m")
 	m.updateViewportContent()
 }
 
@@ -1291,6 +1416,11 @@ func (m Model) View() string {
 		return ""
 	}
 
+	// Если показываем help overlay - рисуем его поверх основного UI
+	if m.showingHelp {
+		return m.renderWithHelpOverlay()
+	}
+
 	// Выбираем рендеринг в зависимости от режима
 	switch m.config.UI.Mode {
 	case config.UIModeClassic:
@@ -1697,6 +1827,91 @@ func (m Model) renderPromptForHistoryANSI() string {
 	result.WriteString(" ")
 
 	return result.String()
+}
+
+// renderWithHelpOverlay рисует help overlay поверх основного UI
+func (m Model) renderWithHelpOverlay() string {
+	// Создаем help overlay
+	helpOverlay := m.renderHelpOverlay()
+
+	// Размещаем overlay по центру экрана
+	return lipgloss.Place(
+		m.width, m.height,
+		lipgloss.Center, lipgloss.Center,
+		helpOverlay,
+	)
+}
+
+// renderHelpOverlay создает модальное окно помощи
+func (m Model) renderHelpOverlay() string {
+	// Стиль для overlay box
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("12")). // Синий
+		Padding(1, 2).
+		Width(60).
+		Background(lipgloss.Color("0")). // Черный фон
+		Foreground(lipgloss.Color("15")) // Белый текст
+
+	titleStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("11")). // Желтый
+		Bold(true)
+
+	sectionStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("10")). // Зеленый
+		Bold(true)
+
+	keyStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("14")) // Cyan
+
+	var content strings.Builder
+
+	// Заголовок
+	content.WriteString(titleStyle.Render("GoSh Keyboard Shortcuts"))
+	content.WriteString("\n\n")
+
+	// Navigation
+	content.WriteString(sectionStyle.Render("Navigation:"))
+	content.WriteString("\n")
+	content.WriteString(keyStyle.Render("  ↑/↓       ") + " - Command history\n")
+	content.WriteString(keyStyle.Render("  Tab       ") + " - Auto-complete\n")
+	content.WriteString(keyStyle.Render("  PgUp/PgDn ") + " - Scroll output\n")
+	content.WriteString("\n")
+
+	// Input
+	content.WriteString(sectionStyle.Render("Input:"))
+	content.WriteString("\n")
+	content.WriteString(keyStyle.Render("  Enter     ") + " - Execute command\n")
+	content.WriteString(keyStyle.Render("  Alt+Enter ") + " - Multi-line input\n")
+	content.WriteString(keyStyle.Render("  Ctrl+L    ") + " - Clear screen\n")
+	content.WriteString("\n")
+
+	// UI Modes (если разрешено переключение)
+	if m.config.UI.AllowModeSwitching {
+		content.WriteString(sectionStyle.Render("UI Modes:"))
+		content.WriteString("\n")
+		content.WriteString(keyStyle.Render("  Ctrl+F5   ") + " - Classic mode\n")
+		content.WriteString(keyStyle.Render("  Ctrl+F6   ") + " - Warp mode\n")
+		content.WriteString(keyStyle.Render("  Ctrl+F7   ") + " - Compact mode\n")
+		content.WriteString(keyStyle.Render("  Ctrl+F8   ") + " - Chat mode\n")
+		content.WriteString("\n")
+	}
+
+	// Help
+	content.WriteString(sectionStyle.Render("Help:"))
+	content.WriteString("\n")
+	content.WriteString(keyStyle.Render("  F1 or ?   ") + " - This help\n")
+	content.WriteString(keyStyle.Render("  help      ") + " - Built-in commands\n")
+	content.WriteString(keyStyle.Render("  ESC       ") + " - Close this help\n")
+	content.WriteString("\n")
+
+	// Exit
+	content.WriteString(sectionStyle.Render("Exit:"))
+	content.WriteString("\n")
+	content.WriteString(keyStyle.Render("  Ctrl+C/D  ") + " - Exit shell\n")
+	content.WriteString(keyStyle.Render("  exit      ") + " - Exit shell\n")
+
+	return boxStyle.Render(content.String())
 }
 
 // shortenPath сокращает путь для отображения

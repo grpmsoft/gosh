@@ -1,6 +1,6 @@
 # 🐚 GoSh - Cross-Platform Go Shell
 
-**Version**: 0.1.0-beta.2
+**Version**: 0.1.0-beta.3
 **Status**: Beta - Gathering Feedback (breaking changes possible)
 **License**: MIT
 
@@ -42,6 +42,8 @@ A modern, cross-platform shell written in Go with beautiful TUI and native scrip
 - **Multi-line Input**: Alt+Enter for multiline commands
 - **Viewport Scrolling**: PgUp/PgDn, Mouse Wheel support
 - **Auto-scroll**: Automatically scroll to bottom on new output
+- **Visual Help Overlay**: Press F1 or ? for beautiful keyboard shortcuts reference (v0.1.0-beta.3)
+- **UI Mode Switching**: Ctrl+F5-F8 hotkeys or `:mode` command (v0.1.0-beta.3)
 
 ## 📦 Installation
 
@@ -95,13 +97,24 @@ nano config.yml
 # History loads automatically on shell startup
 ```
 
-### UI Modes
+### UI Modes & Keyboard Shortcuts
 ```bash
-# Switch UI mode (coming soon)
-:mode classic   # Traditional bash-like
-:mode warp      # Modern polished
-:mode compact   # Minimal space
-:mode chat      # Conversational
+# Get help
+F1 or ?          # Open visual help overlay (ESC to close)
+help             # Show built-in commands
+
+# Switch UI modes
+Ctrl+F5          # Classic mode (traditional bash-like)
+Ctrl+F6          # Warp mode (modern polished)
+Ctrl+F7          # Compact mode (minimal space)
+Ctrl+F8          # Chat mode (telegram-like)
+
+# Or use :mode command
+:mode            # Show current UI mode
+:mode classic    # Switch to Classic
+:mode warp       # Switch to Warp
+:mode compact    # Switch to Compact
+:mode chat       # Switch to Chat
 ```
 
 ## ⚙️ Configuration
@@ -169,7 +182,7 @@ go test ./internal/domain/history/...
 
 ## 🗺️ Roadmap
 
-### Current Version: v0.1.0-beta.2 ✅
+### Current Version: v0.1.0-beta.3 ✅
 **Status**: Published - Gathering community feedback (breaking changes possible)
 
 **Implemented Features**:
@@ -180,11 +193,12 @@ go test ./internal/domain/history/...
 - [x] File redirections (>, >>, <, 2>) (alpha.6)
 - [x] Background jobs (&, jobs, fg, bg) (beta.1)
 - [x] Glob patterns (*, ?, [], {}) (beta.2)
+- [x] Visual help overlay (F1/?) and :mode command (beta.3)
 - [x] 4 UI modes (Classic, Warp, Compact, Chat)
 - [x] 130+ tests, CI/CD on 3 platforms
 
 ### Next: v0.1.0-rc.1 (After Feedback)
-- [ ] Address community feedback from beta.2
+- [ ] Address community feedback from beta.3
 - [ ] Fix critical bugs reported by users
 - [ ] Performance optimizations if needed
 - [ ] Final polish and documentation updates

@@ -261,11 +261,12 @@ func (e *OSCommandExecutor) handleRedirections(
 			}
 
 			// os/exec only supports stdout (FD 1) and stderr (FD 2)
-			if redir.SourceFD == 1 {
+			switch redir.SourceFD {
+			case 1:
 				osCmd.Stdout = file
-			} else if redir.SourceFD == 2 {
+			case 2:
 				osCmd.Stderr = file
-			} else {
+			default:
 				e.logger.Warn("output redirection from FD other than 1 or 2 not fully supported",
 					"fd", redir.SourceFD, "file", redir.Target)
 			}
@@ -285,11 +286,12 @@ func (e *OSCommandExecutor) handleRedirections(
 				)
 			}
 
-			if redir.SourceFD == 1 {
+			switch redir.SourceFD {
+			case 1:
 				osCmd.Stdout = file
-			} else if redir.SourceFD == 2 {
+			case 2:
 				osCmd.Stderr = file
-			} else {
+			default:
 				e.logger.Warn("append redirection from FD other than 1 or 2 not fully supported",
 					"fd", redir.SourceFD, "file", redir.Target)
 			}

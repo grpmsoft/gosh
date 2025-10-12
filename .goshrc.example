@@ -1,0 +1,28 @@
+{
+  "ui": {
+    "mode": "classic",
+    "theme": "monokai",
+    "show_git_status": true,
+    "syntax_highlight": true,
+    "completion_enabled": true,
+    "allow_mode_switching": true
+  },
+  "shell": {
+    "default_shell": "sh",
+    "env": {}
+  },
+  "history": {
+    "max_lines": 10000,
+    "save_to_file": true,
+    "file_path": "~/.gosh_history"
+  }
+}
+
+// UI Modes:
+// - "classic" (F1) - Traditional bash/pwsh style: output flows naturally, prompt follows
+// - "warp"    (F2) - Modern Warp terminal: prompt always on top, output below
+// - "compact" (F3) - Minimalist: compact prompt, maximum space for output
+// - "chat"    (F4) - Messenger/AI style: input fixed at bottom, history scrolls above
+
+// Press F1-F4 during runtime to switch modes on the fly!
+// Set "allow_mode_switching": false to disable hotkeys

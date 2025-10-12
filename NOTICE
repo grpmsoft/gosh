@@ -1,0 +1,44 @@
+# GoSh - Third-Party Licenses
+
+GoSh uses the following open-source libraries:
+
+---
+
+## Charmbracelet Bubbletea, Bubbles, Lipgloss
+Copyright 2020-2025 Charmbracelet, Inc.
+License: MIT License
+https://github.com/charmbracelet/bubbletea
+https://github.com/charmbracelet/bubbles
+https://github.com/charmbracelet/lipgloss
+
+---
+
+## mvdan.cc/sh
+Copyright Daniel Martí
+License: BSD-3-Clause
+https://github.com/mvdan/sh
+
+---
+
+## Google UUID
+Copyright Google Inc.
+License: BSD-3-Clause
+https://github.com/google/uuid
+
+---
+
+## Chzyer Readline
+Copyright 2015 Chzyer
+License: MIT License
+https://github.com/chzyer/readline
+
+---
+
+## Stretchr Testify
+Copyright 2012-2020 Mat Ryer, Tyler Bunnell and contributors
+License: MIT License
+https://github.com/stretchr/testify
+
+---
+
+For full license texts, see the respective project repositories.

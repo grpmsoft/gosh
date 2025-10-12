@@ -418,7 +418,7 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.autoScroll = true
 		return m, tea.ClearScreen
 
-	case "pgup", "pgdown", "f", "b":
+	case "pgup", "pgdown":
 		// Прокрутка viewport
 		m.autoScroll = false
 		var cmd tea.Cmd

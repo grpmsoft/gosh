@@ -9,9 +9,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 - Ctrl+R fuzzy search UI
-- Gather community feedback on beta.2
+- Gather community feedback on beta.3
 - v0.1.0-rc.1 (after feedback collection)
 - v0.1.0 stable release
+
+## [0.1.0-beta.3] - 2025-01-12
+
+### Added - Help System Overhaul 🎨
+- **Visual Help Overlay**: Beautiful keyboard shortcuts reference with F1 or ?
+  - Centered modal window with rounded borders
+  - Color-coded sections (Navigation, Input, UI Modes, Help, Exit)
+  - Press ESC to close
+  - Follows IBM CUA 1987 tradition (F1 = Help for 38 years!)
+- **:mode Command**: Vim-style command for UI mode switching
+  - `:mode` - Show current UI mode and available options
+  - `:mode classic|warp|compact|chat` - Switch to specified mode
+  - Validates mode names and shows helpful error messages
+  - Works alongside existing Ctrl+F5-F8 hotkeys
+
+### Changed - Keyboard Shortcuts 🎹
+- **Help keys reorganized**:
+  - F1 → Open help overlay (was: switch to Classic mode)
+  - ? → Open help overlay (new, modern TUI pattern from k9s/lazygit)
+  - ESC → Close help overlay (standard modal close pattern)
+- **UI Mode switching moved**:
+  - Ctrl+F5 → Classic mode (was: F1)
+  - Ctrl+F6 → Warp mode (was: F2)
+  - Ctrl+F7 → Compact mode (was: F3)
+  - Ctrl+F8 → Chat mode (was: F4)
+  - Rationale: Frees F2-F8 for future frequent features, avoids Ctrl+F4=Close Tab conflict
+- **Updated help command**: Now shows `:mode` usage when UI mode switching is enabled
+
+### Technical
+- Research-driven keyboard design (analyzed IBM CUA, k9s, lazygit, Vim patterns)
+- Chose `:mode` over `/mode` following Vim/k9s tradition for meta-commands
+- Help overlay rendered using lipgloss with center placement
+- All shortcuts documented in visual overlay and `help` command
+- Welcome message updated to reflect new shortcuts
+- 0 linter warnings, 130+ tests passing
+
+### Improved UX
+- F1 and ? are more discoverable than F5-F8 for help
+- Visual help overlay is more informative than text-based `help` command
+- `:mode` provides fallback for users who prefer typing over hotkeys
+- ESC as universal "close/cancel" pattern
 
 ## [0.1.0-beta.2] - 2025-10-12
 
@@ -233,7 +274,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cross-platform path handling with filepath package
 - Native POSIX shell interpreter (mvdan.cc/sh v3.12.0)
 
-[unreleased]: https://github.com/grpmsoft/gosh/compare/v0.1.0-beta.2...HEAD
+[unreleased]: https://github.com/grpmsoft/gosh/compare/v0.1.0-beta.3...HEAD
+[0.1.0-beta.3]: https://github.com/grpmsoft/gosh/compare/v0.1.0-beta.2...v0.1.0-beta.3
 [0.1.0-beta.2]: https://github.com/grpmsoft/gosh/releases/tag/v0.1.0-beta.2
 [0.1.0-beta.1]: https://github.com/grpmsoft/gosh/compare/v0.1.0-alpha.6...v0.1.0-beta.1
 [0.1.0-alpha.6]: https://github.com/grpmsoft/gosh/compare/v0.1.0-alpha.5...v0.1.0-alpha.6

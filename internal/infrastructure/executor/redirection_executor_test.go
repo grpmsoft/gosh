@@ -306,7 +306,7 @@ func TestOSCommandExecutor_FDDuplication(t *testing.T) {
 		// Добавляем 2>&1 - перенаправляем stderr в stdout
 		err = cmd.AddRedirection(command.Redirection{
 			Type:     command.RedirectDup,
-			SourceFD: 2, // stderr
+			SourceFD: 2,   // stderr
 			Target:   "1", // к stdout
 		})
 		require.NoError(t, err)

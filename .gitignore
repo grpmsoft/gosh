@@ -4,7 +4,7 @@
 *.dll
 *.so
 *.dylib
-gosh
+/gosh
 gosh-*
 !gosh.go
 
@@ -54,3 +54,6 @@ gosh.log
 
 # Local developers documentation
 docs/dev
+
+# Temporary test output files
+export_output.txt

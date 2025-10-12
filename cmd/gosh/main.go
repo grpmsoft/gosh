@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/grpmsoft/gosh/internal/application/execute"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/grpmsoft/gosh/internal/application/execute"
 )
 
 func main() {

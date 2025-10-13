@@ -55,5 +55,6 @@ gosh.log
 # Local developers documentation
 docs/dev
 
-# Temporary test output files
+# Temporary test files
+tmp/
 export_output.txt

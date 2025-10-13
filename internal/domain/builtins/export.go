@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -150,10 +151,35 @@ func (e *ExportCommand) unquoteValue(value string) string {
 func (e *ExportCommand) printAllVariables() error {
 	env := e.session.Environment()
 
-	// Sort keys for stable output (optional)
-	for key, value := range env {
-		_, _ = fmt.Fprintf(e.stdout, "export %s=\"%s\"\n", key, value)
+	// Collect keys and sort them for stable, predictable output
+	// Go map iteration order is intentionally randomized
+	keys := make([]string, 0, len(env))
+	for key := range env {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	// Print variables in alphabetical order
+	for _, key := range keys {
+		// Escape special characters in value to prevent ANSI interpretation
+		escapedValue := escapeValue(env[key])
+		_, _ = fmt.Fprintf(e.stdout, "export %s=\"%s\"\n", key, escapedValue)
 	}
 
 	return nil
+}
+
+// escapeValue escapes special characters to prevent ANSI code interpretation
+func escapeValue(value string) string {
+	// Replace backslash with double backslash
+	value = strings.ReplaceAll(value, "\\", "\\\\")
+	// Replace double quote with escaped quote
+	value = strings.ReplaceAll(value, "\"", "\\\"")
+	// Replace newline with \n
+	value = strings.ReplaceAll(value, "\n", "\\n")
+	// Replace tab with \t
+	value = strings.ReplaceAll(value, "\t", "\\t")
+	// Replace carriage return with \r
+	value = strings.ReplaceAll(value, "\r", "\\r")
+	return value
 }

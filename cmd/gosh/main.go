@@ -34,7 +34,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Run (без AltScreen - используем нативную прокрутку терминала)
+	// Run (without AltScreen - using native terminal scrolling)
 	p := tea.NewProgram(model)
 
 	if _, err := p.Run(); err != nil {
@@ -43,23 +43,23 @@ func main() {
 	}
 }
 
-// executeNonInteractive выполняет команду в non-interactive режиме (-c flag)
+// executeNonInteractive executes a command in non-interactive mode (-c flag)
 func executeNonInteractive(ctx context.Context, logger *slog.Logger, commandLine string) int {
-	// Создаём сессию и use case для выполнения
+	// Create session and use case for execution
 	sessionManager, executeUseCase, err := bootstrapNonInteractive(logger)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize: %v\n", err)
 		return 1
 	}
 
-	// Создаём временную сессию
+	// Create temporary session
 	sess, err := sessionManager.CreateSession("non-interactive")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create session: %v\n", err)
 		return 1
 	}
 
-	// Выполняем команду
+	// Execute command
 	resp, err := executeUseCase.Execute(
 		ctx,
 		execute.ExecuteCommandRequest{
@@ -69,11 +69,11 @@ func executeNonInteractive(ctx context.Context, logger *slog.Logger, commandLine
 		sess,
 	)
 
-	// Выводим результат
+	// Output result
 	if resp != nil {
 		if resp.Stdout != "" {
 			fmt.Print(resp.Stdout)
-			// Добавляем newline если его нет
+			// Add newline if it's missing
 			if !strings.HasSuffix(resp.Stdout, "\n") {
 				fmt.Println()
 			}
@@ -86,13 +86,13 @@ func executeNonInteractive(ctx context.Context, logger *slog.Logger, commandLine
 		}
 	}
 
-	// Обрабатываем ошибку
+	// Handle error
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return 1
 	}
 
-	// Возвращаем exit code команды
+	// Return command exit code
 	if resp != nil {
 		return int(resp.ExitCode)
 	}

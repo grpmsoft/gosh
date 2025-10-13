@@ -34,15 +34,15 @@ func (l *Loader) Load() (*config.Config, error) {
 	// Read file
 	data, err := os.ReadFile(l.configPath)
 	if err != nil {
-		// Read error - return default
-		return config.DefaultConfig(), nil
+		// Read error - return default with error for logging
+		return config.DefaultConfig(), err
 	}
 
 	// Parse JSON
 	cfg := config.DefaultConfig()
 	if err := json.Unmarshal(data, cfg); err != nil {
-		// Parse error - return default
-		return config.DefaultConfig(), nil
+		// Parse error - return default with error for logging
+		return config.DefaultConfig(), err
 	}
 
 	return cfg, nil

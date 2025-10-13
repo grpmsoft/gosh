@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/grpmsoft/gosh/internal/application/execute"
@@ -146,7 +147,8 @@ func TestExecBuiltinCommand_Pwd(t *testing.T) {
 		require.True(t, ok, "expected commandExecutedMsg")
 		assert.NoError(t, execMsg.err)
 		assert.Equal(t, 0, execMsg.exitCode)
-		assert.Contains(t, execMsg.output, os.TempDir())
+		// Trim whitespace/newlines for cross-platform consistency
+		assert.Contains(t, strings.TrimSpace(execMsg.output), os.TempDir())
 	})
 }
 

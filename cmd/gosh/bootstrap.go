@@ -14,7 +14,7 @@ import (
 	"github.com/grpmsoft/gosh/internal/interfaces/repl"
 )
 
-// setupLogger настраивает логгер для записи в файл
+// setupLogger sets up the logger for writing to a file
 func setupLogger() *slog.Logger {
 	logFile, err := os.OpenFile("gosh.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
@@ -26,22 +26,22 @@ func setupLogger() *slog.Logger {
 	}))
 }
 
-// bootstrapREPL создает и настраивает REPL с зависимостями
+// bootstrapREPL creates and configures REPL with dependencies
 func bootstrapREPL(logger *slog.Logger, ctx context.Context) (*repl.Model, error) {
-	// Загружаем конфигурацию
+	// Load configuration
 	loader := configLoader.NewLoader()
 	cfg, err := loader.Load()
 	if err != nil {
 		logger.Warn("Failed to load config, using defaults", "error", err)
 	}
 
-	// Создаем зависимости (Dependency Injection)
+	// Create dependencies (Dependency Injection)
 	fs := filesystem.NewOSFileSystem()
 	builtinExec := builtin.NewBuiltinExecutor(fs, logger)
 	commandExec := executor.NewOSCommandExecutor(logger)
 	pipelineExec := executor.NewOSPipelineExecutor(logger)
 
-	// Создаем use cases
+	// Create use cases
 	sessionManager := appsession.NewSessionManager(logger)
 	executeUseCase := execute.NewExecuteCommandUseCase(
 		builtinExec,
@@ -50,6 +50,26 @@ func bootstrapREPL(logger *slog.Logger, ctx context.Context) (*repl.Model, error
 		logger,
 	)
 
-	// Создаем REPL с конфигурацией
+	// Create REPL with configuration
 	return repl.NewBubbleteaREPL(sessionManager, executeUseCase, logger, ctx, cfg)
+}
+
+// bootstrapNonInteractive creates dependencies for non-interactive mode (-c flag)
+func bootstrapNonInteractive(logger *slog.Logger) (*appsession.SessionManager, *execute.ExecuteCommandUseCase, error) {
+	// Create dependencies (Dependency Injection)
+	fs := filesystem.NewOSFileSystem()
+	builtinExec := builtin.NewBuiltinExecutor(fs, logger)
+	commandExec := executor.NewOSCommandExecutor(logger)
+	pipelineExec := executor.NewOSPipelineExecutor(logger)
+
+	// Create use cases
+	sessionManager := appsession.NewSessionManager(logger)
+	executeUseCase := execute.NewExecuteCommandUseCase(
+		builtinExec,
+		commandExec,
+		pipelineExec,
+		logger,
+	)
+
+	return sessionManager, executeUseCase, nil
 }

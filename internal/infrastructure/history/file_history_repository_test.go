@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestFileHistoryRepository_Save проверяет сохранение истории в файл
+// TestFileHistoryRepository_Save tests saving history to file
 func TestFileHistoryRepository_Save(t *testing.T) {
 	t.Run("saves history to file", func(t *testing.T) {
 		tmpDir := t.TempDir()
@@ -29,14 +29,14 @@ func TestFileHistoryRepository_Save(t *testing.T) {
 		err := repo.Save(h)
 		require.NoError(t, err)
 
-		// Проверяем что файл создан
+		// Check that file is created
 		assert.FileExists(t, filePath)
 
-		// Проверяем содержимое
+		// Check content
 		content, err := os.ReadFile(filePath)
 		require.NoError(t, err)
 
-		// Файл должен содержать команды в хронологическом порядке
+		// File should contain commands in chronological order
 		expected := "git status\ngit commit\ngit push\n"
 		assert.Equal(t, expected, string(content))
 	})
@@ -60,8 +60,8 @@ func TestFileHistoryRepository_Save(t *testing.T) {
 		tmpDir := t.TempDir()
 		filePath := filepath.Join(tmpDir, "history.txt")
 
-		// Создаем файл с начальным содержимым
-		err := os.WriteFile(filePath, []byte("old command 1\nold command 2\n"), 0644)
+		// Create file with initial content
+		err := os.WriteFile(filePath, []byte("old command 1\nold command 2\n"), 0o644)
 		require.NoError(t, err)
 
 		repo := historyInfra.NewFileHistoryRepository(filePath)
@@ -72,7 +72,7 @@ func TestFileHistoryRepository_Save(t *testing.T) {
 		err = repo.Save(h)
 		require.NoError(t, err)
 
-		// Проверяем что старые команды удалены
+		// Check that old commands are removed
 		content, err := os.ReadFile(filePath)
 		require.NoError(t, err)
 		assert.Equal(t, "new command\n", string(content))
@@ -118,15 +118,15 @@ func TestFileHistoryRepository_Save(t *testing.T) {
 	})
 }
 
-// TestFileHistoryRepository_Load проверяет загрузку истории из файла
+// TestFileHistoryRepository_Load tests loading history from file
 func TestFileHistoryRepository_Load(t *testing.T) {
 	t.Run("loads history from file", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		filePath := filepath.Join(tmpDir, "history.txt")
 
-		// Создаем файл с тестовыми данными
+		// Create file with test data
 		content := "git status\ngit commit\ngit push\n"
-		err := os.WriteFile(filePath, []byte(content), 0644)
+		err := os.WriteFile(filePath, []byte(content), 0o644)
 		require.NoError(t, err)
 
 		repo := historyInfra.NewFileHistoryRepository(filePath)
@@ -147,7 +147,7 @@ func TestFileHistoryRepository_Load(t *testing.T) {
 		tmpDir := t.TempDir()
 		filePath := filepath.Join(tmpDir, "history.txt")
 
-		err := os.WriteFile(filePath, []byte(""), 0644)
+		err := os.WriteFile(filePath, []byte(""), 0o644)
 		require.NoError(t, err)
 
 		repo := historyInfra.NewFileHistoryRepository(filePath)
@@ -168,7 +168,7 @@ func TestFileHistoryRepository_Load(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
 		err := repo.Load(h)
 
-		// Не ошибка - просто пустая история
+		// Not an error - just empty history
 		assert.NoError(t, err)
 		assert.Equal(t, 0, h.Size())
 	})
@@ -178,7 +178,7 @@ func TestFileHistoryRepository_Load(t *testing.T) {
 		filePath := filepath.Join(tmpDir, "history.txt")
 
 		content := "cmd1\n\n  \ncmd2\n\t\ncmd3\n"
-		err := os.WriteFile(filePath, []byte(content), 0644)
+		err := os.WriteFile(filePath, []byte(content), 0o644)
 		require.NoError(t, err)
 
 		repo := historyInfra.NewFileHistoryRepository(filePath)
@@ -198,18 +198,18 @@ func TestFileHistoryRepository_Load(t *testing.T) {
 		tmpDir := t.TempDir()
 		filePath := filepath.Join(tmpDir, "history.txt")
 
-		// Создаем файл с 10000 командами
+		// Create file with 10000 commands
 		content := ""
 		for i := 1; i <= 10000; i++ {
 			content += "command " + string(rune(i)) + "\n"
 		}
-		err := os.WriteFile(filePath, []byte(content), 0644)
+		err := os.WriteFile(filePath, []byte(content), 0o644)
 		require.NoError(t, err)
 
 		repo := historyInfra.NewFileHistoryRepository(filePath)
 
 		cfg := history.Config{
-			MaxSize:          5000, // Ограничение истории
+			MaxSize:          5000, // History size limit
 			DeduplicateAdded: false,
 		}
 		h := history.NewHistory(cfg)
@@ -217,7 +217,7 @@ func TestFileHistoryRepository_Load(t *testing.T) {
 		err = repo.Load(h)
 		require.NoError(t, err)
 
-		// Должны загрузиться только последние 5000
+		// Should load only last 5000
 		assert.Equal(t, 5000, h.Size())
 	})
 
@@ -226,7 +226,7 @@ func TestFileHistoryRepository_Load(t *testing.T) {
 		filePath := filepath.Join(tmpDir, "history.txt")
 
 		content := "echo 'hello'\ngrep \"test\"\ncmd\twith\ttab\n"
-		err := os.WriteFile(filePath, []byte(content), 0644)
+		err := os.WriteFile(filePath, []byte(content), 0o644)
 		require.NoError(t, err)
 
 		repo := historyInfra.NewFileHistoryRepository(filePath)
@@ -242,7 +242,7 @@ func TestFileHistoryRepository_Load(t *testing.T) {
 	})
 }
 
-// TestFileHistoryRepository_SaveAndLoad проверяет круговорот сохранения/загрузки
+// TestFileHistoryRepository_SaveAndLoad tests save/load round trip
 func TestFileHistoryRepository_SaveAndLoad(t *testing.T) {
 	t.Run("round trip preserves history", func(t *testing.T) {
 		tmpDir := t.TempDir()
@@ -250,7 +250,7 @@ func TestFileHistoryRepository_SaveAndLoad(t *testing.T) {
 
 		repo := historyInfra.NewFileHistoryRepository(filePath)
 
-		// Создаем и сохраняем историю
+		// Create and save history
 		h1 := history.NewHistory(history.DefaultConfig())
 		h1.Add("git status")
 		h1.Add("git commit -m 'test'")
@@ -259,24 +259,24 @@ func TestFileHistoryRepository_SaveAndLoad(t *testing.T) {
 		err := repo.Save(h1)
 		require.NoError(t, err)
 
-		// Загружаем в новый объект
+		// Load into new object
 		h2 := history.NewHistory(history.DefaultConfig())
 		err = repo.Load(h2)
 		require.NoError(t, err)
 
-		// Проверяем идентичность
+		// Check identity
 		assert.Equal(t, h1.Size(), h2.Size())
 		assert.Equal(t, h1.ToSlice(), h2.ToSlice())
 	})
 }
 
-// TestFileHistoryRepository_ExpandTilde проверяет раскрытие ~ в пути
+// TestFileHistoryRepository_ExpandTilde tests ~ expansion in path
 func TestFileHistoryRepository_ExpandTilde(t *testing.T) {
 	t.Run("expands tilde to home directory", func(t *testing.T) {
-		// Эта функциональность должна быть в репозитории
+		// This functionality should be in repository
 		repo := historyInfra.NewFileHistoryRepository("~/.gosh_history")
 
-		// Путь должен быть раскрыт
+		// Path should be expanded
 		actualPath := repo.FilePath()
 		assert.NotContains(t, actualPath, "~")
 
@@ -293,7 +293,7 @@ func TestFileHistoryRepository_ExpandTilde(t *testing.T) {
 	})
 }
 
-// TestFileHistoryRepository_Concurrency проверяет потокобезопасность
+// TestFileHistoryRepository_Concurrency tests thread safety
 func TestFileHistoryRepository_Concurrency(t *testing.T) {
 	t.Run("handles concurrent saves", func(t *testing.T) {
 		tmpDir := t.TempDir()
@@ -304,7 +304,7 @@ func TestFileHistoryRepository_Concurrency(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
 		h.Add("test command")
 
-		// Запускаем 10 одновременных сохранений
+		// Run 10 concurrent saves
 		done := make(chan bool, 10)
 		for i := 0; i < 10; i++ {
 			go func() {
@@ -314,22 +314,22 @@ func TestFileHistoryRepository_Concurrency(t *testing.T) {
 			}()
 		}
 
-		// Ждем завершения всех
+		// Wait for all to complete
 		for i := 0; i < 10; i++ {
 			<-done
 		}
 		close(done)
 
-		// Файл должен существовать и быть валидным
+		// File should exist and be valid
 		assert.FileExists(t, filePath)
 
-		// Даем время на закрытие файловых дескрипторов на Windows
-		// Это предотвращает ошибку cleanup в TempDir
+		// Give time for file descriptors to close on Windows
+		// This prevents cleanup error in TempDir
 		time.Sleep(10 * time.Millisecond)
 	})
 }
 
-// TestFileHistoryRepository_Append проверяет добавление команд в конец файла
+// TestFileHistoryRepository_Append tests appending commands to end of file
 func TestFileHistoryRepository_Append(t *testing.T) {
 	t.Run("appends single command to new file", func(t *testing.T) {
 		tmpDir := t.TempDir()
@@ -340,10 +340,10 @@ func TestFileHistoryRepository_Append(t *testing.T) {
 		err := repo.Append("git status")
 		require.NoError(t, err)
 
-		// Проверяем что файл создан
+		// Check that file is created
 		assert.FileExists(t, filePath)
 
-		// Проверяем содержимое
+		// Check content
 		content, err := os.ReadFile(filePath)
 		require.NoError(t, err)
 		assert.Equal(t, "git status\n", string(content))
@@ -364,7 +364,7 @@ func TestFileHistoryRepository_Append(t *testing.T) {
 		err = repo.Append("git push")
 		require.NoError(t, err)
 
-		// Проверяем что все команды добавлены в хронологическом порядке
+		// Check that all commands are added in chronological order
 		content, err := os.ReadFile(filePath)
 		require.NoError(t, err)
 		assert.Equal(t, "git status\ngit commit\ngit push\n", string(content))
@@ -374,8 +374,8 @@ func TestFileHistoryRepository_Append(t *testing.T) {
 		tmpDir := t.TempDir()
 		filePath := filepath.Join(tmpDir, "history.txt")
 
-		// Создаем файл с начальным содержимым
-		err := os.WriteFile(filePath, []byte("old command\n"), 0644)
+		// Create file with initial content
+		err := os.WriteFile(filePath, []byte("old command\n"), 0o644)
 		require.NoError(t, err)
 
 		repo := historyInfra.NewFileHistoryRepository(filePath)
@@ -383,7 +383,7 @@ func TestFileHistoryRepository_Append(t *testing.T) {
 		err = repo.Append("new command")
 		require.NoError(t, err)
 
-		// Проверяем что старая команда сохранилась
+		// Check that old command is preserved
 		content, err := os.ReadFile(filePath)
 		require.NoError(t, err)
 		assert.Equal(t, "old command\nnew command\n", string(content))
@@ -404,7 +404,7 @@ func TestFileHistoryRepository_Append(t *testing.T) {
 		err = repo.Append("\t")
 		require.NoError(t, err)
 
-		// Файл не должен быть создан для пустых команд
+		// File should not be created for empty commands
 		_, err = os.Stat(filePath)
 		assert.True(t, os.IsNotExist(err))
 	})
@@ -446,7 +446,7 @@ func TestFileHistoryRepository_Append(t *testing.T) {
 
 		repo := historyInfra.NewFileHistoryRepository(filePath)
 
-		// Запускаем 100 одновременных записей
+		// Run 100 concurrent writes
 		done := make(chan bool, 100)
 		for i := 0; i < 100; i++ {
 			go func(n int) {
@@ -456,20 +456,20 @@ func TestFileHistoryRepository_Append(t *testing.T) {
 			}(i)
 		}
 
-		// Ждем завершения всех
+		// Wait for all to complete
 		for i := 0; i < 100; i++ {
 			<-done
 		}
 		close(done)
 
-		// Проверяем что файл существует
+		// Check that file exists
 		assert.FileExists(t, filePath)
 
-		// Проверяем что все команды записаны
+		// Check that all commands are written
 		content, err := os.ReadFile(filePath)
 		require.NoError(t, err)
 
-		// Должно быть 100 строк
+		// Should have 100 lines
 		lines := 0
 		for _, c := range string(content) {
 			if c == '\n' {
@@ -478,12 +478,12 @@ func TestFileHistoryRepository_Append(t *testing.T) {
 		}
 		assert.Equal(t, 100, lines, "Should have 100 commands written")
 
-		// Даем время на закрытие файловых дескрипторов на Windows
+		// Give time for file descriptors to close on Windows
 		time.Sleep(10 * time.Millisecond)
 	})
 }
 
-// TestFileHistoryRepository_AppendAndLoad проверяет что Append работает с Load
+// TestFileHistoryRepository_AppendAndLoad tests that Append works with Load
 func TestFileHistoryRepository_AppendAndLoad(t *testing.T) {
 	t.Run("load after append preserves all commands", func(t *testing.T) {
 		tmpDir := t.TempDir()
@@ -491,17 +491,17 @@ func TestFileHistoryRepository_AppendAndLoad(t *testing.T) {
 
 		repo := historyInfra.NewFileHistoryRepository(filePath)
 
-		// Append несколько команд
+		// Append several commands
 		repo.Append("cmd1")
 		repo.Append("cmd2")
 		repo.Append("cmd3")
 
-		// Load в историю
+		// Load into history
 		h := history.NewHistory(history.DefaultConfig())
 		err := repo.Load(h)
 		require.NoError(t, err)
 
-		// Проверяем что все команды загружены
+		// Check that all commands are loaded
 		assert.Equal(t, 3, h.Size())
 		slice := h.ToSlice()
 		assert.Equal(t, "cmd1", slice[0])

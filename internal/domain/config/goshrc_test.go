@@ -31,7 +31,7 @@ func TestGoshrcService_Load_EmptyFile(t *testing.T) {
 	goshrcPath := filepath.Join(tmpDir, ".goshrc")
 
 	// Create empty file
-	err := os.WriteFile(goshrcPath, []byte(""), 0644)
+	err := os.WriteFile(goshrcPath, []byte(""), 0o644)
 	require.NoError(t, err)
 
 	service := NewGoshrcService(goshrcPath)
@@ -56,7 +56,7 @@ alias gs='git status'
 alias gp="git push"
 alias pwd=pwd
 `
-	err := os.WriteFile(goshrcPath, []byte(content), 0644)
+	err := os.WriteFile(goshrcPath, []byte(content), 0o644)
 	require.NoError(t, err)
 
 	service := NewGoshrcService(goshrcPath)
@@ -82,7 +82,7 @@ func TestGoshrcService_Load_WithEnvironment(t *testing.T) {
 export PATH='/usr/local/bin'
 export HOME="/home/user"
 `
-	err := os.WriteFile(goshrcPath, []byte(content), 0644)
+	err := os.WriteFile(goshrcPath, []byte(content), 0o644)
 	require.NoError(t, err)
 
 	service := NewGoshrcService(goshrcPath)
@@ -111,7 +111,7 @@ alias ll='ls -la'
 alias gs='git status'
 
 `
-	err := os.WriteFile(goshrcPath, []byte(content), 0644)
+	err := os.WriteFile(goshrcPath, []byte(content), 0o644)
 	require.NoError(t, err)
 
 	service := NewGoshrcService(goshrcPath)
@@ -242,7 +242,7 @@ random text
 # Another valid alias
 alias gs='git status'
 `
-	err := os.WriteFile(goshrcPath, []byte(content), 0644)
+	err := os.WriteFile(goshrcPath, []byte(content), 0o644)
 	require.NoError(t, err)
 
 	service := NewGoshrcService(goshrcPath)

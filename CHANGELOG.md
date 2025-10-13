@@ -9,237 +9,151 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 - Ctrl+R fuzzy search UI
-- Gather community feedback on beta.2
+- Command sequences with && and || operators
+- Gather community feedback on beta.4
 - v0.1.0-rc.1 (after feedback collection)
 - v0.1.0 stable release
+
+## [0.1.0-beta.4] - 2025-10-12
+
+### Added - Non-Interactive Mode & FD Redirections 🚀
+- **`-c` flag**: Execute command and exit (non-interactive mode)
+  - Usage: `gosh -c "pwd"`, `gosh -c "cd /tmp && ls"`
+  - Useful for: Testing, scripting, CI/CD pipelines
+  - Exit codes properly propagated
+  - Both stdout and stderr captured correctly
+- **Full File Descriptor Redirections**: Generic FD support (not just hardcoded 2>)
+  - N< - Input from FD N (e.g., `0< input.txt`)
+  - N> - Output to FD N (e.g., `3> output.txt`)
+  - N>> - Append to FD N (e.g., `2>> errors.log`)
+  - N>&M - Duplicate FD M to FD N (e.g., `2>&1` merges stderr to stdout)
+  - Defaults: `<` = `0<`, `>` = `1>`, `>>` = `1>>`
+  - Supports arbitrary FD numbers (0-255)
+- **Comprehensive FD tests**: Added tests for FD duplication (2>&1), multiple redirections
+
+### Fixed - Critical Bugs 🐛
+- **cd command**: Now executes in shell process instead of subprocess
+  - Issue: cd was running in subprocess, so `os.Chdir()` didn't affect parent shell
+  - Impact: cd simply didn't work at all
+  - Solution: Added synchronous builtin command handling in REPL
+  - All builtin commands (cd, export, unset, pwd, etc.) now execute correctly in shell process
+  - Reporter: Community user on Alpine Linux
+  - Tests: All 9 cd tests passing, plus manual verification
+- **export display in interactive mode**: Fixed text overlapping issue
+  - Issue: Running `export` in interactive mode caused output lines to overlap
+  - Impact: Output was unreadable, each line started where previous ended
+  - Root Cause: No visual separation between prompt+command and output
+  - Solution: Added empty line before command output
+  - Reporter: Community user on Alpine Linux
+  - Non-interactive mode (`gosh -c "export"`) always worked correctly
+
+### Changed
+- **Builtin command execution**: Refactored to execute synchronously through ExecuteCommandUseCase
+  - Commands like cd, export, unset now properly modify shell state
+  - Architecture: `executeCommand()` → `execBuiltinCommand()` → `executeUseCase` → `BuiltinExecutor`
+  - Parser dependency added to ExecuteCommandUseCase for `-c` flag support
+
+### Technical
+- Breaking API change: `Redirection` struct now has `SourceFD int` field
+- Lexer: Added `tryParseRedirection()` for parsing FD numbers before operators
+- Parser: Updated to handle FD tokens from lexer
+- Executor: Refactored `handleRedirections()` to use `SourceFD` field
+- All 130+ tests passing, 0 linter warnings
+
+### Known Issues
+- **Ctrl+F5-F8 hotkeys**: Don't work in some terminals (foot on Alpine Linux)
+  - Reason: Some terminals don't send Ctrl+Function key combinations
+  - Workaround: Use `:mode <name>` command instead (fully functional)
+  - Alternative: F1/? for help, which shows `:mode` usage
+
+## [0.1.0-beta.3.1] - 2025-10-12
+
+### Fixed - Critical Keyboard Input Bug 🐛
+- **Keyboard input**: Fixed 'b' and 'f' keys being intercepted for viewport scrolling
+  - Issue: Keys 'b' and 'f' were bound to viewport navigation (Vim-style), preventing text input
+  - Impact: Users on Alpine Linux (foot terminal) couldn't type words containing these letters
+  - Solution: Removed 'f' and 'b' from viewport scroll shortcuts (PgUp/PgDn still work)
+  - Reporter: Community user on Alpine Linux with foot terminal
+  - Tests: All 130+ tests passing, keyboard input validated
+
+### Technical
+- Removed 'f' and 'b' from `case "pgup", "pgdown", "f", "b"` keyboard handler
+- Viewport scrolling still available via PgUp/PgDn and mouse wheel
+- Quick hotfix release to unblock beta testers
+
+## [0.1.0-beta.3] - 2025-01-12
+
+### Added - Help System Overhaul 🎨
+- **Visual Help Overlay**: Beautiful keyboard shortcuts reference with F1 or ?
+  - Centered modal window with rounded borders
+  - Color-coded sections (Navigation, Input, UI Modes, Help, Exit)
+  - Press ESC to close
+  - Follows IBM CUA 1987 tradition (F1 = Help for 38 years!)
+- **:mode Command**: Vim-style command for UI mode switching
+  - `:mode` - Show current UI mode and available options
+  - `:mode classic|warp|compact|chat` - Switch to specified mode
+  - Validates mode names and shows helpful error messages
+  - Works alongside existing Ctrl+F5-F8 hotkeys
+
+### Changed - Keyboard Shortcuts 🎹
+- **Help keys reorganized**:
+  - F1 → Open help overlay (was: switch to Classic mode)
+  - ? → Open help overlay (new, modern TUI pattern from k9s/lazygit)
+  - ESC → Close help overlay (standard modal close pattern)
+- **UI Mode switching moved**:
+  - Ctrl+F5 → Classic mode (was: F1)
+  - Ctrl+F6 → Warp mode (was: F2)
+  - Ctrl+F7 → Compact mode (was: F3)
+  - Ctrl+F8 → Chat mode (was: F4)
+  - Rationale: Frees F2-F8 for future frequent features, avoids Ctrl+F4=Close Tab conflict
+- **Updated help command**: Now shows `:mode` usage when UI mode switching is enabled
+
+### Technical
+- Research-driven keyboard design (analyzed IBM CUA, k9s, lazygit, Vim patterns)
+- Chose `:mode` over `/mode` following Vim/k9s tradition for meta-commands
+- Help overlay rendered using lipgloss with center placement
+- All shortcuts documented in visual overlay and `help` command
+- Welcome message updated to reflect new shortcuts
+- 0 linter warnings, 130+ tests passing
+
+### Improved UX
+- F1 and ? are more discoverable than F5-F8 for help
+- Visual help overlay is more informative than text-based `help` command
+- `:mode` provides fallback for users who prefer typing over hotkeys
+- ESC as universal "close/cancel" pattern
 
 ## [0.1.0-beta.2] - 2025-10-12
 
 ### Repository Publication 🎉
 - **Published**: GoSh repository is now public at https://github.com/grpmsoft/gosh
-- **Status**: Beta.2 - gathering feedback, breaking changes still possible
-- **Clean git history**: Repository starts with clean commit history (single initial commit)
+- **Status**: First public beta release
 - **Professional infrastructure**: Complete CI/CD, linting, testing, documentation
 
-### Repository Infrastructure
-- **License**: MIT License added
-- **Documentation**: CONTRIBUTING.md, NOTICE (third-party licenses)
-- **Development Workflow**: .golangci.yml v2, Makefile (build/test/lint/fmt/clean)
-- **CI/CD**: GitHub Actions workflows for testing (Linux/macOS/Windows) and releases
-- **Automated Releases**: GoReleaser configuration for cross-platform binaries
-- **Quality Assurance**: 130+ tests passing, 0 linter warnings
+### Features
+- **Glob Pattern Expansion**: Full support for Unix-style filename wildcards (`*.go`, `test?.txt`, `file[1-3].txt`)
+- **Background Jobs**: Full Unix-style job control (`&`, `jobs`, `fg`, `bg`)
+- **Pipelines**: Command pipelines (`ls | grep gosh`)
+- **Redirections**: IO redirections (`>`, `>>`, `<`, `2>`)
+- **Aliases**: Command shortcuts with `.goshrc` support
+- **Built-in Commands**: cd, pwd, echo, export, unset, env, alias, type, jobs, fg, bg
+- **Command History**: Persistent history with Up/Down navigation
+- **4 UI Modes**: Classic, Warp, Compact, Chat
+- **Native Script Execution**: .sh/.bash scripts via mvdan.cc/sh (no bash.exe dependency on Windows)
+- **Git Integration**: Branch and dirty status in prompt
+- **Syntax Highlighting**: Real-time ANSI highlighting
+- **Tab Completion**: Command and file completion
 
-### Fixed
-- **Test reliability**: Fixed CI test failures by using `t.TempDir()` instead of `os.Getwd()` in test session creation
-- **Windows compatibility**: Changed coverage file from `.out` to `.txt` to avoid PowerShell path interpretation issues
-- **Workflow updates**: Updated GitHub Actions to reference `main` branch only (removed `master`)
+### Infrastructure
+- MIT License
+- CI/CD on Linux/macOS/Windows
+- GoReleaser for automated releases
+- 130+ tests, 0 linter warnings
 
-### Technical
-- Git history cleaned: 28 commits squashed into professional initial commit
-- Branch strategy: `main` as primary branch
-- All linter issues resolved (51 errors fixed)
-- GoReleaser tested locally: successful builds for all target platforms
-  - Linux (amd64, 386, arm64)
-  - macOS (amd64, arm64)
-  - Windows (amd64, 386)
+---
 
-### Quality Metrics
-- ✅ 130+ tests passing
-- ✅ 0 golangci-lint warnings
-- ✅ CI/CD working on 3 platforms
-- ✅ Professional repository structure
-- ✅ Ready for community feedback collection
+*Development history omitted for brevity. Beta.2 was the first public release.*
 
-### Added (Previous beta.2 features)
-- **Glob Pattern Expansion**: Full support for Unix-style filename wildcards
-- **Wildcard patterns**: `*` (any characters), `?` (single character), `[]` (character sets/ranges)
-- **Pattern examples**:
-  - `ls *.go` - list all .go files
-  - `cat test?.txt` - match test1.txt, test2.txt (single character)
-  - `rm file[123].txt` - match file1.txt, file2.txt, file3.txt
-  - `cat file[1-3].txt` - range syntax
-- **Bash-like behavior**: Error if no matches found (prevents accidental operations)
-- **Cross-platform**: Uses Go's `filepath.Glob()` for compatibility
-- **Mixed arguments**: Glob and literal arguments work together (`echo *.go hello`)
-
-### Technical
-- Added `expandGlobs()` function in parser
-- Pattern detection with `containsGlobPattern()` helper
-- Glob expansion happens before command creation
-- 13 comprehensive tests including integration tests
-- Error handling for invalid patterns and no-match cases
-
-## [0.1.0-beta.1] - 2025-01-11
-
-### Added
-- **Background Jobs (&)**: Full support for Unix-style background job execution
-- **Job tracking**: Jobs tracked with automatic numbering (%1, %2, etc.)
-- **jobs command**: List all background jobs with status (`[1] + [Running] sleep 10 &`)
-- **fg command**: Bring background job to foreground (`fg %1` or just `fg`)
-- **bg command**: Resume stopped job in background (`bg %1` or just `bg`)
-- **Job notifications**: Automatic display when background jobs complete (`[1] Done    sleep 10 &`)
-- **Job domain model**: Rich domain entities (Job, JobManager) with complete lifecycle
-- **Process monitoring**: Background goroutines monitor process completion asynchronously
-- **State synchronization**: Job state syncs with Process state automatically
-
-### Technical
-- Created Job aggregate (Entity) with states: Running, Stopped, Completed, Failed
-- Created JobManager domain service with thread-safe job tracking (RWMutex)
-- Integrated JobManager into Session aggregate
-- Added 48 comprehensive tests for Job domain (includes concurrency tests)
-- Modified OSCommandExecutor to spawn monitoring goroutines for background processes
-- File handle management: Background jobs close files in monitoring goroutine
-- REPL checks for completed jobs before each prompt
-- Jobs automatically removed from tracking after completion
-- Support for %n and n syntax for job numbers
-- Default behavior: operate on most recent job if no argument provided
-
-## [0.1.0-alpha.6] - 2025-01-11
-
-### Added
-- **IO Redirections (>, >>, <, 2>)**: Complete file redirection support
-- **Output redirection (>)**: Write stdout to file with overwrite (`echo hello > output.txt`)
-- **Append redirection (>>)**: Append stdout to file (`cat data.txt >> log.txt`)
-- **Input redirection (<)**: Read stdin from file (`cat < input.txt`)
-- **Error redirection (2>)**: Redirect stderr to file (`ls nonexistent 2> error.log`)
-- **Multiple redirections**: Combine multiple operators (`cat < input.txt > output.txt`)
-- **Comprehensive tests**: 5 test cases passing (output, input, error, multiple, error handling)
-
-### Technical
-- Implemented handleRedirections() in OSCommandExecutor with proper file lifecycle management
-- File handle cleanup using defer for all opened redirection files
-- Integration with REPL via OSCommandExecutor for single commands
-- Redirection support for both single commands and pipelines
-- Error handling for nonexistent input files and permission issues
-- Note: Windows/MSYS has file descriptor inheritance limitations with O_APPEND flag (functionality works, tests skipped)
-
-## [0.1.0-alpha.5] - 2025-01-11
-
-### Added
-- **Basic Pipelines (|)**: Full support for command pipelines (`ls | grep gosh`, `echo test | wc -l`)
-- **OSPipelineExecutor**: Infrastructure layer executor for piping stdout→stdin between commands
-- **Pipeline domain model**: Value Object with Commands(), Length(), First(), Last(), At() methods
-- **Parser integration**: Pipe operator detection and Pipeline object creation
-- **REPL integration**: Pipeline execution through integrated executor
-- **Error propagation**: Proper handling of failures in pipeline chains
-- **Comprehensive tests**: 6 test cases covering simple pipes, multi-stage pipes, error handling, large output
-
-### Technical
-- Integrated OSPipelineExecutor into REPL Model
-- Used `os/exec` StdoutPipe() for atomic pipe connection
-- Last process in chain contains final output (stdout/stderr)
-- Processes track state (Created→Running→Completed/Failed)
-- All 70+ tests passing including new pipeline tests
-
-## [0.1.0-alpha.4] - 2025-01-11
-
-### Added
-- **Aliases support**: Create custom command shortcuts with `alias name='command'`
-- **Alias management**: `alias` (list all), `alias name` (show specific), `unalias name` (remove)
-- **Recursive alias expansion**: Aliases can reference other aliases (with cycle detection)
-- **.goshrc file**: Auto-load aliases and environment variables from `~/.goshrc` on startup
-- **Environment variables in .goshrc**: Define environment using `export KEY=value`
-- **Multi-terminal safe history**: Atomic append operations prevent history corruption
-- **History.Append() method**: Efficient incremental history updates (O_APPEND flag)
-- **Concurrent access tests**: 100 simultaneous writes verified safe
-- **Warp mode viewport fix**: Correct viewport height recalculation on UI mode switch
-
-### Changed
-- History now uses Append() instead of Save() for better performance and safety
-- Session tracks both env vars and aliases in memory
-- AddToHistoryUseCase uses atomic append for file safety
-
-### Technical
-- GoshrcService for .goshrc parsing and saving
-- MockHistoryRepository updated with Append support
-- UI mode switching now recalculates viewport height correctly
-- All 70+ tests passing
-
-## [0.1.0-alpha.3] - 2025-01-11
-
-### Added
-- **Built-in Commands Domain Layer**: Rich domain models for cd, pwd, export, unset, type
-- **cd with ~ expansion**: `cd ~` and `cd ~/path` now work correctly
-- **cd - (previous directory)**: Navigate to previous directory with `cd -`
-- **export validation**: Variable names validated (must start with letter/underscore)
-- **type with aliases**: `type` command now checks aliases in addition to builtins and externals
-- **Session previous directory**: Session tracks previous directory for `cd -`
-
-### Changed
-- Moved builtin command logic from Infrastructure to Domain layer (DDD compliance)
-- BuiltinExecutor now delegates to domain commands instead of implementing logic
-- Improved export command: strips quotes from values automatically
-- Enhanced error messages for builtin commands
-
-### Technical
-- Created `internal/domain/builtins/` package with 5 command files
-- 40+ unit tests for builtin commands (100% coverage)
-- Session.ChangeDirectory() now tracks previous directory
-- All tests passing (100+ total across project)
-
-## [0.1.0-alpha.2] - 2025-01-11
-
-### Added
-- **History persistence**: Commands now save to `~/.gosh_history` automatically
-- **History auto-load**: History loads from file on shell startup
-- **Up/Down navigation**: Navigate through command history with arrow keys using History.Navigator
-- **Deduplication**: Consecutive identical commands are automatically deduplicated
-- **Max size limit**: History respects 10,000 command limit (configurable)
-
-### Changed
-- Session now uses rich History domain model instead of simple `[]string`
-- REPL uses History.Navigator for arrow key navigation
-- History operations use Use Cases (LoadHistoryUseCase, AddToHistoryUseCase)
-
-### Technical
-- Integrated History aggregate into Session domain (DDD)
-- Wired FileHistoryRepository into REPL initialization
-- Replaced old history implementation with new domain model
-- All 60+ tests passing
-
-## [0.1.0-alpha.1] - 2025-01-11
-
-### Added
-- **History domain model**: Rich domain model with 30+ tests
-- **History persistence**: FileHistoryRepository with file operations (15 tests)
-- **History use cases**: SearchHistoryUseCase, AddToHistoryUseCase, LoadHistoryUseCase, ClearHistoryUseCase (10 tests)
-- **Tilde expansion**: `~/.gosh_history` path support
-- **Special characters**: Proper handling in history file
-
-### Technical
-- Implemented complete DDD architecture for History (Domain/Application/Infrastructure layers)
-- TDD Red → Green → Refactor cycle for all History features
-- Test coverage: 95%+ domain, 90%+ application, 80%+ infrastructure
-
-## [0.0.0-alpha] - 2025-01-10
-
-### Added
-- **Initial release**: GoSh - Cross-platform Go Shell
-- **4 UI modes**: Classic (bash-like), Warp (modern), Compact (minimal), Chat (telegram-like)
-- **Command execution**: External commands via os/exec
-- **Interactive mode**: TTY programs (vim, ssh, etc.) via tea.ExecProcess
-- **Native shell scripts**: .sh/.bash execution via mvdan.cc/sh (no bash.exe dependency)
-- **Syntax highlighting**: Inline ANSI highlighting for commands, options, arguments
-- **Git integration**: Branch and dirty status in prompt
-- **Tab completion**: Basic command and file completion
-- **Multi-line input**: Alt+Enter for multiline commands
-- **Viewport scrolling**: PgUp/PgDn, Mouse Wheel support
-- **Auto-scroll**: Automatically scroll to bottom on new output
-
-### Technical
-- Bubbletea TUI framework (Elm Architecture)
-- DDD + Hexagonal architecture
-- Session management with Environment, Variables, Aliases
-- Cross-platform path handling with filepath package
-- Native POSIX shell interpreter (mvdan.cc/sh v3.12.0)
-
-[unreleased]: https://github.com/grpmsoft/gosh/compare/v0.1.0-beta.2...HEAD
+[unreleased]: https://github.com/grpmsoft/gosh/compare/v0.1.0-beta.3.1...HEAD
+[0.1.0-beta.3.1]: https://github.com/grpmsoft/gosh/compare/v0.1.0-beta.3...v0.1.0-beta.3.1
+[0.1.0-beta.3]: https://github.com/grpmsoft/gosh/compare/v0.1.0-beta.2...v0.1.0-beta.3
 [0.1.0-beta.2]: https://github.com/grpmsoft/gosh/releases/tag/v0.1.0-beta.2
-[0.1.0-beta.1]: https://github.com/grpmsoft/gosh/compare/v0.1.0-alpha.6...v0.1.0-beta.1
-[0.1.0-alpha.6]: https://github.com/grpmsoft/gosh/compare/v0.1.0-alpha.5...v0.1.0-alpha.6
-[0.1.0-alpha.5]: https://github.com/grpmsoft/gosh/compare/v0.1.0-alpha.4...v0.1.0-alpha.5
-[0.1.0-alpha.4]: https://github.com/grpmsoft/gosh/compare/v0.1.0-alpha.3...v0.1.0-alpha.4
-[0.1.0-alpha.3]: https://github.com/grpmsoft/gosh/compare/v0.1.0-alpha.2...v0.1.0-alpha.3
-[0.1.0-alpha.2]: https://github.com/grpmsoft/gosh/compare/v0.1.0-alpha.1...v0.1.0-alpha.2
-[0.1.0-alpha.1]: https://github.com/grpmsoft/gosh/compare/v0.0.0-alpha...v0.1.0-alpha.1
-[0.0.0-alpha]: https://github.com/grpmsoft/gosh/releases/tag/v0.0.0-alpha

@@ -8,6 +8,7 @@ import (
 	"github.com/grpmsoft/gosh/internal/domain/process"
 	"github.com/grpmsoft/gosh/internal/domain/session"
 	"github.com/grpmsoft/gosh/internal/domain/shared"
+	"github.com/grpmsoft/gosh/internal/interfaces/parser"
 	"log/slog"
 )
 
@@ -79,14 +80,9 @@ func (uc *ExecuteCommandUseCase) parseCommandLine(
 	commandLine string,
 ) (*command.Command, *pipeline.Pipeline, error) {
 	// Use parser from interfaces layer
-	// In a real application the parser should be passed as a dependency
-	// but for simplicity we use direct call for now
-	// TODO: Refactor to use parser as dependency
-	return nil, nil, shared.NewDomainError(
-		"parseCommandLine",
-		shared.ErrInvalidCommand,
-		"parser not implemented yet",
-	)
+	// TODO: Refactor to use parser as dependency (DI)
+	// For now we import parser directly
+	return parseCommandLineHelper(commandLine)
 }
 
 // executeCommand executes a single command
@@ -102,11 +98,14 @@ func (uc *ExecuteCommandUseCase) executeCommand(
 
 	// Check if the command is builtin
 	if uc.builtinExecutor.CanExecute(cmd) {
-		if err := uc.builtinExecutor.Execute(ctx, cmd, sess); err != nil {
+		stdout, stderr, err := uc.builtinExecutor.Execute(ctx, cmd, sess)
+		if err != nil {
 			return nil, err
 		}
 
 		return &ExecuteCommandResponse{
+			Stdout:   stdout,
+			Stderr:   stderr,
 			ExitCode: shared.ExitSuccess,
 		}, nil
 	}
@@ -185,4 +184,10 @@ func (uc *ExecuteCommandUseCase) executePipeline(
 	return &ExecuteCommandResponse{
 		ExitCode: shared.ExitSuccess,
 	}, nil
+}
+
+// parseCommandLineHelper parses the command line using the parser package
+// TODO: Refactor to proper DI (dependency injection)
+func parseCommandLineHelper(commandLine string) (*command.Command, *pipeline.Pipeline, error) {
+	return parser.ParseCommandLine(commandLine)
 }

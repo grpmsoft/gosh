@@ -82,13 +82,13 @@ func (b *BgCommand) Execute() error {
 	}
 
 	// Get the job
-	job, err := jobManager.GetJob(jobNumber)
+	targetJob, err := jobManager.GetJob(jobNumber)
 	if err != nil {
 		return err
 	}
 
 	// Verify job is stopped
-	if !job.IsStopped() {
+	if !targetJob.IsStopped() {
 		return shared.NewDomainError(
 			"Execute",
 			shared.ErrInvalidState,
@@ -97,7 +97,7 @@ func (b *BgCommand) Execute() error {
 	}
 
 	// Send to background (if it was foreground)
-	if err := job.SendToBackground(); err != nil {
+	if err := targetJob.SendToBackground(); err != nil {
 		// Ignore error if already in background
 		if !strings.Contains(err.Error(), "finished") {
 			return err
@@ -105,7 +105,7 @@ func (b *BgCommand) Execute() error {
 	}
 
 	// Resume the job
-	if err := job.Resume(); err != nil {
+	if err := targetJob.Resume(); err != nil {
 		return err
 	}
 

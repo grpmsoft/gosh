@@ -15,21 +15,26 @@ const (
 )
 
 // Redirection represents input/output redirection
+// Supports bash-style file descriptor redirections:
+// - N<file (read from file to FD N, default 0<)
+// - N>file (write from FD N to file, default 1>)
+// - N>>file (append from FD N to file, default 1>>)
+// - N>&M (duplicate FD M to FD N, e.g., 2>&1)
 type Redirection struct {
-	Type   RedirectionType
-	Source string // file or descriptor
-	Target string // file or descriptor
+	Type     RedirectionType
+	SourceFD int    // Source file descriptor (e.g., 2 in "2>file" or "2>&1")
+	Target   string // Target file path or "&N" for FD duplication
 }
 
 // RedirectionType redirection type
 type RedirectionType int
 
 const (
-	RedirectInput  RedirectionType = iota // <
-	RedirectOutput                        // >
-	RedirectAppend                        // >>
-	RedirectError                         // 2>
-	RedirectPipe                          // |
+	RedirectInput  RedirectionType = iota // N< (default 0<)
+	RedirectOutput                        // N> (default 1>)
+	RedirectAppend                        // N>> (default 1>>)
+	RedirectDup                           // N>&M (FD duplication)
+	RedirectPipe                          // | (pipe operator)
 )
 
 // Command represents a shell command (Aggregate Root)

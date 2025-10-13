@@ -4,12 +4,17 @@
 *.dll
 *.so
 *.dylib
+gosh
+gosh-*
+!gosh.go
 
 # Test binaries and coverage
 *.test
 *.out
 coverage.txt
 coverage.out
+test_*.sh
+test_*.bat
 
 # Go workspace file (optional)
 go.work
@@ -49,3 +54,6 @@ gosh.log
 
 # Local developers documentation
 docs/dev
+
+# Temporary test files
+tmp/

@@ -98,11 +98,14 @@ func (uc *ExecuteCommandUseCase) executeCommand(
 
 	// Check if the command is builtin
 	if uc.builtinExecutor.CanExecute(cmd) {
-		if err := uc.builtinExecutor.Execute(ctx, cmd, sess); err != nil {
+		stdout, stderr, err := uc.builtinExecutor.Execute(ctx, cmd, sess)
+		if err != nil {
 			return nil, err
 		}
 
 		return &ExecuteCommandResponse{
+			Stdout:   stdout,
+			Stderr:   stderr,
 			ExitCode: shared.ExitSuccess,
 		}, nil
 	}
@@ -183,7 +186,7 @@ func (uc *ExecuteCommandUseCase) executePipeline(
 	}, nil
 }
 
-// parseCommandLineHelper парсит командную строку через parser пакет
+// parseCommandLineHelper parses the command line using the parser package
 // TODO: Refactor to proper DI (dependency injection)
 func parseCommandLineHelper(commandLine string) (*command.Command, *pipeline.Pipeline, error) {
 	return parser.ParseCommandLine(commandLine)

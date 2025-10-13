@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestHistory_NewHistory проверяет создание новой истории с настройками
+// TestHistory_NewHistory tests creating a new history with settings
 func TestHistory_NewHistory(t *testing.T) {
 	t.Run("creates history with default config", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
@@ -32,7 +32,7 @@ func TestHistory_NewHistory(t *testing.T) {
 	})
 }
 
-// TestHistory_Add проверяет добавление команд в историю
+// TestHistory_Add tests adding commands to history
 func TestHistory_Add(t *testing.T) {
 	t.Run("adds single command", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
@@ -52,7 +52,7 @@ func TestHistory_Add(t *testing.T) {
 
 		assert.Equal(t, 3, h.Size())
 
-		// Последняя команда должна быть сверху (reverse order)
+		// Last command should be at the top (reverse order)
 		recent := h.GetRecent(3)
 		assert.Equal(t, "git commit", recent[0])
 		assert.Equal(t, "git add .", recent[1])
@@ -95,7 +95,7 @@ func TestHistory_Add(t *testing.T) {
 		h.Add("pwd")
 		h.Add("pwd")
 
-		// Только уникальные команды подряд
+		// Only consecutive unique commands
 		assert.Equal(t, 2, h.Size())
 		recent := h.GetRecent(2)
 		assert.Equal(t, "pwd", recent[0])
@@ -111,7 +111,7 @@ func TestHistory_Add(t *testing.T) {
 
 		h.Add("ls")
 		h.Add("pwd")
-		h.Add("ls") // Разрешено (не подряд)
+		h.Add("ls") // Allowed (not consecutive)
 
 		assert.Equal(t, 3, h.Size())
 	})
@@ -126,11 +126,11 @@ func TestHistory_Add(t *testing.T) {
 		h.Add("cmd1")
 		h.Add("cmd2")
 		h.Add("cmd3")
-		h.Add("cmd4") // Вытеснит cmd1
+		h.Add("cmd4") // Will evict cmd1
 
 		assert.Equal(t, 3, h.Size())
 
-		// Старая команда удалена
+		// Old command removed
 		recent := h.GetRecent(3)
 		assert.Equal(t, "cmd4", recent[0])
 		assert.Equal(t, "cmd3", recent[1])
@@ -138,7 +138,7 @@ func TestHistory_Add(t *testing.T) {
 	})
 }
 
-// TestHistory_Search проверяет поиск команд в истории (Ctrl+R функциональность)
+// TestHistory_Search tests searching commands in history (Ctrl+R functionality)
 func TestHistory_Search(t *testing.T) {
 	t.Run("finds exact match", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
@@ -161,7 +161,7 @@ func TestHistory_Search(t *testing.T) {
 		results := h.Search("git")
 		assert.Len(t, results, 3)
 
-		// Порядок: от новых к старым
+		// Order: from newest to oldest
 		assert.Equal(t, "git push origin main", results[0])
 		assert.Equal(t, "git commit -m 'fix'", results[1])
 		assert.Equal(t, "git status", results[2])
@@ -200,12 +200,12 @@ func TestHistory_Search(t *testing.T) {
 		}
 
 		results := h.Search("git")
-		// Ограничение для UI: не более 50 результатов
+		// UI limit: no more than 50 results
 		assert.LessOrEqual(t, len(results), 50)
 	})
 }
 
-// TestHistory_GetRecent проверяет получение последних команд
+// TestHistory_GetRecent tests retrieving recent commands
 func TestHistory_GetRecent(t *testing.T) {
 	t.Run("returns recent commands in reverse order", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
@@ -237,7 +237,7 @@ func TestHistory_GetRecent(t *testing.T) {
 	})
 }
 
-// TestHistory_Clear проверяет очистку истории
+// TestHistory_Clear tests clearing history
 func TestHistory_Clear(t *testing.T) {
 	t.Run("clears all history", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
@@ -264,7 +264,7 @@ func TestHistory_Clear(t *testing.T) {
 	})
 }
 
-// TestHistory_Navigation проверяет навигацию по истории (Up/Down arrows)
+// TestHistory_Navigation tests history navigation (Up/Down arrows)
 func TestHistory_Navigation(t *testing.T) {
 	t.Run("navigates backward through history", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
@@ -274,10 +274,10 @@ func TestHistory_Navigation(t *testing.T) {
 
 		nav := h.NewNavigator()
 
-		// Начальное состояние: пусто
+		// Initial state: empty
 		assert.Equal(t, "", nav.Current())
 
-		// Назад (Up)
+		// Backward (Up)
 		cmd, ok := nav.Backward()
 		assert.True(t, ok)
 		assert.Equal(t, "cmd3", cmd)
@@ -290,10 +290,10 @@ func TestHistory_Navigation(t *testing.T) {
 		assert.True(t, ok)
 		assert.Equal(t, "cmd1", cmd)
 
-		// Достигли начала
+		// Reached the beginning
 		cmd, ok = nav.Backward()
 		assert.False(t, ok)
-		assert.Equal(t, "cmd1", cmd) // Остаемся на первой
+		assert.Equal(t, "cmd1", cmd) // Stay at the first
 	})
 
 	t.Run("navigates forward through history", func(t *testing.T) {
@@ -304,12 +304,12 @@ func TestHistory_Navigation(t *testing.T) {
 
 		nav := h.NewNavigator()
 
-		// Идем в начало
+		// Go to the beginning
 		nav.Backward()
 		nav.Backward()
 		nav.Backward()
 
-		// Теперь вперед (Down)
+		// Now forward (Down)
 		cmd, ok := nav.Forward()
 		assert.True(t, ok)
 		assert.Equal(t, "cmd2", cmd)
@@ -318,12 +318,12 @@ func TestHistory_Navigation(t *testing.T) {
 		assert.True(t, ok)
 		assert.Equal(t, "cmd3", cmd)
 
-		// Достигли конца - возвращаем пустую строку
+		// Reached the end - return empty string
 		cmd, ok = nav.Forward()
 		assert.True(t, ok)
 		assert.Equal(t, "", cmd)
 
-		// Дальше некуда
+		// Nowhere further to go
 		cmd, ok = nav.Forward()
 		assert.False(t, ok)
 		assert.Equal(t, "", cmd)
@@ -338,10 +338,10 @@ func TestHistory_Navigation(t *testing.T) {
 		nav.Backward()
 		nav.Backward()
 
-		// Добавляем новую команду
+		// Add new command
 		h.Add("cmd3")
 
-		// Navigator должен сброситься
+		// Navigator should be reset
 		nav = h.NewNavigator()
 		cmd, ok := nav.Backward()
 		assert.True(t, ok)
@@ -349,7 +349,7 @@ func TestHistory_Navigation(t *testing.T) {
 	})
 }
 
-// TestHistory_ToSlice проверяет экспорт истории как срез
+// TestHistory_ToSlice tests exporting history as a slice
 func TestHistory_ToSlice(t *testing.T) {
 	t.Run("exports history as slice in chronological order", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
@@ -360,7 +360,7 @@ func TestHistory_ToSlice(t *testing.T) {
 		slice := h.ToSlice()
 		require.Len(t, slice, 3)
 
-		// Хронологический порядок (старые → новые)
+		// Chronological order (old to new)
 		assert.Equal(t, "cmd1", slice[0])
 		assert.Equal(t, "cmd2", slice[1])
 		assert.Equal(t, "cmd3", slice[2])
@@ -372,7 +372,7 @@ func TestHistory_ToSlice(t *testing.T) {
 	})
 }
 
-// TestHistory_FromSlice проверяет загрузку истории из среза
+// TestHistory_FromSlice tests loading history from a slice
 func TestHistory_FromSlice(t *testing.T) {
 	t.Run("loads history from slice", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
@@ -409,7 +409,7 @@ func TestHistory_FromSlice(t *testing.T) {
 		err := h.FromSlice(lines)
 		require.NoError(t, err)
 
-		// Только последние 2
+		// Only last 2
 		assert.Equal(t, 2, h.Size())
 		recent := h.GetRecent(2)
 		assert.Equal(t, "cmd4", recent[0])

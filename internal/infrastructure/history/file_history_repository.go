@@ -127,6 +127,12 @@ func (r *FileHistoryRepository) Append(command string) error {
 		return fmt.Errorf("failed to append command to history: %w", err)
 	}
 
+	// Sync to ensure data is written to disk
+	// This is especially important on Windows to release file locks promptly
+	if err := file.Sync(); err != nil {
+		return fmt.Errorf("failed to sync history file: %w", err)
+	}
+
 	return nil
 }
 

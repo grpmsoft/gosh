@@ -27,7 +27,7 @@ func TestExpandGlobs_Star(t *testing.T) {
 	files := []string{"test1.go", "test2.go", "test3.txt"}
 	for _, file := range files {
 		path := filepath.Join(tmpDir, file)
-		err := os.WriteFile(path, []byte("test"), 0644)
+		err := os.WriteFile(path, []byte("test"), 0o644)
 		require.NoError(t, err)
 	}
 
@@ -75,7 +75,7 @@ func TestExpandGlobs_Question(t *testing.T) {
 	files := []string{"test1.txt", "test2.txt", "test10.txt"}
 	for _, file := range files {
 		path := filepath.Join(tmpDir, file)
-		err := os.WriteFile(path, []byte("test"), 0644)
+		err := os.WriteFile(path, []byte("test"), 0o644)
 		require.NoError(t, err)
 	}
 
@@ -106,7 +106,7 @@ func TestExpandGlobs_Brackets(t *testing.T) {
 	files := []string{"file1.txt", "file2.txt", "file3.txt", "file4.txt"}
 	for _, file := range files {
 		path := filepath.Join(tmpDir, file)
-		err := os.WriteFile(path, []byte("test"), 0644)
+		err := os.WriteFile(path, []byte("test"), 0o644)
 		require.NoError(t, err)
 	}
 
@@ -170,7 +170,7 @@ func TestExpandGlobs_Mixed(t *testing.T) {
 	files := []string{"test.go", "main.go"}
 	for _, file := range files {
 		path := filepath.Join(tmpDir, file)
-		err := os.WriteFile(path, []byte("test"), 0644)
+		err := os.WriteFile(path, []byte("test"), 0o644)
 		require.NoError(t, err)
 	}
 
@@ -224,7 +224,7 @@ func TestParseCommandLine_WithGlob(t *testing.T) {
 	files := []string{"file1.go", "file2.go"}
 	for _, file := range files {
 		path := filepath.Join(tmpDir, file)
-		err := os.WriteFile(path, []byte("test"), 0644)
+		err := os.WriteFile(path, []byte("test"), 0o644)
 		require.NoError(t, err)
 	}
 

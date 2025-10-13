@@ -1,6 +1,7 @@
 package builtin
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/grpmsoft/gosh/internal/application/ports"
@@ -43,52 +44,71 @@ func (b *BuiltinExecutor) CanExecute(cmd *command.Command) bool {
 	return cmd.IsBuiltin()
 }
 
-// Execute executes a builtin command
+// Execute executes a builtin command and returns captured output
 func (b *BuiltinExecutor) Execute(
 	ctx context.Context,
 	cmd *command.Command,
 	sess *session.Session,
-) error {
+) (stdout, stderr string, err error) {
 	b.logger.Debug("executing builtin command",
 		"command", cmd.Name(),
 	)
 
+	// Create buffers to capture output
+	var stdoutBuf, stderrBuf bytes.Buffer
+
+	// Temporarily replace stdout/stderr with buffers
+	oldStdout, oldStderr := b.stdout, b.stderr
+	b.stdout = &stdoutBuf
+	b.stderr = &stderrBuf
+
+	// Restore original stdout/stderr after execution
+	defer func() {
+		b.stdout = oldStdout
+		b.stderr = oldStderr
+	}()
+
+	// Execute the command
+	var execErr error
 	switch cmd.Name() {
 	case "cd":
-		return b.cd(cmd, sess)
+		execErr = b.cd(cmd, sess)
 	case "pwd":
-		return b.pwd(sess)
+		execErr = b.pwd(sess)
 	case "echo":
-		return b.echo(cmd)
+		execErr = b.echo(cmd)
 	case "exit":
-		return b.exit(cmd)
+		execErr = b.exit(cmd)
 	case "export":
-		return b.export(cmd, sess)
+		execErr = b.export(cmd, sess)
 	case "unset":
-		return b.unset(cmd, sess)
+		execErr = b.unset(cmd, sess)
 	case "env":
-		return b.env(sess)
+		execErr = b.env(sess)
 	case "alias":
-		return b.alias(cmd, sess)
+		execErr = b.alias(cmd, sess)
 	case "unalias":
-		return b.unalias(cmd, sess)
+		execErr = b.unalias(cmd, sess)
 	case "type":
-		return b.typeCmd(cmd, sess)
+		execErr = b.typeCmd(cmd, sess)
 	case "help":
-		return b.help()
+		execErr = b.help()
 	case "jobs":
-		return b.jobs(sess)
+		execErr = b.jobs(sess)
 	case "fg":
-		return b.fg(cmd, sess)
+		execErr = b.fg(cmd, sess)
 	case "bg":
-		return b.bg(cmd, sess)
+		execErr = b.bg(cmd, sess)
 	default:
-		return shared.NewDomainError(
+		execErr = shared.NewDomainError(
 			"Execute",
 			shared.ErrCommandNotFound,
 			fmt.Sprintf("builtin command not implemented: %s", cmd.Name()),
 		)
 	}
+
+	// Return captured output
+	return stdoutBuf.String(), stderrBuf.String(), execErr
 }
 
 // cd - change working directory (delegates to domain)

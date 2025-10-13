@@ -14,7 +14,7 @@ type CommandExecutor interface {
 
 // BuiltinExecutor - port for executing builtin commands
 type BuiltinExecutor interface {
-	Execute(ctx context.Context, cmd *command.Command, sess *session.Session) error
+	Execute(ctx context.Context, cmd *command.Command, sess *session.Session) (stdout, stderr string, err error)
 	CanExecute(cmd *command.Command) bool
 }
 

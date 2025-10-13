@@ -16,10 +16,10 @@ import (
 	"strings"
 )
 
-// TestOSPipelineExecutor_Simple проверяет простой pipeline из двух команд
+// TestOSPipelineExecutor_Simple tests a simple pipeline of two commands
 func TestOSPipelineExecutor_Simple(t *testing.T) {
 	t.Run("echo hello | wc -l", func(t *testing.T) {
-		// Подготовка
+		// Setup
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 		executor := executor.NewOSPipelineExecutor(logger)
 
@@ -27,33 +27,33 @@ func TestOSPipelineExecutor_Simple(t *testing.T) {
 		sess, err := session.NewSession("test", os.TempDir(), env)
 		require.NoError(t, err)
 
-		// Создаем команды для pipeline: echo hello | wc -l
+		// Create commands for pipeline: echo hello | wc -l
 		cmd1, err := command.NewCommand("echo", []string{"hello"}, command.TypeExternal)
 		require.NoError(t, err)
 
 		cmd2, err := command.NewCommand("wc", []string{"-l"}, command.TypeExternal)
 		require.NoError(t, err)
 
-		// Выполняем pipeline
+		// Execute pipeline
 		processes, err := executor.Execute(context.Background(), []*command.Command{cmd1, cmd2}, sess)
 		require.NoError(t, err)
 		require.Len(t, processes, 2)
 
-		// Проверяем последний процесс (wc)
+		// Check last process (wc)
 		lastProc := processes[1]
 		assert.Equal(t, process.StateCompleted, lastProc.State())
 		assert.Equal(t, 0, int(lastProc.ExitCode()))
 
-		// wc -l должен вернуть "1" (одна строка)
+		// wc -l should return "1" (one line)
 		output := strings.TrimSpace(lastProc.Stdout())
 		assert.Equal(t, "1", output)
 	})
 }
 
-// TestOSPipelineExecutor_MultiStage проверяет pipeline из трех команд
+// TestOSPipelineExecutor_MultiStage tests a pipeline of three commands
 func TestOSPipelineExecutor_MultiStage(t *testing.T) {
 	t.Run("echo -e 'a\\nb\\nc' | grep b | wc -l", func(t *testing.T) {
-		// Подготовка
+		// Setup
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 		executor := executor.NewOSPipelineExecutor(logger)
 
@@ -61,7 +61,7 @@ func TestOSPipelineExecutor_MultiStage(t *testing.T) {
 		sess, err := session.NewSession("test", os.TempDir(), env)
 		require.NoError(t, err)
 
-		// Создаем команды: echo -e "a\nb\nc" | grep b | wc -l
+		// Create commands: echo -e "a\nb\nc" | grep b | wc -l
 		cmd1, err := command.NewCommand("echo", []string{"-e", "a\\nb\\nc"}, command.TypeExternal)
 		require.NoError(t, err)
 
@@ -71,25 +71,25 @@ func TestOSPipelineExecutor_MultiStage(t *testing.T) {
 		cmd3, err := command.NewCommand("wc", []string{"-l"}, command.TypeExternal)
 		require.NoError(t, err)
 
-		// Выполняем pipeline
+		// Execute pipeline
 		processes, err := executor.Execute(context.Background(), []*command.Command{cmd1, cmd2, cmd3}, sess)
 		require.NoError(t, err)
 		require.Len(t, processes, 3)
 
-		// Проверяем последний процесс
+		// Check last process
 		lastProc := processes[2]
 		assert.Equal(t, process.StateCompleted, lastProc.State())
 
-		// Должна быть одна строка с "b"
+		// Should be one line with "b"
 		output := strings.TrimSpace(lastProc.Stdout())
 		assert.Equal(t, "1", output)
 	})
 }
 
-// TestOSPipelineExecutor_ErrorPropagation проверяет что ошибки распространяются корректно
+// TestOSPipelineExecutor_ErrorPropagation tests that errors propagate correctly
 func TestOSPipelineExecutor_ErrorPropagation(t *testing.T) {
 	t.Run("failing command in pipeline", func(t *testing.T) {
-		// Подготовка
+		// Setup
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 		executor := executor.NewOSPipelineExecutor(logger)
 
@@ -97,30 +97,30 @@ func TestOSPipelineExecutor_ErrorPropagation(t *testing.T) {
 		sess, err := session.NewSession("test", os.TempDir(), env)
 		require.NoError(t, err)
 
-		// Создаем pipeline где первая команда фейлится: false | echo test
+		// Create pipeline where first command fails: false | echo test
 		cmd1, err := command.NewCommand("false", []string{}, command.TypeExternal)
 		require.NoError(t, err)
 
 		cmd2, err := command.NewCommand("echo", []string{"test"}, command.TypeExternal)
 		require.NoError(t, err)
 
-		// Выполняем pipeline
+		// Execute pipeline
 		processes, err := executor.Execute(context.Background(), []*command.Command{cmd1, cmd2}, sess)
-		require.NoError(t, err) // Execute сам по себе не возвращает ошибку
+		require.NoError(t, err) // Execute itself does not return error
 		require.Len(t, processes, 2)
 
-		// Первый процесс должен быть Failed
+		// First process should be Failed
 		firstProc := processes[0]
 		assert.Equal(t, process.StateFailed, firstProc.State())
 		assert.NotEqual(t, 0, int(firstProc.ExitCode()))
 
-		// Второй процесс может быть Completed (echo отработает независимо)
+		// Second process can be Completed (echo will work independently)
 		secondProc := processes[1]
 		assert.Equal(t, process.StateCompleted, secondProc.State())
 	})
 }
 
-// TestOSPipelineExecutor_EmptyCommands проверяет обработку пустого списка команд
+// TestOSPipelineExecutor_EmptyCommands tests handling of empty command list
 func TestOSPipelineExecutor_EmptyCommands(t *testing.T) {
 	t.Run("empty commands list returns error", func(t *testing.T) {
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
@@ -130,14 +130,14 @@ func TestOSPipelineExecutor_EmptyCommands(t *testing.T) {
 		sess, err := session.NewSession("test", os.TempDir(), env)
 		require.NoError(t, err)
 
-		// Выполняем с пустым списком
+		// Execute with empty list
 		processes, err := executor.Execute(context.Background(), []*command.Command{}, sess)
 		assert.Error(t, err)
 		assert.Nil(t, processes)
 	})
 }
 
-// TestOSPipelineExecutor_SingleCommand проверяет pipeline из одной команды
+// TestOSPipelineExecutor_SingleCommand tests a pipeline with a single command
 func TestOSPipelineExecutor_SingleCommand(t *testing.T) {
 	t.Run("single command in pipeline", func(t *testing.T) {
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
@@ -147,7 +147,7 @@ func TestOSPipelineExecutor_SingleCommand(t *testing.T) {
 		sess, err := session.NewSession("test", os.TempDir(), env)
 		require.NoError(t, err)
 
-		// Одна команда: echo test
+		// One command: echo test
 		cmd, err := command.NewCommand("echo", []string{"test"}, command.TypeExternal)
 		require.NoError(t, err)
 
@@ -155,14 +155,14 @@ func TestOSPipelineExecutor_SingleCommand(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, processes, 1)
 
-		// Проверяем результат
+		// Check result
 		proc := processes[0]
 		assert.Equal(t, process.StateCompleted, proc.State())
 		assert.Equal(t, "test\n", proc.Stdout())
 	})
 }
 
-// TestOSPipelineExecutor_LargeOutput проверяет работу с большим выводом
+// TestOSPipelineExecutor_LargeOutput tests handling large output
 func TestOSPipelineExecutor_LargeOutput(t *testing.T) {
 	t.Run("handles large output through pipe", func(t *testing.T) {
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
@@ -172,7 +172,7 @@ func TestOSPipelineExecutor_LargeOutput(t *testing.T) {
 		sess, err := session.NewSession("test", os.TempDir(), env)
 		require.NoError(t, err)
 
-		// Создаем большой вывод: seq 1000 | wc -l
+		// Create large output: seq 1000 | wc -l
 		cmd1, err := command.NewCommand("seq", []string{"1000"}, command.TypeExternal)
 		require.NoError(t, err)
 
@@ -183,7 +183,7 @@ func TestOSPipelineExecutor_LargeOutput(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, processes, 2)
 
-		// Проверяем что получили 1000 строк
+		// Check that we got 1000 lines
 		lastProc := processes[1]
 		assert.Equal(t, process.StateCompleted, lastProc.State())
 		output := strings.TrimSpace(lastProc.Stdout())

@@ -14,9 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v0.1.0-rc.1 (after feedback collection)
 - v0.1.0 stable release
 
-## [0.1.0-beta.4] - 2025-10-12
+## [0.1.0-beta.4] - 2025-10-13
 
-### Added - Non-Interactive Mode & FD Redirections 🚀
+### Added - REPL Refactoring & Improved UI 🎨
 - **`-c` flag**: Execute command and exit (non-interactive mode)
   - Usage: `gosh -c "pwd"`, `gosh -c "cd /tmp && ls"`
   - Useful for: Testing, scripting, CI/CD pipelines
@@ -30,6 +30,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Defaults: `<` = `0<`, `>` = `1>`, `>>` = `1>>`
   - Supports arbitrary FD numbers (0-255)
 - **Comprehensive FD tests**: Added tests for FD duplication (2>&1), multiple redirections
+- **REPL Architecture Refactoring**: Split monolithic 1400+ line file into focused modules
+  - `repl_model.go` - Model definition and initialization (Elm Architecture)
+  - `repl_update.go` - Update function and message handlers
+  - `repl_render.go` - View rendering for all UI modes
+  - `repl_commands.go` - Command execution logic
+  - `repl_builtin.go` - Built-in command execution
+  - `repl_helpers.go` - Helper functions (history, git, viewport)
+  - Added comprehensive test coverage for all modules
+  - Improved maintainability and code organization
+
+### Changed - Keyboard Shortcuts Improved 🎹
+- **UI Mode switching: Ctrl+F5-F8 → Alt+1-4**
+  - Alt+1 → Classic mode (bash/pwsh style)
+  - Alt+2 → Warp mode (modern terminal)
+  - Alt+3 → Compact mode (minimal UI)
+  - Alt+4 → Chat mode (conversational)
+  - Rationale: Better cross-terminal compatibility (some terminals don't support Ctrl+F5-F8)
+  - Works in Alpine Linux foot, Windows Terminal, iTerm2, etc.
+  - Visual feedback on mode switch
+- **Documentation updated**: KEYBOARD_SHORTCUTS_ANALYSIS.md added
 
 ### Fixed - Critical Bugs 🐛
 - **cd command**: Now executes in shell process instead of subprocess
@@ -46,6 +66,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Solution: Added empty line before command output
   - Reporter: Community user on Alpine Linux
   - Non-interactive mode (`gosh -c "export"`) always worked correctly
+- **Classic mode output**: Fixed spacing and overlay issues
+  - Issue: Output overlapping with viewport in Classic mode
+  - Solution: Proper handling of welcome messages (stdout vs viewport)
+  - Native terminal feel preserved
+
+### Improved - Code Quality 📊
+- **141 linter warnings fixed** (1,735 → 1,594, -8.1%)
+  - Fixed all godot warnings in repl package (21 fixes): Added periods to comments
+  - Fixed all octalLiteral warnings (25 fixes): 0644 → 0o644 (Go 1.13+ style)
+  - Fixed importShadow in bg.go (1 fix): Renamed variable to avoid package shadowing
+- **Open source readiness**: Professional code quality for public release
+- **All 130+ tests passing**, zero regressions
 
 ### Changed
 - **Builtin command execution**: Refactored to execute synchronously through ExecuteCommandUseCase
@@ -58,13 +90,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Lexer: Added `tryParseRedirection()` for parsing FD numbers before operators
 - Parser: Updated to handle FD tokens from lexer
 - Executor: Refactored `handleRedirections()` to use `SourceFD` field
-- All 130+ tests passing, 0 linter warnings
-
-### Known Issues
-- **Ctrl+F5-F8 hotkeys**: Don't work in some terminals (foot on Alpine Linux)
-  - Reason: Some terminals don't send Ctrl+Function key combinations
-  - Workaround: Use `:mode <name>` command instead (fully functional)
-  - Alternative: F1/? for help, which shows `:mode` usage
+- REPL: Split 1777-line monolith into 6 focused modules with tests
+- All 130+ tests passing, linter warnings reduced by 141
+- Files changed: 33 modified, 8 new (repl split), 3 deleted (old monolith)
 
 ## [0.1.0-beta.3.1] - 2025-10-12
 

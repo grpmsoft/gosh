@@ -54,3 +54,6 @@ gosh.log
 
 # Local developers documentation
 docs/dev
+
+# Temporary test files
+tmp/

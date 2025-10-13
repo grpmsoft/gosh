@@ -1,5 +1,6 @@
-# GolangCI-Lint v2 Configuration for GoSh
+# GolangCI-Lint v2.5 Configuration for GoSh
 # Documentation: https://golangci-lint.run/docs/configuration/
+# AGGRESSIVE CONFIGURATION - Catches more issues during development
 
 version: "2"
 
@@ -8,27 +9,122 @@ run:
   tests: true
 
 linters:
-  # Enable additional useful linters beyond defaults
+  # Enable comprehensive set of linters for production-quality code
   enable:
-    - misspell      # Check for misspelled words
-    - unconvert     # Remove unnecessary type conversions
+    # Code quality and complexity
     - gocyclo       # Check cyclomatic complexity
-    - errname       # Check error naming conventions
+    - gocognit      # Check cognitive complexity
+    - funlen        # Check function length
+    - maintidx      # Maintainability index
+    - cyclop        # Check cyclomatic complexity (alternative)
+    - nestif        # Reports deeply nested if statements
+
+    # Bug detection
+    - govet         # Standard Go vet (includes copylocks!)
+    - staticcheck   # Comprehensive static analysis
+    - errcheck      # Check that errors are handled
     - errorlint     # Check error wrapping
+    - gosec         # Security issues
+    - nilnil        # Check that functions don't return nil both ways
+    - nilerr        # Check nil error returns
+    - nilnesserr    # Check nil error returns patterns
+
+    # Code style and consistency
+    - misspell      # Check for misspelled words
     - whitespace    # Check for trailing whitespace
+    - unconvert     # Remove unnecessary type conversions
+    - unparam       # Detect unused function parameters
+    - ineffassign   # Detect ineffectual assignments
+
+    # Naming conventions
+    - errname       # Check error naming conventions
+    - revive        # Fast, configurable, extensible linter
+
+    # Performance
+    - prealloc      # Find slice declarations that could be preallocated
+    - bodyclose     # Check HTTP response bodies are closed
+    - makezero      # Find slice declarations with non-zero initial length
+
+    # Code practices
+    - goconst       # Find repeated strings that could be constants
+    - gocritic      # Comprehensive code checker
+    - goprintffuncname  # Check printf-like function names
+    - nolintlint    # Check nolint directives are used correctly
+    - nakedret      # Checks for naked returns
+
+    # Comments and documentation
+    - godot         # Check comments end in periods
+    - godox         # Detect TODO/FIXME/BUG comments
+
+    # Additional quality checkers
+    - dupl          # Detect duplicate code
+    - dogsled       # Check for assignments with too many blank identifiers
+    - durationcheck # Check for two durations multiplied together
 
   settings:
     govet:
-      # Disable fieldalignment check (memory optimization not critical in rapid dev)
+      # EXPLICITLY ENABLE copylocks to catch mutex copying issues
+      enable:
+        - copylocks
+      # Disable fieldalignment (memory optimization not critical)
       disable:
         - fieldalignment
 
     gocyclo:
-      # Allow higher complexity during rapid development
+      # Lower threshold for production code
+      min-complexity: 15
+
+    cyclop:
+      # Max complexity
+      max-complexity: 15
+
+    funlen:
+      # Allow reasonably long functions
+      lines: 100
+      statements: 50
+
+    gocognit:
+      # Cognitive complexity threshold
       min-complexity: 20
 
     misspell:
       locale: US
+
+    nestif:
+      # Max nesting level
+      min-complexity: 4
+
+    revive:
+      # Enable important rules for code quality
+      rules:
+        - name: var-naming
+        - name: exported
+        - name: error-return
+        - name: error-naming
+        - name: if-return
+        - name: increment-decrement
+        - name: var-declaration
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unused-parameter
+        - name: unreachable-code
+        - name: redefines-builtin-id
+
+    gocritic:
+      # Enable all checks
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+        - experimental
+        - opinionated
 
   # Exclusions (v2 structure)
   exclusions:
@@ -36,20 +132,31 @@ linters:
       - path: _test\.go
         linters:
           - gocyclo
+          - cyclop
+          - funlen
+          - maintidx
           - errcheck
           - gosec
+          - goconst
+          - dupl
 
       - path: ".*\\.pb\\.go"  # Generated files
         linters:
-          - gofmt
-          - goimports
+          - revive
+          - gocritic
 
       - path: internal/interfaces/repl/bubbletea_repl\.go
         linters:
           - staticcheck  # Allow deprecated API for now (msg.Type)
-          - unused  # Future features (addOutput, renderPrompt, renderPromptForHistory)
+          - funlen       # REPL functions naturally longer
+          - gocognit     # UI logic can be complex
+          - cyclop       # UI complexity acceptable
+          - nestif       # UI nesting acceptable
 
 issues:
   # Show all issues
   max-issues-per-linter: 0
   max-same-issues: 0
+
+  # Don't hide new issues in existing files
+  new: false

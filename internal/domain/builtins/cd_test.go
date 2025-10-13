@@ -51,7 +51,7 @@ func TestCdCommand_Execute_RelativePath(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	subDir := filepath.Join(tmpDir, "subdir")
-	os.Mkdir(subDir, 0755)
+	os.Mkdir(subDir, 0o755)
 
 	sess := createTestSession(t)
 	sess.ChangeDirectory(tmpDir)
@@ -89,7 +89,7 @@ func TestCdCommand_Execute_TildeWithPath(t *testing.T) {
 
 	// Create test directory in home
 	testDir := filepath.Join(homeDir, ".gosh_test_cd")
-	os.MkdirAll(testDir, 0755)
+	os.MkdirAll(testDir, 0o755)
 	defer os.RemoveAll(testDir)
 
 	// Act
@@ -163,7 +163,7 @@ func TestCdCommand_Execute_NotADirectory(t *testing.T) {
 	// Arrange
 	tmpDir := t.TempDir()
 	tmpFile := filepath.Join(tmpDir, "file.txt")
-	os.WriteFile(tmpFile, []byte("test"), 0644)
+	os.WriteFile(tmpFile, []byte("test"), 0o644)
 
 	sess := createTestSession(t)
 

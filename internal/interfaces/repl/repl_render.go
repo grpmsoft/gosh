@@ -60,20 +60,10 @@ func (m Model) View() string {
 func (m Model) renderClassicMode() string {
 	var b strings.Builder
 
-	// CRITICAL: Move cursor to new line before rendering prompt.
-	// This prevents prompt from appearing on the same line as command output.
-	// Only do this when NOT executing (when showing normal prompt).
-	if !m.executing {
-		b.WriteString("\n")
-	}
-
 	// Render only the current input line (prompt + input).
-	if m.executing {
-		// Show spinner while executing.
-		b.WriteString(m.executingSpinner.View())
-		b.WriteString(" ")
-		b.WriteString(m.styles.Executing.Render("Executing..."))
-	} else {
+	// Classic mode: NO spinner (like real bash/pwsh).
+	// When executing, simply don't render anything - command output will appear naturally.
+	if !m.executing {
 		// Normal prompt with input.
 		b.WriteString(m.renderPromptForHistoryANSI())
 		b.WriteString(m.renderInputWithCursor())

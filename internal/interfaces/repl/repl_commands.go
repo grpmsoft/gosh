@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/grpmsoft/gosh/internal/domain/command"
+	"github.com/grpmsoft/gosh/internal/domain/config"
 	"github.com/grpmsoft/gosh/internal/domain/process"
 	"github.com/grpmsoft/gosh/internal/domain/session"
 	"github.com/grpmsoft/gosh/internal/interfaces/parser"
@@ -90,7 +91,15 @@ func (m Model) executeCommand() (tea.Model, tea.Cmd) {
 	m.historyNavigator = m.currentSession.NewHistoryNavigator()
 
 	// Show command in output with prompt and syntax highlighting (ANSI codes only)
-	m.addOutputRaw(m.renderPromptForHistoryANSI() + m.applySyntaxHighlight(value))
+	// Classic mode: print directly to stdout (like bash)
+	// Other modes: add to viewport buffer
+	if m.config.UI.Mode == config.UIModeClassic {
+		// Print command line with prompt (freezes it in terminal history)
+		fmt.Println(m.renderPromptForHistoryANSI() + m.applySyntaxHighlight(value))
+	} else {
+		// Add to viewport buffer
+		m.addOutputRaw(m.renderPromptForHistoryANSI() + m.applySyntaxHighlight(value))
+	}
 
 	// Clear textarea and return height to 1
 	m.textarea.SetValue("")

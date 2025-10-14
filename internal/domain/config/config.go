@@ -69,6 +69,10 @@ type UIConfig struct {
 
 	// AllowModeSwitching - allow mode switching with hotkeys
 	AllowModeSwitching bool `json:"allow_mode_switching"`
+
+	// OutputSeparator - separator printed after command output in Classic mode
+	// Default: "\n" (empty line like bash). Can be "" (no separator) or any string.
+	OutputSeparator string `json:"output_separator"`
 }
 
 // ShellConfig shell settings.
@@ -102,6 +106,7 @@ func DefaultConfig() *Config {
 			SyntaxHighlight:    true,
 			CompletionEnabled:  true,
 			AllowModeSwitching: true, // Allow mode switching via F1-F4
+			OutputSeparator:    "\n", // Empty line after command output (bash-style)
 		},
 		Shell: ShellConfig{
 			DefaultShell: "sh",

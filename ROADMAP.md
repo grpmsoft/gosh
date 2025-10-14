@@ -4,12 +4,20 @@ This document outlines the planned development roadmap for GoSh, organized by re
 
 ---
 
-## 📍 Current Version: v0.1.0-beta.4 ✅
+## 📍 Current Version: v0.1.0-beta.5 ✅
 
 **Status**: Released (2025-10-14)
-**Focus**: Code Quality & API Refinement
+**Focus**: Classic Mode Rendering Fixes
 
 ### What's New
+- ✅ **Classic mode spinner fix**: Fixed spinner continuing after command completion
+- ✅ **Classic mode UX**: Removed spinner entirely from Classic mode (matches bash behavior)
+- ✅ **Command echo**: Fixed missing command line in terminal history (now prints to stdout)
+- ✅ **Configurable separator**: Added `output_separator` config option (default: `\n`)
+- ✅ **gocritic tuning**: Configured linter for Bubbletea MVU pattern (increased hugeParam threshold)
+- ✅ **Dependency cleanup**: Removed unused deps (chroma, readline)
+
+### Previously in v0.1.0-beta.4
 - ✅ Comprehensive linter cleanup (524→46 errors, 91% reduction)
 - ✅ Security fixes (gosec): file permissions, secure defaults
 - ✅ API improvements: renamed stuttering types for Go idioms

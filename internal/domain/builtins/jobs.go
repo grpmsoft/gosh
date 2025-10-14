@@ -2,19 +2,20 @@ package builtins
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/grpmsoft/gosh/internal/domain/session"
 	"github.com/grpmsoft/gosh/internal/domain/shared"
-	"io"
 )
 
-// JobsCommand represents the jobs builtin command
-// Lists all background jobs with their status
+// JobsCommand represents the jobs builtin command.
+// Lists all background jobs with their status.
 type JobsCommand struct {
 	session *session.Session
 	stdout  io.Writer
 }
 
-// NewJobsCommand creates a new jobs command
+// NewJobsCommand creates a new jobs command.
 func NewJobsCommand(sess *session.Session, stdout io.Writer) (*JobsCommand, error) {
 	if sess == nil {
 		return nil, shared.NewDomainError(
@@ -37,8 +38,8 @@ func NewJobsCommand(sess *session.Session, stdout io.Writer) (*JobsCommand, erro
 	}, nil
 }
 
-// Execute executes the jobs command
-// Lists all background jobs sorted by job number
+// Execute executes the jobs command.
+// Lists all background jobs sorted by job number.
 func (j *JobsCommand) Execute() error {
 	jobManager := j.session.JobManager()
 	if jobManager == nil {

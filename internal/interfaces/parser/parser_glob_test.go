@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestExpandGlobs_NoPattern tests that non-glob arguments pass through unchanged
+// TestExpandGlobs_NoPattern tests that non-glob arguments pass through unchanged.
 func TestExpandGlobs_NoPattern(t *testing.T) {
 	args := []string{"file.txt", "test", "hello"}
 	result, err := expandGlobs(args)
@@ -18,7 +18,7 @@ func TestExpandGlobs_NoPattern(t *testing.T) {
 	assert.Equal(t, args, result)
 }
 
-// TestExpandGlobs_Star tests * pattern expansion
+// TestExpandGlobs_Star tests * pattern expansion.
 func TestExpandGlobs_Star(t *testing.T) {
 	// Create temp directory with test files
 	tmpDir := t.TempDir()
@@ -67,7 +67,7 @@ func TestExpandGlobs_Star(t *testing.T) {
 	})
 }
 
-// TestExpandGlobs_Question tests ? pattern expansion
+// TestExpandGlobs_Question tests ? pattern expansion.
 func TestExpandGlobs_Question(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -98,7 +98,7 @@ func TestExpandGlobs_Question(t *testing.T) {
 	})
 }
 
-// TestExpandGlobs_Brackets tests [] pattern expansion
+// TestExpandGlobs_Brackets tests [] pattern expansion.
 func TestExpandGlobs_Brackets(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -141,7 +141,7 @@ func TestExpandGlobs_Brackets(t *testing.T) {
 	})
 }
 
-// TestExpandGlobs_NoMatches tests bash-like behavior: error on no matches
+// TestExpandGlobs_NoMatches tests bash-like behavior: error on no matches.
 func TestExpandGlobs_NoMatches(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -162,7 +162,7 @@ func TestExpandGlobs_NoMatches(t *testing.T) {
 	})
 }
 
-// TestExpandGlobs_Mixed tests mixing glob and non-glob arguments
+// TestExpandGlobs_Mixed tests mixing glob and non-glob arguments.
 func TestExpandGlobs_Mixed(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -192,7 +192,7 @@ func TestExpandGlobs_Mixed(t *testing.T) {
 	})
 }
 
-// TestContainsGlobPattern tests pattern detection
+// TestContainsGlobPattern tests pattern detection.
 func TestContainsGlobPattern(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -216,7 +216,7 @@ func TestContainsGlobPattern(t *testing.T) {
 	}
 }
 
-// TestParseCommandLine_WithGlob tests full integration
+// TestParseCommandLine_WithGlob tests full integration.
 func TestParseCommandLine_WithGlob(t *testing.T) {
 	tmpDir := t.TempDir()
 

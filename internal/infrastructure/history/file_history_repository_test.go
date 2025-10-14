@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestFileHistoryRepository_Save tests saving history to file
+// TestFileHistoryRepository_Save tests saving history to file.
 func TestFileHistoryRepository_Save(t *testing.T) {
 	t.Run("saves history to file", func(t *testing.T) {
 		tmpDir := t.TempDir()
@@ -118,7 +118,7 @@ func TestFileHistoryRepository_Save(t *testing.T) {
 	})
 }
 
-// TestFileHistoryRepository_Load tests loading history from file
+// TestFileHistoryRepository_Load tests loading history from file.
 func TestFileHistoryRepository_Load(t *testing.T) {
 	t.Run("loads history from file", func(t *testing.T) {
 		tmpDir := t.TempDir()
@@ -242,7 +242,7 @@ func TestFileHistoryRepository_Load(t *testing.T) {
 	})
 }
 
-// TestFileHistoryRepository_SaveAndLoad tests save/load round trip
+// TestFileHistoryRepository_SaveAndLoad tests save/load round trip.
 func TestFileHistoryRepository_SaveAndLoad(t *testing.T) {
 	t.Run("round trip preserves history", func(t *testing.T) {
 		tmpDir := t.TempDir()
@@ -270,7 +270,7 @@ func TestFileHistoryRepository_SaveAndLoad(t *testing.T) {
 	})
 }
 
-// TestFileHistoryRepository_ExpandTilde tests ~ expansion in path
+// TestFileHistoryRepository_ExpandTilde tests ~ expansion in path.
 func TestFileHistoryRepository_ExpandTilde(t *testing.T) {
 	t.Run("expands tilde to home directory", func(t *testing.T) {
 		// This functionality should be in repository
@@ -293,7 +293,7 @@ func TestFileHistoryRepository_ExpandTilde(t *testing.T) {
 	})
 }
 
-// TestFileHistoryRepository_Concurrency tests thread safety
+// TestFileHistoryRepository_Concurrency tests thread safety.
 func TestFileHistoryRepository_Concurrency(t *testing.T) {
 	t.Run("handles concurrent saves", func(t *testing.T) {
 		tmpDir := t.TempDir()
@@ -330,7 +330,7 @@ func TestFileHistoryRepository_Concurrency(t *testing.T) {
 	})
 }
 
-// TestFileHistoryRepository_Append tests appending commands to end of file
+// TestFileHistoryRepository_Append tests appending commands to end of file.
 func TestFileHistoryRepository_Append(t *testing.T) {
 	t.Run("appends single command to new file", func(t *testing.T) {
 		tmpDir := t.TempDir()
@@ -486,7 +486,7 @@ func TestFileHistoryRepository_Append(t *testing.T) {
 	})
 }
 
-// TestFileHistoryRepository_AppendAndLoad tests that Append works with Load
+// TestFileHistoryRepository_AppendAndLoad tests that Append works with Load.
 func TestFileHistoryRepository_AppendAndLoad(t *testing.T) {
 	t.Run("load after append preserves all commands", func(t *testing.T) {
 		tmpDir := t.TempDir()

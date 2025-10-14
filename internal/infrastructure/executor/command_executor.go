@@ -1,3 +1,4 @@
+// Package executor provides adapters for executing OS commands and pipelines.
 package executor
 
 import (
@@ -5,31 +6,32 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/grpmsoft/gosh/internal/domain/command"
-	"github.com/grpmsoft/gosh/internal/domain/process"
-	"github.com/grpmsoft/gosh/internal/domain/session"
-	"github.com/grpmsoft/gosh/internal/domain/shared"
 	"log/slog"
 	"os"
 	"os/exec"
 	"time"
 
+	"github.com/grpmsoft/gosh/internal/domain/command"
+	"github.com/grpmsoft/gosh/internal/domain/process"
+	"github.com/grpmsoft/gosh/internal/domain/session"
+	"github.com/grpmsoft/gosh/internal/domain/shared"
+
 	"github.com/google/uuid"
 )
 
-// OSCommandExecutor - adapter for executing external commands through OS
+// OSCommandExecutor - adapter for executing external commands through OS.
 type OSCommandExecutor struct {
 	logger *slog.Logger
 }
 
-// NewOSCommandExecutor creates a new executor
+// NewOSCommandExecutor creates a new executor.
 func NewOSCommandExecutor(logger *slog.Logger) *OSCommandExecutor {
 	return &OSCommandExecutor{
 		logger: logger,
 	}
 }
 
-// Execute executes an external command
+// Execute executes an external command.
 func (e *OSCommandExecutor) Execute(
 	ctx context.Context,
 	cmd *command.Command,
@@ -42,7 +44,7 @@ func (e *OSCommandExecutor) Execute(
 	}
 
 	// Create OS command
-	osCmd := exec.CommandContext(ctx, cmd.Name(), cmd.Args()...)
+	osCmd := exec.CommandContext(ctx, cmd.Name(), cmd.Args()...) //nolint:gosec // G204: This is a shell - command execution with user input is expected
 
 	// Set working directory
 	osCmd.Dir = sess.WorkingDirectory()
@@ -145,7 +147,7 @@ func (e *OSCommandExecutor) Execute(
 	return proc, nil
 }
 
-// monitorBackgroundProcess monitors background process completion in a goroutine
+// monitorBackgroundProcess monitors background process completion in a goroutine.
 func (e *OSCommandExecutor) monitorBackgroundProcess(
 	osCmd *exec.Cmd,
 	proc *process.Process,
@@ -210,11 +212,11 @@ func (e *OSCommandExecutor) monitorBackgroundProcess(
 	}
 }
 
-// handleRedirections handles input/output redirections
+// handleRedirections handles input/output redirections.
 func (e *OSCommandExecutor) handleRedirections(
 	cmd *command.Command,
 	osCmd *exec.Cmd,
-	stdout, stderr *bytes.Buffer,
+	_, _ *bytes.Buffer,
 ) ([]*os.File, error) {
 	redirections := cmd.Redirections()
 	if len(redirections) == 0 {
@@ -276,7 +278,7 @@ func (e *OSCommandExecutor) handleRedirections(
 
 		case command.RedirectAppend:
 			// N>> - append redirection to file from FD N (default FD 1)
-			file, err := os.OpenFile(redir.Target, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
+			file, err := os.OpenFile(redir.Target, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0o600)
 			if err != nil {
 				e.closeFiles(openFiles)
 				return nil, shared.NewDomainError(
@@ -302,15 +304,16 @@ func (e *OSCommandExecutor) handleRedirections(
 		case command.RedirectDup:
 			// N>&M - duplicate FD M to FD N (e.g., 2>&1)
 			// Note: os/exec has limitations here, we handle common case 2>&1
-			if redir.SourceFD == 2 && redir.Target == "1" {
+			switch {
+			case redir.SourceFD == 2 && redir.Target == "1":
 				// 2>&1 - redirect stderr to stdout
 				osCmd.Stderr = osCmd.Stdout
 				e.logger.Debug("stderr duplicated to stdout", "fd", redir.SourceFD)
-			} else if redir.SourceFD == 1 && redir.Target == "2" {
+			case redir.SourceFD == 1 && redir.Target == "2":
 				// 1>&2 - redirect stdout to stderr
 				osCmd.Stdout = osCmd.Stderr
 				e.logger.Debug("stdout duplicated to stderr", "fd", redir.SourceFD)
-			} else {
+			default:
 				e.logger.Warn("FD duplication not fully supported",
 					"source_fd", redir.SourceFD, "target", redir.Target)
 			}
@@ -324,7 +327,7 @@ func (e *OSCommandExecutor) handleRedirections(
 	return openFiles, nil
 }
 
-// closeFiles closes all open files (helper function)
+// closeFiles closes all open files (helper function).
 func (e *OSCommandExecutor) closeFiles(files []*os.File) {
 	for _, f := range files {
 		if err := f.Close(); err != nil {

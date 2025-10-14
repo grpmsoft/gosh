@@ -11,7 +11,13 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// All methods in this file use Bubbletea's MVU (Model-View-Update) pattern,.
+// which requires value receivers. The "hugeParam" warnings are false positives.
+//
+//nolint:gocritic // All Model methods: Bubbletea MVU requires value receivers
+
 // View renders UI (Elm Architecture).
+//
 func (m Model) View() string {
 	if !m.ready {
 		return ""
@@ -47,9 +53,9 @@ func (m Model) View() string {
 // IMPORTANT: Classic mode does NOT use viewport for rendering history.
 // Instead, command output is printed directly to stdout via fmt.Println() in Update().
 // This allows:
-//   - Native terminal scrollback to work (PgUp/PgDn, mouse wheel)
-//   - History remains in terminal after shell exit (like bash)
-//   - No artificial viewport limitations
+//   - Native terminal scrollback to work (PgUp/PgDn, mouse wheel).
+//   - History remains in terminal after shell exit (like bash).
+//   - No artificial viewport limitations.
 //
 // We only render the current prompt + input line here (last line of terminal).
 func (m Model) renderClassicMode() string {
@@ -82,6 +88,7 @@ func (m Model) renderClassicMode() string {
 
 // renderWarpMode renders modern Warp-like mode.
 // Prompt on top, output below with separator.
+//
 func (m Model) renderWarpMode() string {
 	// Update viewport content.
 	m.viewport.SetContent(strings.Join(m.output, "\n"))
@@ -122,6 +129,7 @@ func (m Model) renderWarpMode() string {
 
 // renderCompactMode renders compact mode.
 // Minimalist prompt, maximum space for output.
+//
 func (m Model) renderCompactMode() string {
 	// Update viewport content.
 	m.viewport.SetContent(strings.Join(m.output, "\n"))
@@ -158,6 +166,7 @@ func (m Model) renderCompactMode() string {
 
 // renderChatMode renders chat mode (Telegram/ChatGPT-like).
 // Input fixed at bottom, history scrolls at top.
+//
 func (m Model) renderChatMode() string {
 	// Update viewport content.
 	m.viewport.SetContent(strings.Join(m.output, "\n"))
@@ -199,6 +208,7 @@ func (m Model) renderChatMode() string {
 // renderInputWithCursor renders input with syntax highlighting.
 // IMPORTANT: We use textarea.View() which provides the native Bubbletea blinking cursor.
 // Syntax highlighting is applied on top WITHOUT manually inserting cursor ANSI codes.
+//
 func (m Model) renderInputWithCursor() string {
 	currentText := m.textarea.Value()
 	if currentText == "" {
@@ -213,6 +223,7 @@ func (m Model) renderInputWithCursor() string {
 }
 
 // renderHints renders hints (completion, scroll indicator).
+//
 func (m Model) renderHints() string {
 	var hints []string
 
@@ -235,6 +246,7 @@ func (m Model) renderHints() string {
 }
 
 // applySyntaxHighlight applies simple bash syntax highlighting WITHOUT Chroma.
+//
 func (m Model) applySyntaxHighlight(text string) string {
 	if text == "" {
 		return ""
@@ -253,17 +265,18 @@ func (m Model) applySyntaxHighlight(text string) string {
 			result.WriteString(" ") // Space between tokens.
 		}
 
-		if i == 0 {
+		switch {
+		case i == 0:
 			// First word = COMMAND (YELLOW).
 			result.WriteString("\033[1;33m") // Bright Yellow.
 			result.WriteString(part)
 			result.WriteString("\033[0m")
-		} else if strings.HasPrefix(part, "-") {
+		case strings.HasPrefix(part, "-"):
 			// Option (GRAY).
 			result.WriteString("\033[90m") // Dark Gray.
 			result.WriteString(part)
 			result.WriteString("\033[0m")
-		} else {
+		default:
 			// Argument (GREEN).
 			result.WriteString("\033[32m") // Green.
 			result.WriteString(part)
@@ -274,78 +287,8 @@ func (m Model) applySyntaxHighlight(text string) string {
 	return result.String()
 }
 
-// renderPrompt renders prompt in PowerShell/Git Bash style.
-func (m Model) renderPrompt() string {
-	var parts []string
-
-	// Username@hostname (green).
-	username := os.Getenv("USER")
-	if username == "" {
-		username = os.Getenv("USERNAME")
-	}
-	hostname, _ := os.Hostname()
-
-	userHost := m.styles.PromptUser.Render(fmt.Sprintf("%s@%s", username, hostname))
-	parts = append(parts, userHost)
-
-	// Path (blue).
-	workDir := m.currentSession.WorkingDirectory()
-	displayPath := m.shortenPath(workDir)
-	pathStr := m.styles.PromptPath.Render(displayPath)
-	parts = append(parts, pathStr)
-
-	// Git status (if present).
-	if m.gitBranch != "" {
-		gitStr := ""
-		if m.gitDirty {
-			gitStr = m.styles.PromptGitDirty.Render(fmt.Sprintf("(%s *)", m.gitBranch))
-		} else {
-			gitStr = m.styles.PromptGit.Render(fmt.Sprintf("(%s)", m.gitBranch))
-		}
-		parts = append(parts, gitStr)
-	}
-
-	prompt := strings.Join(parts, " ")
-
-	// Arrow (green or red depending on exitCode).
-	var arrow string
-	if m.lastExitCode == 0 {
-		arrow = m.styles.PromptArrow.Render(" $ ")
-	} else {
-		arrow = m.styles.PromptError.Render(fmt.Sprintf(" [%d] $ ", m.lastExitCode))
-	}
-
-	return prompt + arrow
-}
-
-// renderPromptForHistory renders prompt for history (with lipgloss).
-func (m Model) renderPromptForHistory() string {
-	username := os.Getenv("USER")
-	if username == "" {
-		username = os.Getenv("USERNAME")
-	}
-	hostname, _ := os.Hostname()
-
-	workDir := m.currentSession.WorkingDirectory()
-	displayPath := m.shortenPath(workDir)
-
-	var parts []string
-	parts = append(parts, m.styles.PromptUser.Render(fmt.Sprintf("%s@%s", username, hostname)))
-	parts = append(parts, m.styles.PromptPath.Render(displayPath))
-
-	if m.gitBranch != "" {
-		if m.gitDirty {
-			parts = append(parts, m.styles.PromptGitDirty.Render(fmt.Sprintf("(%s *)", m.gitBranch)))
-		} else {
-			parts = append(parts, m.styles.PromptGit.Render(fmt.Sprintf("(%s)", m.gitBranch)))
-		}
-	}
-
-	arrow := m.styles.PromptArrow.Render(" $ ")
-	return strings.Join(parts, " ") + arrow
-}
-
 // renderPromptForHistoryANSI renders prompt for history (ANSI codes only).
+//
 func (m Model) renderPromptForHistoryANSI() string {
 	const (
 		reset      = "\033[0m"
@@ -402,6 +345,7 @@ func (m Model) renderPromptForHistoryANSI() string {
 }
 
 // renderWithHelpOverlay renders help overlay on top of main UI.
+//
 func (m Model) renderWithHelpOverlay() string {
 	// Create help overlay.
 	helpOverlay := m.renderHelpOverlay()
@@ -415,6 +359,7 @@ func (m Model) renderWithHelpOverlay() string {
 }
 
 // renderHelpOverlay creates modal help window.
+//
 func (m Model) renderHelpOverlay() string {
 	// Style for overlay box.
 	boxStyle := lipgloss.NewStyle().
@@ -487,6 +432,7 @@ func (m Model) renderHelpOverlay() string {
 }
 
 // shortenPath shortens path for display.
+//
 func (m Model) shortenPath(path string) string {
 	home, _ := os.UserHomeDir()
 

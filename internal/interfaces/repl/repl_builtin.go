@@ -1,3 +1,4 @@
+// Package repl provides the Read-Eval-Print-Loop interface using Bubbletea TUI framework.
 package repl
 
 import (
@@ -50,7 +51,7 @@ func (m *Model) execBuiltinCommand(commandLine string) tea.Cmd {
 		// Execute via executeUseCase which correctly delegates to BuiltinExecutor
 		resp, err := m.executeUseCase.Execute(
 			m.ctx,
-			execute.ExecuteCommandRequest{
+			execute.CommandRequest{
 				CommandLine: commandLine,
 				SessionID:   m.currentSession.ID(),
 			},

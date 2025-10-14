@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestHistory_NewHistory tests creating a new history with settings
+// TestHistory_NewHistory tests creating a new history with settings.
 func TestHistory_NewHistory(t *testing.T) {
 	t.Run("creates history with default config", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
@@ -32,7 +32,7 @@ func TestHistory_NewHistory(t *testing.T) {
 	})
 }
 
-// TestHistory_Add tests adding commands to history
+// TestHistory_Add tests adding commands to history.
 func TestHistory_Add(t *testing.T) {
 	t.Run("adds single command", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
@@ -138,7 +138,7 @@ func TestHistory_Add(t *testing.T) {
 	})
 }
 
-// TestHistory_Search tests searching commands in history (Ctrl+R functionality)
+// TestHistory_Search tests searching commands in history (Ctrl+R functionality).
 func TestHistory_Search(t *testing.T) {
 	t.Run("finds exact match", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
@@ -205,7 +205,7 @@ func TestHistory_Search(t *testing.T) {
 	})
 }
 
-// TestHistory_GetRecent tests retrieving recent commands
+// TestHistory_GetRecent tests retrieving recent commands.
 func TestHistory_GetRecent(t *testing.T) {
 	t.Run("returns recent commands in reverse order", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
@@ -237,7 +237,7 @@ func TestHistory_GetRecent(t *testing.T) {
 	})
 }
 
-// TestHistory_Clear tests clearing history
+// TestHistory_Clear tests clearing history.
 func TestHistory_Clear(t *testing.T) {
 	t.Run("clears all history", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
@@ -264,7 +264,7 @@ func TestHistory_Clear(t *testing.T) {
 	})
 }
 
-// TestHistory_Navigation tests history navigation (Up/Down arrows)
+// TestHistory_Navigation tests history navigation (Up/Down arrows).
 func TestHistory_Navigation(t *testing.T) {
 	t.Run("navigates backward through history", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
@@ -349,7 +349,7 @@ func TestHistory_Navigation(t *testing.T) {
 	})
 }
 
-// TestHistory_ToSlice tests exporting history as a slice
+// TestHistory_ToSlice tests exporting history as a slice.
 func TestHistory_ToSlice(t *testing.T) {
 	t.Run("exports history as slice in chronological order", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
@@ -372,7 +372,7 @@ func TestHistory_ToSlice(t *testing.T) {
 	})
 }
 
-// TestHistory_FromSlice tests loading history from a slice
+// TestHistory_FromSlice tests loading history from a slice.
 func TestHistory_FromSlice(t *testing.T) {
 	t.Run("loads history from slice", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())

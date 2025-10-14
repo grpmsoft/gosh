@@ -77,11 +77,11 @@ func createTestModelForBuiltin(t *testing.T) *Model {
 	require.NoError(t, err)
 
 	// Create filesystem and executors
-	fs := &mockFileSystem{} // Simple mock
-	builtinExecutor := builtin.NewBuiltinExecutor(fs, logger)
+	mockFS := &mockFileSystem{} // Simple mock
+	builtinExecutor := builtin.NewExecutor(mockFS, logger)
 	commandExecutor := executor.NewOSCommandExecutor(logger)
 	pipelineExecutor := executor.NewOSPipelineExecutor(logger)
-	executeUseCase := execute.NewExecuteCommandUseCase(
+	executeUseCase := execute.NewUseCase(
 		builtinExecutor,
 		commandExecutor,
 		pipelineExecutor,

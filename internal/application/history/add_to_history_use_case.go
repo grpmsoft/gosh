@@ -1,23 +1,24 @@
+// Package history provides use cases for command history management.
 package history
 
 import "github.com/grpmsoft/gosh/internal/domain/history"
 
-// AddToHistoryUseCase implements adding commands to history
+// AddToHistoryUseCase implements adding commands to history.
 type AddToHistoryUseCase struct {
 	history    *history.History
-	repository HistoryRepository
+	repository Repository
 }
 
-// NewAddToHistoryUseCase creates a new add to history use case
-// Takes a History instance to work with (typically from Session)
-func NewAddToHistoryUseCase(h *history.History, repo HistoryRepository) *AddToHistoryUseCase {
+// NewAddToHistoryUseCase creates a new add to history use case.
+// Takes a History instance to work with (typically from Session).
+func NewAddToHistoryUseCase(h *history.History, repo Repository) *AddToHistoryUseCase {
 	return &AddToHistoryUseCase{
 		history:    h,
 		repository: repo,
 	}
 }
 
-// Execute adds a command to history and persists if SaveToFile is enabled
+// Execute adds a command to history and persists if SaveToFile is enabled.
 func (uc *AddToHistoryUseCase) Execute(cmd string) error {
 	// Add command to domain model
 	if err := uc.history.Add(cmd); err != nil {

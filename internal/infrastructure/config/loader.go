@@ -1,3 +1,4 @@
+// Package config provides infrastructure for loading configuration from files.
 package config
 
 import (
@@ -8,12 +9,12 @@ import (
 	"github.com/grpmsoft/gosh/internal/domain/config"
 )
 
-// Loader - configuration loader
+// Loader - configuration loader.
 type Loader struct {
 	configPath string
 }
 
-// NewLoader creates a new configuration loader
+// NewLoader creates a new configuration loader.
 func NewLoader() *Loader {
 	home, _ := os.UserHomeDir()
 	configPath := filepath.Join(home, ".goshrc")
@@ -23,7 +24,7 @@ func NewLoader() *Loader {
 	}
 }
 
-// Load loads configuration from file, or returns default
+// Load loads configuration from file, or returns default.
 func (l *Loader) Load() (*config.Config, error) {
 	// Check if file exists
 	if _, err := os.Stat(l.configPath); os.IsNotExist(err) {
@@ -48,17 +49,17 @@ func (l *Loader) Load() (*config.Config, error) {
 	return cfg, nil
 }
 
-// Save saves configuration to file
+// Save saves configuration to file.
 func (l *Loader) Save(cfg *config.Config) error {
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(l.configPath, data, 0644)
+	return os.WriteFile(l.configPath, data, 0o600)
 }
 
-// CreateDefault creates a file with default configuration
+// CreateDefault creates a file with default configuration.
 func (l *Loader) CreateDefault() error {
 	cfg := config.DefaultConfig()
 	return l.Save(cfg)

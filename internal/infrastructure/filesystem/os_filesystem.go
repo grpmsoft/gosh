@@ -1,3 +1,4 @@
+// Package filesystem provides adapters for filesystem operations.
 package filesystem
 
 import (
@@ -5,15 +6,15 @@ import (
 	"os"
 )
 
-// OSFileSystem - adapter for working with real filesystem
+// OSFileSystem - adapter for working with real filesystem.
 type OSFileSystem struct{}
 
-// NewOSFileSystem creates a new filesystem adapter
+// NewOSFileSystem creates a new filesystem adapter.
 func NewOSFileSystem() *OSFileSystem {
 	return &OSFileSystem{}
 }
 
-// Exists checks if a file/directory exists
+// Exists checks if a file/directory exists.
 func (f *OSFileSystem) Exists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err != nil {
@@ -25,7 +26,7 @@ func (f *OSFileSystem) Exists(path string) (bool, error) {
 	return true, nil
 }
 
-// IsDir checks if the path is a directory
+// IsDir checks if the path is a directory.
 func (f *OSFileSystem) IsDir(path string) (bool, error) {
 	info, err := os.Stat(path)
 	if err != nil {
@@ -34,22 +35,22 @@ func (f *OSFileSystem) IsDir(path string) (bool, error) {
 	return info.IsDir(), nil
 }
 
-// ReadFile reads file contents
+// ReadFile reads file contents.
 func (f *OSFileSystem) ReadFile(path string) ([]byte, error) {
-	return os.ReadFile(path)
+	return os.ReadFile(path) //nolint:gosec // G304: This is a filesystem adapter for shell - dynamic paths are expected
 }
 
-// WriteFile writes contents to a file
+// WriteFile writes contents to a file.
 func (f *OSFileSystem) WriteFile(path string, data []byte, perm fs.FileMode) error {
 	return os.WriteFile(path, data, perm)
 }
 
-// Stat returns file information
+// Stat returns file information.
 func (f *OSFileSystem) Stat(path string) (fs.FileInfo, error) {
 	return os.Stat(path)
 }
 
-// ReadDir reads directory contents
+// ReadDir reads directory contents.
 func (f *OSFileSystem) ReadDir(path string) ([]fs.DirEntry, error) {
 	return os.ReadDir(path)
 }

@@ -125,7 +125,7 @@ func TestApplySyntaxHighlight(t *testing.T) {
 		assert.NotEmpty(t, highlighted)
 		assert.Contains(t, highlighted, "echo")
 		// Quotes may be styled separately from content
-		assert.True(t, len(highlighted) > 0)
+		assert.True(t, highlighted != "")
 	})
 
 	t.Run("handles empty input", func(t *testing.T) {

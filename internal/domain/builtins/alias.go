@@ -1,28 +1,30 @@
+// Package builtins provides domain models for shell builtin commands.
 package builtins
 
 import (
 	"fmt"
-	"github.com/grpmsoft/gosh/internal/domain/session"
-	"github.com/grpmsoft/gosh/internal/domain/shared"
 	"io"
 	"sort"
 	"strings"
+
+	"github.com/grpmsoft/gosh/internal/domain/session"
+	"github.com/grpmsoft/gosh/internal/domain/shared"
 )
 
-// AliasCommand represents the alias command
-// Manages custom command aliases
+// AliasCommand represents the alias command.
+// Manages custom command aliases.
 // Supports:
-// - alias              - print all aliases
-// - alias name='cmd'   - create alias
-// - alias name="cmd"   - create with double quotes
-// - alias name=cmd     - create without quotes
+// - alias              - print all aliases.
+// - alias name='cmd'   - create alias.
+// - alias name="cmd"   - create with double quotes.
+// - alias name=cmd     - create without quotes.
 type AliasCommand struct {
 	args    []string
 	session *session.Session
 	stdout  io.Writer
 }
 
-// NewAliasCommand creates a new alias command
+// NewAliasCommand creates a new alias command.
 func NewAliasCommand(args []string, sess *session.Session, stdout io.Writer) (*AliasCommand, error) {
 	if sess == nil {
 		return nil, shared.NewDomainError(
@@ -46,7 +48,7 @@ func NewAliasCommand(args []string, sess *session.Session, stdout io.Writer) (*A
 	}, nil
 }
 
-// Execute executes the alias command
+// Execute executes the alias command.
 func (a *AliasCommand) Execute() error {
 	// If no arguments - print all aliases
 	if len(a.args) == 0 {
@@ -68,7 +70,7 @@ func (a *AliasCommand) Execute() error {
 	return nil
 }
 
-// printAllAliases prints all aliases sorted by name
+// printAllAliases prints all aliases sorted by name.
 func (a *AliasCommand) printAllAliases() error {
 	aliases := a.session.GetAllAliases()
 
@@ -93,7 +95,7 @@ func (a *AliasCommand) printAllAliases() error {
 	return nil
 }
 
-// printAlias prints a specific alias
+// printAlias prints a specific alias.
 func (a *AliasCommand) printAlias(name string) error {
 	command, ok := a.session.GetAlias(name)
 	if !ok {
@@ -108,7 +110,7 @@ func (a *AliasCommand) printAlias(name string) error {
 	return nil
 }
 
-// createAlias creates a new alias
+// createAlias creates a new alias.
 func (a *AliasCommand) createAlias(arg string) error {
 	// Split into name=command
 	parts := strings.SplitN(arg, "=", 2)
@@ -141,14 +143,10 @@ func (a *AliasCommand) createAlias(arg string) error {
 	}
 
 	// Create alias in session
-	if err := a.session.SetAlias(name, command); err != nil {
-		return err
-	}
-
-	return nil
+	return a.session.SetAlias(name, command)
 }
 
-// validateAliasName validates alias name
+// validateAliasName validates alias name.
 func (a *AliasCommand) validateAliasName(name string) error {
 	if name == "" {
 		return shared.NewDomainError(
@@ -172,7 +170,7 @@ func (a *AliasCommand) validateAliasName(name string) error {
 	return nil
 }
 
-// isValidAliasChar checks if character is allowed in alias name
+// isValidAliasChar checks if character is allowed in alias name.
 func isValidAliasChar(ch rune) bool {
 	// Allowed: letters, digits, underscore, hyphen, dot
 	return (ch >= 'a' && ch <= 'z') ||
@@ -183,7 +181,7 @@ func isValidAliasChar(ch rune) bool {
 		ch == '.'
 }
 
-// unquoteCommand removes quotes from command
+// unquoteCommand removes quotes from command.
 func (a *AliasCommand) unquoteCommand(command string) string {
 	command = strings.TrimSpace(command)
 

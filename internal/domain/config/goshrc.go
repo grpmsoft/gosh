@@ -11,7 +11,7 @@ import (
 	"github.com/grpmsoft/gosh/internal/domain/shared"
 )
 
-// GoshrcService manages the .goshrc file
+// GoshrcService manages the .goshrc file.
 // File format:
 //
 //	# Comments start with #
@@ -22,14 +22,14 @@ type GoshrcService struct {
 	filePath string
 }
 
-// NewGoshrcService creates a new service for working with .goshrc
+// NewGoshrcService creates a new service for working with .goshrc.
 func NewGoshrcService(filePath string) *GoshrcService {
 	return &GoshrcService{
 		filePath: filePath,
 	}
 }
 
-// GetDefaultGoshrcPath returns the default path to .goshrc
+// GetDefaultGoshrcPath returns the default path to .goshrc.
 func GetDefaultGoshrcPath() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -38,13 +38,13 @@ func GetDefaultGoshrcPath() (string, error) {
 	return filepath.Join(homeDir, ".goshrc"), nil
 }
 
-// GoshrcData contains data from .goshrc
+// GoshrcData contains data from .goshrc.
 type GoshrcData struct {
 	Aliases     map[string]string // alias name -> command
 	Environment map[string]string // env var name -> value
 }
 
-// Load loads configuration from .goshrc
+// Load loads configuration from .goshrc.
 func (s *GoshrcService) Load() (*GoshrcData, error) {
 	data := &GoshrcData{
 		Aliases:     make(map[string]string),
@@ -123,12 +123,12 @@ func (s *GoshrcService) Load() (*GoshrcData, error) {
 	return data, nil
 }
 
-// Save saves configuration to .goshrc
+// Save saves configuration to .goshrc.
 func (s *GoshrcService) Save(data *GoshrcData) error {
 	// Create temporary file
 	tmpFile := s.filePath + ".tmp"
 
-	file, err := os.Create(tmpFile)
+	file, err := os.Create(tmpFile) //nolint:gosec // G304: Controlled by user config file path
 	if err != nil {
 		return shared.NewDomainError(
 			"GoshrcService.Save",
@@ -180,7 +180,7 @@ func (s *GoshrcService) Save(data *GoshrcData) error {
 	return nil
 }
 
-// unquoteValue removes single or double quotes from value
+// unquoteValue removes single or double quotes from value.
 func unquoteValue(value string) string {
 	value = strings.TrimSpace(value)
 

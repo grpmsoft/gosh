@@ -1,7 +1,7 @@
 # 🐚 GoSh - Cross-Platform Go Shell
 
-**Version**: 0.1.0-beta.3
-**Status**: Beta - Gathering Feedback (breaking changes possible)
+**Version**: 0.1.0-beta.4
+**Status**: Beta - Code Quality & API Refinement (breaking changes in this release)
 **License**: MIT
 
 A modern, cross-platform shell written in Go with beautiful TUI and native script execution.
@@ -42,8 +42,8 @@ A modern, cross-platform shell written in Go with beautiful TUI and native scrip
 - **Multi-line Input**: Alt+Enter for multiline commands
 - **Viewport Scrolling**: PgUp/PgDn, Mouse Wheel support
 - **Auto-scroll**: Automatically scroll to bottom on new output
-- **Visual Help Overlay**: Press F1 or ? for beautiful keyboard shortcuts reference (v0.1.0-beta.3)
-- **UI Mode Switching**: Ctrl+F5-F8 hotkeys or `:mode` command (v0.1.0-beta.3)
+- **Visual Help Overlay**: Press F1 or ? for keyboard shortcuts reference (since beta.3)
+- **UI Mode Switching**: Alt+1-4 hotkeys to switch modes on-the-fly (since beta.2)
 
 ## 📦 Installation
 
@@ -104,10 +104,10 @@ F1 or ?          # Open visual help overlay (ESC to close)
 help             # Show built-in commands
 
 # Switch UI modes
-Ctrl+F5          # Classic mode (traditional bash-like)
-Ctrl+F6          # Warp mode (modern polished)
-Ctrl+F7          # Compact mode (minimal space)
-Ctrl+F8          # Chat mode (telegram-like)
+Alt+1            # Classic mode (traditional bash-like)
+Alt+2            # Warp mode (modern polished)
+Alt+3            # Compact mode (minimal space)
+Alt+4            # Chat mode (telegram-like)
 
 # Or use :mode command
 :mode            # Show current UI mode
@@ -127,8 +127,23 @@ History is stored in `~/.gosh_history` and automatically managed.
 - Auto-save: Enabled
 - Deduplication: Consecutive duplicates removed
 
-### Customization (Future)
-`.goshrc` configuration file support is planned for v0.1.0-beta.4.
+### .goshrc Configuration (v0.1.0-alpha.4)
+GoSh supports `.goshrc` configuration file for customization:
+- **Location**: `~/.goshrc` (home directory)
+- **Aliases**: Define custom command aliases
+- **Environment**: Set environment variables
+- **Auto-load**: Loaded automatically on shell startup
+
+**Example .goshrc**:
+```bash
+# Aliases
+alias ll='ls -la'
+alias gs='git status'
+
+# Environment variables
+export EDITOR=vim
+export GOPATH=$HOME/go
+```
 
 ## 🏗️ Architecture
 
@@ -178,30 +193,37 @@ go test ./internal/domain/history/...
 - Domain layer: 95%+
 - Application layer: 90%+
 - Infrastructure layer: 80%+
-- Total: 60+ tests passing
+- Total: 130+ tests passing across 21 packages
 
 ## 🗺️ Roadmap
 
-### Current Version: v0.1.0-beta.3 ✅
-**Status**: Published - Gathering community feedback (breaking changes possible)
+### Current Version: v0.1.0-beta.4 ✅
+**Status**: In Development - Code Quality & API Refinement (breaking changes in this release)
 
-**Implemented Features**:
+**What's New in beta.4**:
+- [x] Comprehensive linter cleanup (524→46 errors, 91% reduction)
+- [x] Security fixes (gosec): file permissions, secure defaults
+- [x] API improvements: renamed stuttering types for Go idioms
+- [x] Code quality: removed dead code, fixed deprecations
+- [x] Documentation: 385 comment improvements, architecture docs
+
+**Previously Implemented** (alpha.1 → beta.3):
 - [x] History persistence and navigation (alpha.1-2)
-- [x] Built-in commands: cd, pwd, export, unset, type (alpha.3)
-- [x] Aliases and .goshrc configuration (alpha.4)
+- [x] Built-in commands: cd, pwd, export, unset, type, alias (alpha.3-4)
+- [x] .goshrc configuration file (alpha.4)
 - [x] Unix-style pipelines (|) (alpha.5)
 - [x] File redirections (>, >>, <, 2>) (alpha.6)
 - [x] Background jobs (&, jobs, fg, bg) (beta.1)
 - [x] Glob patterns (*, ?, [], {}) (beta.2)
-- [x] Visual help overlay (F1/?) and :mode command (beta.3)
-- [x] 4 UI modes (Classic, Warp, Compact, Chat)
+- [x] Visual help overlay (F1/?) (beta.3)
+- [x] 4 UI modes: Classic, Warp, Compact, Chat
 - [x] 130+ tests, CI/CD on 3 platforms
 
-### Next: v0.1.0-rc.1 (After Feedback)
-- [ ] Address community feedback from beta.3
+### Next: v0.1.0-rc.1 (After beta.4)
+- [ ] Address community feedback from beta.4
 - [ ] Fix critical bugs reported by users
 - [ ] Performance optimizations if needed
-- [ ] Final polish and documentation updates
+- [ ] Final polish before stable release
 
 ### Future: v0.1.0 (Stable Release)
 - [ ] No critical bugs

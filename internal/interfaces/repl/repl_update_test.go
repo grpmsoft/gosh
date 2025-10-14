@@ -596,7 +596,7 @@ func TestUpdateMouseMsg(t *testing.T) {
 		m.autoScroll = true
 
 		// Act
-		msg := tea.MouseMsg{Type: tea.MouseWheelUp}
+		msg := tea.MouseMsg{Action: tea.MouseActionPress, Button: tea.MouseButtonWheelUp}
 		updatedModel, _ := m.Update(msg)
 		m2 := updatedModel.(Model)
 

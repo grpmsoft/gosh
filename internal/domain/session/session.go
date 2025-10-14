@@ -1,25 +1,27 @@
+// Package session provides domain models for shell session state and environment.
 package session
 
 import (
 	"errors"
+	"path/filepath"
+	"sync"
+	"time"
+
 	"github.com/grpmsoft/gosh/internal/domain/history"
 	"github.com/grpmsoft/gosh/internal/domain/job"
 	"github.com/grpmsoft/gosh/internal/domain/process"
 	"github.com/grpmsoft/gosh/internal/domain/shared"
-	"path/filepath"
-	"sync"
-	"time"
 )
 
-// Session represents a shell session (Aggregate Root)
-// Manages shell state: current directory, environment variables, history
+// Session represents a shell session (Aggregate Root).
+// Manages shell state: current directory, environment variables, history.
 type Session struct {
 	id              string
 	workingDir      string
 	previousDir     string // For cd - command
 	environment     shared.Environment
 	commandHistory  *history.History // Rich domain model for command history
-	jobManager      *job.JobManager  // Background job management
+	jobManager      *job.Manager     // Background job management
 	processes       map[string]*process.Process
 	variables       map[string]string
 	aliases         map[string]string
@@ -29,8 +31,8 @@ type Session struct {
 	mu              sync.RWMutex
 }
 
-// NewSession creates a new session
-func NewSession(id string, workingDir string, env shared.Environment) (*Session, error) {
+// NewSession creates a new session.
+func NewSession(id, workingDir string, env shared.Environment) (*Session, error) {
 	if id == "" {
 		return nil, shared.NewDomainError(
 			"NewSession",
@@ -66,7 +68,7 @@ func NewSession(id string, workingDir string, env shared.Environment) (*Session,
 		workingDir:     absPath,
 		environment:    env.Clone(),
 		commandHistory: history.NewHistory(historyConfig),
-		jobManager:     job.NewJobManager(),
+		jobManager:     job.NewManager(),
 		processes:      make(map[string]*process.Process),
 		variables:      make(map[string]string),
 		aliases:        make(map[string]string),
@@ -75,28 +77,28 @@ func NewSession(id string, workingDir string, env shared.Environment) (*Session,
 	}, nil
 }
 
-// ID returns the session identifier
+// ID returns the session identifier.
 func (s *Session) ID() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.id
 }
 
-// WorkingDirectory returns the current working directory
+// WorkingDirectory returns the current working directory.
 func (s *Session) WorkingDirectory() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.workingDir
 }
 
-// PreviousDirectory returns the previous working directory (for cd -)
+// PreviousDirectory returns the previous working directory (for cd -).
 func (s *Session) PreviousDirectory() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.previousDir
 }
 
-// ChangeDirectory changes the working directory (business rule)
+// ChangeDirectory changes the working directory (business rule).
 func (s *Session) ChangeDirectory(path string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -129,14 +131,14 @@ func (s *Session) ChangeDirectory(path string) error {
 	return nil
 }
 
-// Environment returns a copy of environment variables
+// Environment returns a copy of environment variables.
 func (s *Session) Environment() shared.Environment {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.environment.Clone()
 }
 
-// SetEnvironmentVariable sets an environment variable
+// SetEnvironmentVariable sets an environment variable.
 func (s *Session) SetEnvironmentVariable(key, value string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -157,7 +159,7 @@ func (s *Session) SetEnvironmentVariable(key, value string) error {
 	return nil
 }
 
-// UnsetEnvironmentVariable removes an environment variable
+// UnsetEnvironmentVariable removes an environment variable.
 func (s *Session) UnsetEnvironmentVariable(key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -170,7 +172,7 @@ func (s *Session) UnsetEnvironmentVariable(key string) error {
 	return nil
 }
 
-// AddToHistory adds a command to history
+// AddToHistory adds a command to history.
 func (s *Session) AddToHistory(command string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -193,35 +195,35 @@ func (s *Session) AddToHistory(command string) error {
 	return nil
 }
 
-// History returns the History aggregate for use by application layer
+// History returns the History aggregate for use by application layer.
 func (s *Session) History() *history.History {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.commandHistory
 }
 
-// JobManager returns the JobManager for background job control
-func (s *Session) JobManager() *job.JobManager {
+// JobManager returns the JobManager for background job control.
+func (s *Session) JobManager() *job.Manager {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.jobManager
 }
 
-// GetHistoryRecent returns recent commands (convenience method for REPL)
+// GetHistoryRecent returns recent commands (convenience method for REPL).
 func (s *Session) GetHistoryRecent(n int) []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.commandHistory.GetRecent(n)
 }
 
-// NewHistoryNavigator creates a new navigator for Up/Down arrow keys
+// NewHistoryNavigator creates a new navigator for Up/Down arrow keys.
 func (s *Session) NewHistoryNavigator() *history.Navigator {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.commandHistory.NewNavigator()
 }
 
-// RegisterProcess registers a process in the session
+// RegisterProcess registers a process in the session.
 func (s *Session) RegisterProcess(proc *process.Process) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -242,7 +244,7 @@ func (s *Session) RegisterProcess(proc *process.Process) error {
 	return nil
 }
 
-// GetProcess retrieves a process by ID
+// GetProcess retrieves a process by ID.
 func (s *Session) GetProcess(id string) (*process.Process, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -259,7 +261,7 @@ func (s *Session) GetProcess(id string) (*process.Process, error) {
 	return proc, nil
 }
 
-// RunningProcesses returns a list of running processes
+// RunningProcesses returns a list of running processes.
 func (s *Session) RunningProcesses() []*process.Process {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -274,7 +276,7 @@ func (s *Session) RunningProcesses() []*process.Process {
 	return running
 }
 
-// SetVariable sets a shell variable
+// SetVariable sets a shell variable.
 func (s *Session) SetVariable(key, value string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -295,7 +297,7 @@ func (s *Session) SetVariable(key, value string) error {
 	return nil
 }
 
-// GetVariable retrieves a shell variable
+// GetVariable retrieves a shell variable.
 func (s *Session) GetVariable(key string) (string, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -304,7 +306,7 @@ func (s *Session) GetVariable(key string) (string, bool) {
 	return value, ok
 }
 
-// SetAlias sets an alias
+// SetAlias sets an alias.
 func (s *Session) SetAlias(name, command string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -325,7 +327,7 @@ func (s *Session) SetAlias(name, command string) error {
 	return nil
 }
 
-// GetAlias retrieves an alias
+// GetAlias retrieves an alias.
 func (s *Session) GetAlias(name string) (string, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -334,7 +336,7 @@ func (s *Session) GetAlias(name string) (string, bool) {
 	return value, ok
 }
 
-// GetAllAliases returns a copy of all aliases
+// GetAllAliases returns a copy of all aliases.
 func (s *Session) GetAllAliases() map[string]string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -347,7 +349,7 @@ func (s *Session) GetAllAliases() map[string]string {
 	return aliasesCopy
 }
 
-// RemoveAlias removes an alias
+// RemoveAlias removes an alias.
 func (s *Session) RemoveAlias(name string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -368,7 +370,7 @@ func (s *Session) RemoveAlias(name string) error {
 	return nil
 }
 
-// Close closes the session
+// Close closes the session.
 func (s *Session) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -381,28 +383,28 @@ func (s *Session) Close() error {
 	return nil
 }
 
-// IsActive checks if the session is active
+// IsActive checks if the session is active.
 func (s *Session) IsActive() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.active
 }
 
-// StartTime returns the session start time
+// StartTime returns the session start time.
 func (s *Session) StartTime() time.Time {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.startTime
 }
 
-// LastCommandTime returns the time of the last command
+// LastCommandTime returns the time of the last command.
 func (s *Session) LastCommandTime() time.Time {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.lastCommandTime
 }
 
-// Duration returns the session duration
+// Duration returns the session duration.
 func (s *Session) Duration() time.Duration {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

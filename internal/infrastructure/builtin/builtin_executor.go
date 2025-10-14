@@ -1,31 +1,33 @@
+// Package builtin provides adapters for executing shell builtin commands.
 package builtin
 
 import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"log/slog"
+	"os"
+	"strings"
+
 	"github.com/grpmsoft/gosh/internal/application/ports"
 	"github.com/grpmsoft/gosh/internal/domain/builtins"
 	"github.com/grpmsoft/gosh/internal/domain/command"
 	"github.com/grpmsoft/gosh/internal/domain/session"
 	"github.com/grpmsoft/gosh/internal/domain/shared"
-	"io"
-	"log/slog"
-	"os"
-	"strings"
 )
 
-// BuiltinExecutor - executor for builtin commands
-type BuiltinExecutor struct {
+// Executor - executor for builtin commands.
+type Executor struct {
 	fs     ports.FileSystem
 	logger *slog.Logger
 	stdout io.Writer
 	stderr io.Writer
 }
 
-// NewBuiltinExecutor creates a new executor for builtin commands
-func NewBuiltinExecutor(fs ports.FileSystem, logger *slog.Logger) *BuiltinExecutor {
-	return &BuiltinExecutor{
+// NewExecutor creates a new executor for builtin commands.
+func NewExecutor(fs ports.FileSystem, logger *slog.Logger) *Executor {
+	return &Executor{
 		fs:     fs,
 		logger: logger,
 		stdout: os.Stdout,
@@ -33,20 +35,20 @@ func NewBuiltinExecutor(fs ports.FileSystem, logger *slog.Logger) *BuiltinExecut
 	}
 }
 
-// SetOutput sets output streams
-func (b *BuiltinExecutor) SetOutput(stdout, stderr io.Writer) {
+// SetOutput sets output streams.
+func (b *Executor) SetOutput(stdout, stderr io.Writer) {
 	b.stdout = stdout
 	b.stderr = stderr
 }
 
-// CanExecute checks if the executor can execute the command
-func (b *BuiltinExecutor) CanExecute(cmd *command.Command) bool {
+// CanExecute checks if the executor can execute the command.
+func (b *Executor) CanExecute(cmd *command.Command) bool {
 	return cmd.IsBuiltin()
 }
 
-// Execute executes a builtin command and returns captured output
-func (b *BuiltinExecutor) Execute(
-	ctx context.Context,
+// Execute executes a builtin command and returns captured output.
+func (b *Executor) Execute(
+	_ context.Context,
 	cmd *command.Command,
 	sess *session.Session,
 ) (stdout, stderr string, err error) {
@@ -111,8 +113,8 @@ func (b *BuiltinExecutor) Execute(
 	return stdoutBuf.String(), stderrBuf.String(), execErr
 }
 
-// cd - change working directory (delegates to domain)
-func (b *BuiltinExecutor) cd(cmd *command.Command, sess *session.Session) error {
+// cd - change working directory (delegates to domain).
+func (b *Executor) cd(cmd *command.Command, sess *session.Session) error {
 	cdCmd, err := builtins.NewCdCommand(cmd.Args(), sess)
 	if err != nil {
 		return err
@@ -120,8 +122,8 @@ func (b *BuiltinExecutor) cd(cmd *command.Command, sess *session.Session) error 
 	return cdCmd.Execute()
 }
 
-// pwd - print working directory (delegates to domain)
-func (b *BuiltinExecutor) pwd(sess *session.Session) error {
+// pwd - print working directory (delegates to domain).
+func (b *Executor) pwd(sess *session.Session) error {
 	pwdCmd, err := builtins.NewPwdCommand(sess, b.stdout)
 	if err != nil {
 		return err
@@ -129,16 +131,20 @@ func (b *BuiltinExecutor) pwd(sess *session.Session) error {
 	return pwdCmd.Execute()
 }
 
-// echo - print arguments
-func (b *BuiltinExecutor) echo(cmd *command.Command) error {
+// echo - print arguments.
+func (b *Executor) echo(cmd *command.Command) error {
 	args := cmd.Args()
 	output := strings.Join(args, " ")
-	_, _ = fmt.Fprintln(b.stdout, output)
+	if _, err := fmt.Fprintln(b.stdout, output); err != nil {
+		return shared.NewDomainError("echo", shared.ErrBuiltinFailed, err.Error())
+	}
 	return nil
 }
 
-// exit - exit shell
-func (b *BuiltinExecutor) exit(cmd *command.Command) error {
+// exit - exit shell.
+//
+//nolint:unparam // error always nil because os.Exit terminates process
+func (b *Executor) exit(cmd *command.Command) error {
 	// TODO: Properly handle exit codes
 	exitCode := 0
 	if len(cmd.Args()) > 0 {
@@ -146,11 +152,11 @@ func (b *BuiltinExecutor) exit(cmd *command.Command) error {
 		_, _ = fmt.Sscanf(cmd.Args()[0], "%d", &exitCode)
 	}
 	os.Exit(exitCode)
-	return nil
+	return nil // unreachable but required for function signature
 }
 
-// export - export environment variable (delegates to domain)
-func (b *BuiltinExecutor) export(cmd *command.Command, sess *session.Session) error {
+// export - export environment variable (delegates to domain).
+func (b *Executor) export(cmd *command.Command, sess *session.Session) error {
 	exportCmd, err := builtins.NewExportCommand(cmd.Args(), sess, b.stdout)
 	if err != nil {
 		return err
@@ -158,8 +164,8 @@ func (b *BuiltinExecutor) export(cmd *command.Command, sess *session.Session) er
 	return exportCmd.Execute()
 }
 
-// unset - unset environment variable (delegates to domain)
-func (b *BuiltinExecutor) unset(cmd *command.Command, sess *session.Session) error {
+// unset - unset environment variable (delegates to domain).
+func (b *Executor) unset(cmd *command.Command, sess *session.Session) error {
 	unsetCmd, err := builtins.NewUnsetCommand(cmd.Args(), sess)
 	if err != nil {
 		return err
@@ -167,17 +173,19 @@ func (b *BuiltinExecutor) unset(cmd *command.Command, sess *session.Session) err
 	return unsetCmd.Execute()
 }
 
-// env - print all environment variables
-func (b *BuiltinExecutor) env(sess *session.Session) error {
+// env - print all environment variables.
+func (b *Executor) env(sess *session.Session) error {
 	env := sess.Environment()
 	for key, value := range env {
-		_, _ = fmt.Fprintf(b.stdout, "%s=%s\n", key, value)
+		if _, err := fmt.Fprintf(b.stdout, "%s=%s\n", key, value); err != nil {
+			return shared.NewDomainError("env", shared.ErrBuiltinFailed, err.Error())
+		}
 	}
 	return nil
 }
 
-// alias - manage aliases (delegates to domain)
-func (b *BuiltinExecutor) alias(cmd *command.Command, sess *session.Session) error {
+// alias - manage aliases (delegates to domain).
+func (b *Executor) alias(cmd *command.Command, sess *session.Session) error {
 	aliasCmd, err := builtins.NewAliasCommand(cmd.Args(), sess, b.stdout)
 	if err != nil {
 		return err
@@ -185,8 +193,8 @@ func (b *BuiltinExecutor) alias(cmd *command.Command, sess *session.Session) err
 	return aliasCmd.Execute()
 }
 
-// unalias - remove aliases (delegates to domain)
-func (b *BuiltinExecutor) unalias(cmd *command.Command, sess *session.Session) error {
+// unalias - remove aliases (delegates to domain).
+func (b *Executor) unalias(cmd *command.Command, sess *session.Session) error {
 	unaliasCmd, err := builtins.NewUnaliasCommand(cmd.Args(), sess)
 	if err != nil {
 		return err
@@ -194,8 +202,8 @@ func (b *BuiltinExecutor) unalias(cmd *command.Command, sess *session.Session) e
 	return unaliasCmd.Execute()
 }
 
-// typeCmd - print command type (delegates to domain)
-func (b *BuiltinExecutor) typeCmd(cmd *command.Command, sess *session.Session) error {
+// typeCmd - print command type (delegates to domain).
+func (b *Executor) typeCmd(cmd *command.Command, sess *session.Session) error {
 	typeCmd, err := builtins.NewTypeCommand(cmd.Args(), sess, b.stdout)
 	if err != nil {
 		return err
@@ -203,8 +211,8 @@ func (b *BuiltinExecutor) typeCmd(cmd *command.Command, sess *session.Session) e
 	return typeCmd.Execute()
 }
 
-// jobs - list background jobs (delegates to domain)
-func (b *BuiltinExecutor) jobs(sess *session.Session) error {
+// jobs - list background jobs (delegates to domain).
+func (b *Executor) jobs(sess *session.Session) error {
 	jobsCmd, err := builtins.NewJobsCommand(sess, b.stdout)
 	if err != nil {
 		return err
@@ -212,8 +220,8 @@ func (b *BuiltinExecutor) jobs(sess *session.Session) error {
 	return jobsCmd.Execute()
 }
 
-// fg - bring job to foreground (delegates to domain)
-func (b *BuiltinExecutor) fg(cmd *command.Command, sess *session.Session) error {
+// fg - bring job to foreground (delegates to domain).
+func (b *Executor) fg(cmd *command.Command, sess *session.Session) error {
 	fgCmd, err := builtins.NewFgCommand(cmd.Args(), sess)
 	if err != nil {
 		return err
@@ -221,8 +229,8 @@ func (b *BuiltinExecutor) fg(cmd *command.Command, sess *session.Session) error 
 	return fgCmd.Execute()
 }
 
-// bg - send job to background (delegates to domain)
-func (b *BuiltinExecutor) bg(cmd *command.Command, sess *session.Session) error {
+// bg - send job to background (delegates to domain).
+func (b *Executor) bg(cmd *command.Command, sess *session.Session) error {
 	bgCmd, err := builtins.NewBgCommand(cmd.Args(), sess)
 	if err != nil {
 		return err
@@ -230,8 +238,8 @@ func (b *BuiltinExecutor) bg(cmd *command.Command, sess *session.Session) error 
 	return bgCmd.Execute()
 }
 
-// help - print help message
-func (b *BuiltinExecutor) help() error {
+// help - print help message.
+func (b *Executor) help() error {
 	help := `
 gosh - Go Shell
 Available builtin commands:
@@ -255,6 +263,8 @@ Use external commands by typing their name directly.
 Pipeline commands with | (pipe operator).
 Run commands in background with & (ampersand).
 `
-	_, _ = fmt.Fprintln(b.stdout, help)
+	if _, err := fmt.Fprintln(b.stdout, help); err != nil {
+		return shared.NewDomainError("help", shared.ErrBuiltinFailed, err.Error())
+	}
 	return nil
 }

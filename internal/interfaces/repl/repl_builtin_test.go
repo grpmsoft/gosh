@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -147,8 +148,11 @@ func TestExecBuiltinCommand_Pwd(t *testing.T) {
 		require.True(t, ok, "expected commandExecutedMsg")
 		assert.NoError(t, execMsg.err)
 		assert.Equal(t, 0, execMsg.exitCode)
-		// Trim whitespace/newlines for cross-platform consistency
-		assert.Contains(t, strings.TrimSpace(execMsg.output), os.TempDir())
+
+		// Normalize paths for cross-platform comparison (removes trailing slashes)
+		expectedPath := filepath.Clean(os.TempDir())
+		actualPath := filepath.Clean(strings.TrimSpace(execMsg.output))
+		assert.Contains(t, actualPath, expectedPath)
 	})
 }
 

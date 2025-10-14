@@ -14,7 +14,7 @@ A modern, cross-platform shell written in Go with beautiful TUI and native scrip
 - **Compact** - Minimal, space-efficient
 - **Chat** - Telegram-like conversational interface
 
-### 📜 **Command History** (v0.1.0-alpha.2)
+### 📜 **Command History**
 - **Persistent History**: Commands automatically save to `~/.gosh_history`
 - **Auto-Load**: History loads on shell startup
 - **Up/Down Navigation**: Navigate through command history with arrow keys
@@ -42,8 +42,8 @@ A modern, cross-platform shell written in Go with beautiful TUI and native scrip
 - **Multi-line Input**: Alt+Enter for multiline commands
 - **Viewport Scrolling**: PgUp/PgDn, Mouse Wheel support
 - **Auto-scroll**: Automatically scroll to bottom on new output
-- **Visual Help Overlay**: Press F1 or ? for keyboard shortcuts reference (since beta.3)
-- **UI Mode Switching**: Alt+1-4 hotkeys to switch modes on-the-fly (since beta.2)
+- **Visual Help Overlay**: Press F1 or ? for keyboard shortcuts reference
+- **UI Mode Switching**: Alt+1-4 hotkeys to switch modes on-the-fly
 
 ## 📦 Installation
 
@@ -127,7 +127,7 @@ History is stored in `~/.gosh_history` and automatically managed.
 - Auto-save: Enabled
 - Deduplication: Consecutive duplicates removed
 
-### .goshrc Configuration (v0.1.0-alpha.4)
+### .goshrc Configuration
 GoSh supports `.goshrc` configuration file for customization:
 - **Location**: `~/.goshrc` (home directory)
 - **Aliases**: Define custom command aliases
@@ -145,128 +145,34 @@ export EDITOR=vim
 export GOPATH=$HOME/go
 ```
 
-## 🏗️ Architecture
+## 🗺️ Project Status
 
-GoSh is built using modern software architecture patterns:
+**Current**: v0.1.0-beta.4 (Code Quality & API Refinement)
+**Next**: v0.1.0-rc.1 (Community Feedback)
+**Target**: v0.1.0 Stable (Q2 2025)
 
-- **DDD (Domain-Driven Design)**: Rich domain models with business logic
-- **Hexagonal Architecture**: Clean separation of concerns
-- **Bubbletea TUI Framework**: Elm Architecture (Model-View-Update)
-- **Native POSIX Shell**: mvdan.cc/sh v3.12.0 for cross-platform script execution
+See [ROADMAP.md](ROADMAP.md) for detailed development plan.
 
-### Project Structure
-```
-gosh/
-├── cmd/gosh/                    # Entry point
-├── internal/
-│   ├── domain/                  # Domain models (Session, History, Process)
-│   │   ├── history/            # History aggregate (30+ tests)
-│   │   ├── session/            # Session aggregate
-│   │   └── process/            # Process management
-│   ├── application/             # Use cases (10+ tests)
-│   │   └── history/            # History use cases
-│   ├── infrastructure/          # External adapters (15+ tests)
-│   │   ├── history/            # File persistence
-│   │   └── executor/           # Command execution
-│   └── interfaces/              # UI layer
-│       └── repl/               # Bubbletea REPL
-└── docs/                        # Documentation
-    └── dev/                     # Development docs
-```
+## 📝 Documentation
 
-## 🧪 Testing
-
-GoSh has comprehensive test coverage:
-
-```bash
-# Run all tests
-go test ./...
-
-# Run with coverage
-go test -cover ./...
-
-# Run specific package
-go test ./internal/domain/history/...
-```
-
-**Current Test Coverage**:
-- Domain layer: 95%+
-- Application layer: 90%+
-- Infrastructure layer: 80%+
-- Total: 130+ tests passing across 21 packages
-
-## 🗺️ Roadmap
-
-### Current Version: v0.1.0-beta.4 ✅
-**Status**: In Development - Code Quality & API Refinement (breaking changes in this release)
-
-**What's New in beta.4**:
-- [x] Comprehensive linter cleanup (524→46 errors, 91% reduction)
-- [x] Security fixes (gosec): file permissions, secure defaults
-- [x] API improvements: renamed stuttering types for Go idioms
-- [x] Code quality: removed dead code, fixed deprecations
-- [x] Documentation: 385 comment improvements, architecture docs
-
-**Previously Implemented** (alpha.1 → beta.3):
-- [x] History persistence and navigation (alpha.1-2)
-- [x] Built-in commands: cd, pwd, export, unset, type, alias (alpha.3-4)
-- [x] .goshrc configuration file (alpha.4)
-- [x] Unix-style pipelines (|) (alpha.5)
-- [x] File redirections (>, >>, <, 2>) (alpha.6)
-- [x] Background jobs (&, jobs, fg, bg) (beta.1)
-- [x] Glob patterns (*, ?, [], {}) (beta.2)
-- [x] Visual help overlay (F1/?) (beta.3)
-- [x] 4 UI modes: Classic, Warp, Compact, Chat
-- [x] 130+ tests, CI/CD on 3 platforms
-
-### Next: v0.1.0-rc.1 (After beta.4)
-- [ ] Address community feedback from beta.4
-- [ ] Fix critical bugs reported by users
-- [ ] Performance optimizations if needed
-- [ ] Final polish before stable release
-
-### Future: v0.1.0 (Stable Release)
-- [ ] No critical bugs
-- [ ] Community-validated features
-- [ ] Complete documentation
-- [ ] Production-ready
-
-### Post-Release: v0.2.0
-Based on community feedback:
-- Ctrl+R fuzzy search UI
-- Enhanced scripting support
-- Advanced configuration
-- Features requested by community
-
-See [RELEASE_ROADMAP.md](docs/dev/RELEASE_ROADMAP.md) for detailed roadmap.
-
-## 📝 Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
+- **[ROADMAP.md](ROADMAP.md)** - Development roadmap and future plans
+- **[CHANGELOG.md](CHANGELOG.md)** - Detailed version history
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute
+- **[LICENSE](LICENSE)** - MIT License
 
 ## 🤝 Contributing
 
-Contributions are welcome! This project follows:
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development setup and workflow
+- Testing requirements (TDD)
+- Code style guidelines
+- Pull request process
 
-- **Semantic Versioning 2.0.0**
-- **Conventional Commits** (feat:, fix:, docs:, etc.)
-- **Test-Driven Development** (TDD)
-- **Domain-Driven Design** principles
-
-### Development Workflow
+Quick start:
 ```bash
-# Clone repository
 git clone https://github.com/grpmsoft/gosh.git
 cd gosh
-
-# Run tests
-go test ./...
-
-# Build
-go build -o gosh ./cmd/gosh
-
-# Run
-./gosh
+make test && make build
 ```
 
 ## 📄 License

@@ -149,12 +149,33 @@ gosh/
 
 ---
 
-## 🔀 Git Workflow
+## 🔀 Git Workflow (Git Flow - Best Practice 2025)
 
 ### Branch Strategy
-- `main` - Stable releases
-- `feature/xxx` - Feature branches
-- `fix/xxx` - Bug fix branches
+
+**IMPORTANT**: We follow strict git-flow to protect `main` branch quality!
+
+```
+┌──────────────┐
+│  feature/xxx │  ← Development work
+└──────┬───────┘
+       │
+       ↓ (PR after local tests)
+┌──────────────┐
+│release/vX.Y.Z│  ← CI tests on 3 platforms (Linux/macOS/Windows)
+└──────┬───────┘
+       │ (merge only after CI passes)
+       ↓
+┌──────────────┐
+│     main     │  ← Production-ready code ONLY
+└──────────────┘
+```
+
+**Branch Types**:
+- `main` - **Production-ready code only** (protected)
+- `release/vX.Y.Z` - Pre-release testing (CI runs here)
+- `feature/xxx` - Feature development
+- `fix/xxx` - Bug fixes
 
 ### Commit Messages
 
@@ -184,17 +205,68 @@ docs: update roadmap with v0.2.0 tasks
 git checkout -b feature/your-feature
 
 # 2. Make changes with tests
+# - Write tests first (TDD)
+# - Implement feature
+# - Ensure all tests pass
 
-# 3. Format and test
+# 3. Format and test locally
 make fmt
 make test
+make lint
 
 # 4. Commit
 git add .
-git commit -m "feat: your feature"
+git commit -m "feat: your feature description"
 
-# 5. Push
+# 5. Push feature branch
 git push origin feature/your-feature
+
+# 6. Create Pull Request to 'release/vX.Y.Z' branch
+# (NOT to main!)
+
+# 7. Wait for code review and CI to pass
+
+# 8. After merge to release branch:
+# - Maintainers will merge release → main
+# - Tag will be created
+# - Release will be published automatically
+```
+
+### For Maintainers: Release Branch Workflow
+
+```bash
+# 1. Create release branch from main
+git checkout main
+git pull origin main
+git checkout -b release/v0.1.0-beta.X
+
+# 2. Update version in docs
+# - README.md
+# - ROADMAP.md
+# - CHANGELOG.md
+
+# 3. Commit documentation
+git add CHANGELOG.md README.md ROADMAP.md
+git commit -m "docs: prepare v0.1.0-beta.X release"
+
+# 4. Push release branch (triggers CI on 3 platforms)
+git push origin release/v0.1.0-beta.X
+
+# 5. WAIT for CI to pass (all green checkmarks)
+# Check: https://github.com/grpmsoft/gosh/actions
+
+# 6. ONLY if CI passes: Merge to main
+git checkout main
+git merge --no-ff release/v0.1.0-beta.X
+git push origin main
+
+# 7. Create and push tag (triggers release)
+git tag -a v0.1.0-beta.X -m "Release description"
+git push origin v0.1.0-beta.X
+
+# 8. Cleanup
+git branch -d release/v0.1.0-beta.X
+git push origin --delete release/v0.1.0-beta.X
 ```
 
 ---

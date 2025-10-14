@@ -1,7 +1,7 @@
 # 🐚 GoSh - Cross-Platform Go Shell
 
-**Version**: 0.1.0-beta.5
-**Status**: Beta - Classic Mode Rendering Fixes
+**Version**: 0.1.0-beta.6
+**Status**: Beta - Classic Mode + Linter Fixes
 **License**: MIT
 
 A modern, cross-platform shell written in Go with beautiful TUI and native script execution.
@@ -147,7 +147,7 @@ export GOPATH=$HOME/go
 
 ## 🗺️ Project Status
 
-**Current**: v0.1.0-beta.5 (Classic Mode Rendering Fixes)
+**Current**: v0.1.0-beta.6 (Classic Mode + Linter Fixes)
 **Next**: v0.1.0-rc.1 (Community Feedback)
 **Target**: v0.1.0 Stable (Q2 2025)
 

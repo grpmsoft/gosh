@@ -4,10 +4,10 @@ This document outlines the planned development roadmap for GoSh, organized by re
 
 ---
 
-## 📍 Current Version: v0.1.0-beta.5 ✅
+## 📍 Current Version: v0.1.0-beta.6 ✅
 
 **Status**: Released (2025-10-14)
-**Focus**: Classic Mode Rendering Fixes
+**Focus**: Classic Mode + Linter Fixes
 
 ### What's New
 - ✅ **Classic mode spinner fix**: Fixed spinner continuing after command completion

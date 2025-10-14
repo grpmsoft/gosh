@@ -2,21 +2,22 @@ package builtins
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/grpmsoft/gosh/internal/domain/job"
 	"github.com/grpmsoft/gosh/internal/domain/session"
 	"github.com/grpmsoft/gosh/internal/domain/shared"
-	"strconv"
-	"strings"
 )
 
-// BgCommand represents the bg builtin command
-// Resumes a stopped job in background
+// BgCommand represents the bg builtin command.
+// Resumes a stopped job in background.
 type BgCommand struct {
 	args    []string
 	session *session.Session
 }
 
-// NewBgCommand creates a new bg command
+// NewBgCommand creates a new bg command.
 func NewBgCommand(args []string, sess *session.Session) (*BgCommand, error) {
 	if sess == nil {
 		return nil, shared.NewDomainError(
@@ -32,8 +33,8 @@ func NewBgCommand(args []string, sess *session.Session) (*BgCommand, error) {
 	}, nil
 }
 
-// Execute executes the bg command
-// Syntax: bg [%n] - resumes job n in background, or most recent stopped job if no arg
+// Execute executes the bg command.
+// Syntax: bg [%n] - resumes job n in background, or most recent stopped job if no arg.
 func (b *BgCommand) Execute() error {
 	jobManager := b.session.JobManager()
 	if jobManager == nil {

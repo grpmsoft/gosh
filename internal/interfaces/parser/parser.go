@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -10,13 +11,13 @@ import (
 	"github.com/grpmsoft/gosh/internal/domain/shared"
 )
 
-// Parser performs syntactic analysis of tokens
+// Parser performs syntactic analysis of tokens.
 type Parser struct {
 	tokens []Token
 	pos    int
 }
 
-// NewParser creates a new parser
+// NewParser creates a new parser.
 func NewParser(tokens []Token) *Parser {
 	return &Parser{
 		tokens: tokens,
@@ -24,7 +25,7 @@ func NewParser(tokens []Token) *Parser {
 	}
 }
 
-// Parse parses tokens into a command or pipeline
+// Parse parses tokens into a command or pipeline.
 func (p *Parser) Parse() (*command.Command, *pipeline.Pipeline, error) {
 	commands, err := p.parseCommands()
 	if err != nil {
@@ -49,13 +50,18 @@ func (p *Parser) Parse() (*command.Command, *pipeline.Pipeline, error) {
 	return nil, pipe, nil
 }
 
-// parseCommands parses a sequence of commands
+// parseCommands parses a sequence of commands.
 func (p *Parser) parseCommands() ([]*command.Command, error) {
 	commands := make([]*command.Command, 0)
 
 	for !p.isAtEnd() {
 		cmd, err := p.parseCommand()
 		if err != nil {
+			// Skip non-command tokens (pipes, semicolons, etc.)
+			if errors.Is(err, shared.ErrSkipCommand) {
+				// Continue to next token
+				continue
+			}
 			return nil, err
 		}
 
@@ -83,15 +89,15 @@ func (p *Parser) parseCommands() ([]*command.Command, error) {
 	return commands, nil
 }
 
-// parseCommand parses a single command
+// parseCommand parses a single command.
 func (p *Parser) parseCommand() (*command.Command, error) {
 	if p.isAtEnd() {
-		return nil, nil
+		return nil, shared.ErrSkipCommand
 	}
 
 	// Skip empty tokens
 	if p.current().Type != TokenWord {
-		return nil, nil
+		return nil, shared.ErrSkipCommand
 	}
 
 	// Read command name
@@ -177,7 +183,7 @@ done:
 	return cmd, nil
 }
 
-// current returns the current token
+// current returns the current token.
 func (p *Parser) current() Token {
 	if p.pos >= len(p.tokens) {
 		return Token{Type: TokenEOF}
@@ -185,19 +191,19 @@ func (p *Parser) current() Token {
 	return p.tokens[p.pos]
 }
 
-// advance moves to the next token
+// advance moves to the next token.
 func (p *Parser) advance() {
 	if p.pos < len(p.tokens) {
 		p.pos++
 	}
 }
 
-// isAtEnd checks if end of tokens reached
+// isAtEnd checks if end of tokens reached.
 func (p *Parser) isAtEnd() bool {
 	return p.pos >= len(p.tokens) || p.current().Type == TokenEOF
 }
 
-// ParseCommandLine is a convenience function for parsing a command line
+// ParseCommandLine is a convenience function for parsing a command line.
 func ParseCommandLine(input string) (*command.Command, *pipeline.Pipeline, error) {
 	lexer := NewLexer(input)
 	tokens, err := lexer.Tokenize()
@@ -209,8 +215,8 @@ func ParseCommandLine(input string) (*command.Command, *pipeline.Pipeline, error
 	return parser.Parse()
 }
 
-// expandGlobs expands glob patterns (*, ?, []) in arguments
-// Returns expanded list or error if pattern has no matches
+// expandGlobs expands glob patterns (*, ?, []) in arguments.
+// Returns expanded list or error if pattern has no matches.
 func expandGlobs(args []string) ([]string, error) {
 	result := make([]string, 0, len(args))
 
@@ -247,7 +253,7 @@ func expandGlobs(args []string) ([]string, error) {
 	return result, nil
 }
 
-// containsGlobPattern checks if string contains glob pattern characters
+// containsGlobPattern checks if string contains glob pattern characters.
 func containsGlobPattern(s string) bool {
 	return strings.ContainsAny(s, "*?[]")
 }

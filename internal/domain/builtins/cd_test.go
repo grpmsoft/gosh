@@ -1,11 +1,12 @@
 package builtins
 
 import (
-	"github.com/grpmsoft/gosh/internal/domain/session"
-	"github.com/grpmsoft/gosh/internal/domain/shared"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/grpmsoft/gosh/internal/domain/session"
+	"github.com/grpmsoft/gosh/internal/domain/shared"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -187,7 +188,7 @@ func TestNewCdCommand_NilSession(t *testing.T) {
 	assert.Contains(t, err.Error(), "session cannot be nil")
 }
 
-// Helper function
+// Helper function.
 func createTestSession(t *testing.T) *session.Session {
 	// Use a safe working directory (temp dir or home)
 	workingDir := t.TempDir()

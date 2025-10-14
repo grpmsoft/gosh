@@ -2,22 +2,23 @@ package builtins
 
 import (
 	"fmt"
+
 	"github.com/grpmsoft/gosh/internal/domain/session"
 	"github.com/grpmsoft/gosh/internal/domain/shared"
 )
 
-// UnaliasCommand represents the unalias command
-// Removes custom aliases
+// UnaliasCommand represents the unalias command.
+// Removes custom aliases.
 // Supports:
-// - unalias name       - remove single alias
-// - unalias n1 n2 n3   - remove multiple aliases
-// - unalias -a         - remove all aliases
+// - unalias name       - remove single alias.
+// - unalias n1 n2 n3   - remove multiple aliases.
+// - unalias -a         - remove all aliases.
 type UnaliasCommand struct {
 	args    []string
 	session *session.Session
 }
 
-// NewUnaliasCommand creates a new unalias command
+// NewUnaliasCommand creates a new unalias command.
 func NewUnaliasCommand(args []string, sess *session.Session) (*UnaliasCommand, error) {
 	if sess == nil {
 		return nil, shared.NewDomainError(
@@ -41,7 +42,7 @@ func NewUnaliasCommand(args []string, sess *session.Session) (*UnaliasCommand, e
 	}, nil
 }
 
-// Execute executes the unalias command
+// Execute executes the unalias command.
 func (u *UnaliasCommand) Execute() error {
 	// Check for -a flag (remove all)
 	if len(u.args) == 1 && u.args[0] == "-a" {
@@ -58,7 +59,7 @@ func (u *UnaliasCommand) Execute() error {
 	return nil
 }
 
-// removeAlias removes a single alias
+// removeAlias removes a single alias.
 func (u *UnaliasCommand) removeAlias(name string) error {
 	// Check if alias exists
 	if _, ok := u.session.GetAlias(name); !ok {
@@ -70,14 +71,10 @@ func (u *UnaliasCommand) removeAlias(name string) error {
 	}
 
 	// Remove alias
-	if err := u.session.RemoveAlias(name); err != nil {
-		return err
-	}
-
-	return nil
+	return u.session.RemoveAlias(name)
 }
 
-// removeAllAliases removes all aliases
+// removeAllAliases removes all aliases.
 func (u *UnaliasCommand) removeAllAliases() error {
 	aliases := u.session.GetAllAliases()
 

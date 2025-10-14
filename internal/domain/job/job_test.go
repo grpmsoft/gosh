@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestNewJob tests creating a new job
+// TestNewJob tests creating a new job.
 func TestNewJob(t *testing.T) {
 	t.Run("creates job with valid parameters", func(t *testing.T) {
 		cmd, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
@@ -73,7 +73,7 @@ func TestNewJob(t *testing.T) {
 	})
 }
 
-// TestJob_Stop tests stopping a job
+// TestJob_Stop tests stopping a job.
 func TestJob_Stop(t *testing.T) {
 	t.Run("stops running job", func(t *testing.T) {
 		cmd, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
@@ -100,7 +100,7 @@ func TestJob_Stop(t *testing.T) {
 	})
 }
 
-// TestJob_Resume tests resuming a job
+// TestJob_Resume tests resuming a job.
 func TestJob_Resume(t *testing.T) {
 	t.Run("resumes stopped job", func(t *testing.T) {
 		cmd, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
@@ -127,7 +127,7 @@ func TestJob_Resume(t *testing.T) {
 	})
 }
 
-// TestJob_Complete tests successful job completion
+// TestJob_Complete tests successful job completion.
 func TestJob_Complete(t *testing.T) {
 	t.Run("completes running job", func(t *testing.T) {
 		cmd, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
@@ -155,7 +155,7 @@ func TestJob_Complete(t *testing.T) {
 	})
 }
 
-// TestJob_Fail tests job completion with error
+// TestJob_Fail tests job completion with error.
 func TestJob_Fail(t *testing.T) {
 	t.Run("fails running job", func(t *testing.T) {
 		cmd, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
@@ -171,7 +171,7 @@ func TestJob_Fail(t *testing.T) {
 	})
 }
 
-// TestJob_BringToForeground tests bringing job to foreground
+// TestJob_BringToForeground tests bringing job to foreground.
 func TestJob_BringToForeground(t *testing.T) {
 	t.Run("brings background job to foreground", func(t *testing.T) {
 		cmd, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
@@ -210,7 +210,7 @@ func TestJob_BringToForeground(t *testing.T) {
 	})
 }
 
-// TestJob_SendToBackground tests sending job to background
+// TestJob_SendToBackground tests sending job to background.
 func TestJob_SendToBackground(t *testing.T) {
 	t.Run("sends foreground job to background", func(t *testing.T) {
 		cmd, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
@@ -238,7 +238,7 @@ func TestJob_SendToBackground(t *testing.T) {
 	})
 }
 
-// TestJob_StatusLine tests status formatting
+// TestJob_StatusLine tests status formatting.
 func TestJob_StatusLine(t *testing.T) {
 	t.Run("formats status for background running job", func(t *testing.T) {
 		cmd, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)

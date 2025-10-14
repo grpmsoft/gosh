@@ -11,6 +11,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// All methods in this file use Bubbletea's MVU (Model-View-Update) pattern,.
+// which requires value receivers. The "hugeParam" warnings are false positives.
+//
+//nolint:gocritic // All Model methods: Bubbletea MVU requires value receivers
+
 // Update handles messages (Elm Architecture).
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
@@ -25,7 +30,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.MouseMsg:
 		// Handle mouse wheel for viewport
-		if msg.Type == tea.MouseWheelUp || msg.Type == tea.MouseWheelDown {
+		if msg.Action == tea.MouseActionPress && (msg.Button == tea.MouseButtonWheelUp || msg.Button == tea.MouseButtonWheelDown) {
 			m.autoScroll = false // Disable auto-scroll on manual scrolling
 			m.viewport, vpCmd = m.viewport.Update(msg)
 			return m, vpCmd
@@ -40,13 +45,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Classic mode: prompt inside viewport, use full height (we preserve scroll via YOffset)
 		// Other modes: prompt outside viewport, reserve space
 		var viewportHeight int
-		if m.config.UI.Mode == config.UIModeClassic {
+		switch m.config.UI.Mode {
+		case config.UIModeClassic:
 			// Classic mode - prompt inside viewport, full screen height
 			viewportHeight = msg.Height
-		} else if m.config.UI.Mode == config.UIModeCompact {
+		case config.UIModeCompact:
 			// Compact mode - reserve 1 line for prompt
 			viewportHeight = msg.Height - 1
-		} else {
+		default:
 			// Warp/Chat - reserve 3 lines (prompt + separator)
 			viewportHeight = msg.Height - 3
 		}
@@ -272,11 +278,12 @@ func (m Model) switchUIMode(key string) (tea.Model, tea.Cmd) {
 	// Recalculate viewport height for new mode.
 	// Classic: prompt inside, full height; Others: prompt outside, reserve space.
 	var viewportHeight int
-	if newMode == config.UIModeClassic {
+	switch newMode {
+	case config.UIModeClassic:
 		viewportHeight = m.height
-	} else if newMode == config.UIModeCompact {
+	case config.UIModeCompact:
 		viewportHeight = m.height - 1
-	} else {
+	default:
 		viewportHeight = m.height - 3
 	}
 
@@ -375,11 +382,12 @@ func (m Model) handleModeCommand(commandLine string) (tea.Model, tea.Cmd) {
 	// Recalculate viewport height for new mode.
 	// Classic: prompt inside, full height; Others: prompt outside, reserve space.
 	var viewportHeight int
-	if newMode == config.UIModeClassic {
+	switch newMode {
+	case config.UIModeClassic:
 		viewportHeight = m.height
-	} else if newMode == config.UIModeCompact {
+	case config.UIModeCompact:
 		viewportHeight = m.height - 1
-	} else {
+	default:
 		viewportHeight = m.height - 3
 	}
 
@@ -411,6 +419,7 @@ func (m Model) handleModeCommand(commandLine string) (tea.Model, tea.Cmd) {
 }
 
 // handleTabCompletion handles Tab-completion.
+//
 func (m Model) handleTabCompletion() (tea.Model, tea.Cmd) {
 	input := m.textarea.Value()
 

@@ -21,20 +21,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockHistoryRepository implements a mock for HistoryRepository interface.
+// mockHistoryRepository implements a mock for Repository interface.
 type mockHistoryRepository struct{}
 
-func (m *mockHistoryRepository) Save(h *history.History) error {
+func (m *mockHistoryRepository) Save(_ *history.History) error {
 	// Mock implementation - always succeeds
 	return nil
 }
 
-func (m *mockHistoryRepository) Load(h *history.History) error {
+func (m *mockHistoryRepository) Load(_ *history.History) error {
 	// Mock implementation - always succeeds
 	return nil
 }
 
-func (m *mockHistoryRepository) Append(command string) error {
+func (m *mockHistoryRepository) Append(_ string) error {
 	// Mock implementation - always succeeds
 	return nil
 }
@@ -57,10 +57,10 @@ func createTestModelForHelpers(t *testing.T) *Model {
 
 	// Create filesystem and executors
 	fs := &mockFileSystem{}
-	builtinExecutor := builtin.NewBuiltinExecutor(fs, logger)
+	builtinExecutor := builtin.NewExecutor(fs, logger)
 	commandExecutor := executor.NewOSCommandExecutor(logger)
 	pipelineExecutor := executor.NewOSPipelineExecutor(logger)
-	executeUseCase := execute.NewExecuteCommandUseCase(
+	executeUseCase := execute.NewUseCase(
 		builtinExecutor,
 		commandExecutor,
 		pipelineExecutor,

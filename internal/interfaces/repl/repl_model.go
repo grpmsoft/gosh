@@ -26,12 +26,24 @@ import (
 )
 
 // Model represents REPL state (Elm Architecture).
+//
+// IMPORTANT: Bubbletea's MVU (Model-View-Update) pattern requires value receivers.
+// for Init(), Update(), and View() methods. This means Model is passed by value (copy).
+// on every update, which is the core immutability principle of the Elm architecture.
+//
+// Linter warnings about "hugeParam" (Model is 21KB) are expected and cannot be "fixed".
+// without breaking the Bubbletea architecture. This is NOT a performance issue:
+// - Bubbletea's design is optimized for this pattern.
+// - Go's compiler efficiently handles struct copies.
+// - The immutability benefits outweigh the copy cost.
+//
+//nolint:gocritic // hugeParam: Bubbletea MVU architecture requires value receivers
 type Model struct {
 	// Core components
 	textarea         textarea.Model
 	viewport         viewport.Model
-	sessionManager   *appsession.SessionManager
-	executeUseCase   *execute.ExecuteCommandUseCase
+	sessionManager   *appsession.Manager
+	executeUseCase   *execute.UseCase
 	pipelineExecutor *executor.OSPipelineExecutor
 	commandExecutor  *executor.OSCommandExecutor
 	currentSession   *session.Session
@@ -114,8 +126,8 @@ type commandExecutedMsg struct {
 
 // NewBubbleteaREPL creates new bubbletea REPL.
 func NewBubbleteaREPL(
-	sessionManager *appsession.SessionManager,
-	executeUseCase *execute.ExecuteCommandUseCase,
+	sessionManager *appsession.Manager,
+	executeUseCase *execute.UseCase,
 	logger *slog.Logger,
 	ctx context.Context,
 	cfg *config.Config,
@@ -263,6 +275,8 @@ func NewBubbleteaREPL(
 }
 
 // Init initializes the model (Elm Architecture).
+//
+//nolint:gocritic // hugeParam: Bubbletea MVU requires value receiver
 func (m Model) Init() tea.Cmd {
 	return textarea.Blink
 }

@@ -43,14 +43,10 @@ func main() {
 	}
 }
 
-// executeNonInteractive executes a command in non-interactive mode (-c flag)
+// executeNonInteractive executes a command in non-interactive mode (-c flag).
 func executeNonInteractive(ctx context.Context, logger *slog.Logger, commandLine string) int {
 	// Create session and use case for execution
-	sessionManager, executeUseCase, err := bootstrapNonInteractive(logger)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to initialize: %v\n", err)
-		return 1
-	}
+	sessionManager, executeUseCase := bootstrapNonInteractive(logger)
 
 	// Create temporary session
 	sess, err := sessionManager.CreateSession("non-interactive")
@@ -62,7 +58,7 @@ func executeNonInteractive(ctx context.Context, logger *slog.Logger, commandLine
 	// Execute command
 	resp, err := executeUseCase.Execute(
 		ctx,
-		execute.ExecuteCommandRequest{
+		execute.CommandRequest{
 			CommandLine: commandLine,
 			SessionID:   sess.ID(),
 		},

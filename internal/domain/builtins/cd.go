@@ -1,26 +1,27 @@
 package builtins
 
 import (
-	"github.com/grpmsoft/gosh/internal/domain/session"
-	"github.com/grpmsoft/gosh/internal/domain/shared"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/grpmsoft/gosh/internal/domain/session"
+	"github.com/grpmsoft/gosh/internal/domain/shared"
 )
 
-// CdCommand represents the cd (change directory) command
+// CdCommand represents the cd (change directory) command.
 // Supports:
-// - cd          - go to HOME
-// - cd <path>   - go to specified directory
-// - cd ~        - go to HOME
-// - cd ~/path   - go to HOME subdirectory
-// - cd -        - go to previous directory
+// - cd          - go to HOME.
+// - cd <path>   - go to specified directory.
+// - cd ~        - go to HOME.
+// - cd ~/path   - go to HOME subdirectory.
+// - cd -        - go to previous directory.
 type CdCommand struct {
 	targetPath string
 	session    *session.Session
 }
 
-// NewCdCommand creates a new cd command
+// NewCdCommand creates a new cd command.
 func NewCdCommand(args []string, sess *session.Session) (*CdCommand, error) {
 	if sess == nil {
 		return nil, shared.NewDomainError(
@@ -44,7 +45,7 @@ func NewCdCommand(args []string, sess *session.Session) (*CdCommand, error) {
 	}, nil
 }
 
-// Execute executes the cd command
+// Execute executes the cd command.
 func (c *CdCommand) Execute() error {
 	// Determine target directory
 	targetDir, err := c.resolveTargetDirectory()
@@ -84,7 +85,7 @@ func (c *CdCommand) Execute() error {
 	return nil
 }
 
-// resolveTargetDirectory determines the target directory considering special symbols
+// resolveTargetDirectory determines the target directory considering special symbols.
 func (c *CdCommand) resolveTargetDirectory() (string, error) {
 	// Case 1: cd without arguments - go to HOME
 	if c.targetPath == "" {
@@ -131,7 +132,7 @@ func (c *CdCommand) resolveTargetDirectory() (string, error) {
 	return filepath.Join(c.session.WorkingDirectory(), c.targetPath), nil
 }
 
-// getHomeDirectory returns the user's home directory
+// getHomeDirectory returns the user's home directory.
 func (c *CdCommand) getHomeDirectory() (string, error) {
 	// First try $HOME (Unix)
 	if homeDir, ok := c.session.Environment().Get("HOME"); ok && homeDir != "" {
@@ -156,7 +157,7 @@ func (c *CdCommand) getHomeDirectory() (string, error) {
 	return homeDir, nil
 }
 
-// validateDirectory checks that the path exists and is a directory
+// validateDirectory checks that the path exists and is a directory.
 func (c *CdCommand) validateDirectory(path string) error {
 	// Check existence
 	info, err := os.Stat(path)

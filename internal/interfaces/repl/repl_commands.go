@@ -20,6 +20,11 @@ import (
 	"mvdan.cc/sh/v3/syntax"
 )
 
+const (
+	extBash = ".bash"
+	extSh   = ".sh"
+)
+
 // expandAliases recursively expands aliases in command.
 // Returns expanded command or error on cyclic dependency.
 func (m *Model) expandAliases(commandLine string, depth int) (string, error) {
@@ -142,29 +147,28 @@ func (m Model) executeCommand() (tea.Model, tea.Cmd) {
 		// Shell script (.sh/.bash)
 		if m.isInteractiveCommand(cmdName) {
 			// Interactive script (with read, clear, menu) - via bash + tea.ExecProcess
-			return m, m.execInteractiveCommand(value)
-		} else {
-			// Regular script - execute NATIVELY via mvdan.cc/sh
-			m.executing = true
-			return m, m.executeShellScriptNative(scriptPath, cmdArgs)
+			return m, m.execInteractiveCommand(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 		}
+		// Regular script - execute NATIVELY via mvdan.cc/sh
+		m.executing = true
+		return m, m.executeShellScriptNative(scriptPath, cmdArgs) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 	}
 
 	// Interactive command (vim, ssh, etc.) - via tea.ExecProcess
 	if m.isInteractiveCommand(cmdName) {
-		return m, m.execInteractiveCommand(value)
+		return m, m.execInteractiveCommand(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 	}
 
 	// Check if this is a builtin command (cd, export, unset)
 	// They must execute synchronously in shell process
 	if m.isBuiltinCommand(cmdName) {
 		m.executing = true
-		return m, m.execBuiltinCommand(value)
+		return m, m.execBuiltinCommand(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 	}
 
 	// Regular command - execute asynchronously with output capture
 	m.executing = true
-	return m, m.execCommandAsync(value)
+	return m, m.execCommandAsync(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 }
 
 // showHelp shows help (text version for help command).
@@ -318,7 +322,7 @@ func (m *Model) execCommandAsync(commandLine string) tea.Cmd {
 
 // prepareCommand prepares command for execution.
 // Detects scripts and adds necessary interpreter (sh, bash, cmd, powershell).
-func (m *Model) prepareCommand(cmdName string, cmdArgs []string) (string, []string) {
+func (m *Model) prepareCommand(cmdName string, cmdArgs []string) (finalCmd string, finalArgs []string) {
 	// Check if command is a script file
 	var scriptPath string
 
@@ -341,7 +345,7 @@ func (m *Model) prepareCommand(cmdName string, cmdArgs []string) (string, []stri
 		ext := strings.ToLower(filepath.Ext(scriptPath))
 
 		switch ext {
-		case ".sh", ".bash":
+		case extSh, extBash:
 			// Shell script - run via sh or bash
 			// Check bash availability, otherwise use sh
 			interpreter := "sh"
@@ -394,7 +398,7 @@ func (m *Model) isShellScript(cmdName string) (string, bool) {
 
 	// Check extension
 	ext := strings.ToLower(filepath.Ext(scriptPath))
-	if ext == ".sh" || ext == ".bash" {
+	if ext == extSh || ext == extBash {
 		return scriptPath, true
 	}
 
@@ -402,7 +406,7 @@ func (m *Model) isShellScript(cmdName string) (string, bool) {
 }
 
 // extractCommandName extracts command name from string.
-func (m *Model) extractCommandName(commandLine string) (string, []string) {
+func (m *Model) extractCommandName(commandLine string) (cmdName string, cmdArgs []string) {
 	// Parse command
 	cmd, _, err := parser.ParseCommandLine(commandLine)
 	if err != nil || cmd == nil {
@@ -431,7 +435,7 @@ func (m *Model) isInteractiveCommand(cmdName string) bool {
 		// Check file extension
 		ext := strings.ToLower(filepath.Ext(scriptPath))
 		switch ext {
-		case ".sh", ".bash", ".bat", ".cmd", ".ps1":
+		case extSh, extBash, ".bat", ".cmd", ".ps1":
 			// Scripts may require interactive mode (read, input, etc.)
 			return true
 		}
@@ -471,7 +475,7 @@ func (m *Model) isInteractiveCommand(cmdName string) bool {
 func (m *Model) executeShellScriptNative(scriptPath string, args []string) tea.Cmd {
 	return func() tea.Msg {
 		// Open script file
-		file, err := os.Open(scriptPath)
+		file, err := os.Open(scriptPath) //nolint:gosec // G304: This is a shell - dynamic script execution is expected
 		if err != nil {
 			return commandExecutedMsg{
 				err:      fmt.Errorf("failed to open script: %w", err),
@@ -481,8 +485,8 @@ func (m *Model) executeShellScriptNative(scriptPath string, args []string) tea.C
 		defer func() { _ = file.Close() }()
 
 		// Parse script
-		parser := syntax.NewParser()
-		prog, err := parser.Parse(file, scriptPath)
+		scriptParser := syntax.NewParser()
+		prog, err := scriptParser.Parse(file, scriptPath)
 		if err != nil {
 			return commandExecutedMsg{
 				err:      fmt.Errorf("failed to parse script: %w", err),
@@ -621,7 +625,7 @@ func (m *Model) execInteractiveCommand(commandLine string) tea.Cmd {
 	cmdName, cmdArgs := m.prepareCommand(cmd.Name(), cmd.Args())
 
 	// Create exec.Cmd with proper settings
-	osCmd := exec.Command(cmdName, cmdArgs...)
+	osCmd := exec.Command(cmdName, cmdArgs...) //nolint:gosec // G204: This is a shell - command execution with user input is expected
 	osCmd.Dir = m.currentSession.WorkingDirectory()
 	osCmd.Env = m.currentSession.Environment().ToSlice()
 

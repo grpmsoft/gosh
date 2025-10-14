@@ -8,20 +8,30 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// All methods in this file use Bubbletea's MVU (Model-View-Update) pattern,.
+// which requires value receivers. The "hugeParam" warnings are false positives.
+//
+//nolint:gocritic // All Model methods: Bubbletea MVU requires value receivers
+
+const (
+	directionUp   = "up"
+	directionDown = "down"
+)
+
 // navigateHistory navigates command history via History.Navigator.
 func (m Model) navigateHistory(direction string) (tea.Model, tea.Cmd) {
 	var cmd string
 	var ok bool
 
 	switch direction {
-	case "up":
+	case directionUp:
 		cmd, ok = m.historyNavigator.Backward()
-	case "down":
+	case directionDown:
 		cmd, ok = m.historyNavigator.Forward()
 	}
 
 	// If navigation successful, set value
-	if ok || direction == "down" {
+	if ok || direction == directionDown {
 		m.textarea.SetValue(cmd)
 		if cmd != "" {
 			m.textarea.CursorEnd()

@@ -2,9 +2,9 @@ package history
 
 import "github.com/grpmsoft/gosh/internal/domain/history"
 
-// HistoryRepository defines the interface for history persistence
-// This is a Port in Hexagonal Architecture (Ports & Adapters)
-type HistoryRepository interface {
+// Repository defines the interface for history persistence.
+// This is a Port in Hexagonal Architecture (Ports & Adapters).
+type Repository interface {
 	// Save persists the history to storage
 	Save(h *history.History) error
 

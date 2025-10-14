@@ -4,29 +4,30 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"log/slog"
+	"os/exec"
+
 	"github.com/grpmsoft/gosh/internal/domain/command"
 	"github.com/grpmsoft/gosh/internal/domain/process"
 	"github.com/grpmsoft/gosh/internal/domain/session"
 	"github.com/grpmsoft/gosh/internal/domain/shared"
-	"log/slog"
-	"os/exec"
 
 	"github.com/google/uuid"
 )
 
-// OSPipelineExecutor - adapter for executing command pipelines
+// OSPipelineExecutor - adapter for executing command pipelines.
 type OSPipelineExecutor struct {
 	logger *slog.Logger
 }
 
-// NewOSPipelineExecutor creates a new pipeline executor
+// NewOSPipelineExecutor creates a new pipeline executor.
 func NewOSPipelineExecutor(logger *slog.Logger) *OSPipelineExecutor {
 	return &OSPipelineExecutor{
 		logger: logger,
 	}
 }
 
-// Execute executes a command pipeline
+// Execute executes a command pipeline.
 func (e *OSPipelineExecutor) Execute(
 	ctx context.Context,
 	commands []*command.Command,
@@ -45,7 +46,7 @@ func (e *OSPipelineExecutor) Execute(
 	processes := make([]*process.Process, len(commands))
 
 	for i, cmd := range commands {
-		osCmd := exec.CommandContext(ctx, cmd.Name(), cmd.Args()...)
+		osCmd := exec.CommandContext(ctx, cmd.Name(), cmd.Args()...) //nolint:gosec // G204: This is a shell - command execution with user input is expected
 		osCmd.Dir = sess.WorkingDirectory()
 		osCmd.Env = sess.Environment().ToSlice()
 		osCommands[i] = osCmd

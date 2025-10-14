@@ -1,7 +1,10 @@
+// Package execute provides use cases for command execution orchestration.
 package execute
 
 import (
 	"context"
+	"log/slog"
+
 	"github.com/grpmsoft/gosh/internal/application/ports"
 	"github.com/grpmsoft/gosh/internal/domain/command"
 	"github.com/grpmsoft/gosh/internal/domain/pipeline"
@@ -9,39 +12,38 @@ import (
 	"github.com/grpmsoft/gosh/internal/domain/session"
 	"github.com/grpmsoft/gosh/internal/domain/shared"
 	"github.com/grpmsoft/gosh/internal/interfaces/parser"
-	"log/slog"
 )
 
-// ExecuteCommandRequest - request to execute a command
-type ExecuteCommandRequest struct {
+// CommandRequest - request to execute a command.
+type CommandRequest struct {
 	CommandLine string
 	SessionID   string
 }
 
-// ExecuteCommandResponse - response to command execution
-type ExecuteCommandResponse struct {
+// CommandResponse - response to command execution.
+type CommandResponse struct {
 	Process  *process.Process
 	Stdout   string
 	Stderr   string
 	ExitCode shared.ExitCode
 }
 
-// ExecuteCommandUseCase - use case for executing commands
-type ExecuteCommandUseCase struct {
+// UseCase - use case for executing commands.
+type UseCase struct {
 	builtinExecutor  ports.BuiltinExecutor
 	commandExecutor  ports.CommandExecutor
 	pipelineExecutor ports.PipelineExecutor
 	logger           *slog.Logger
 }
 
-// NewExecuteCommandUseCase creates a new use case
-func NewExecuteCommandUseCase(
+// NewUseCase creates a new use case.
+func NewUseCase(
 	builtinExecutor ports.BuiltinExecutor,
 	commandExecutor ports.CommandExecutor,
 	pipelineExecutor ports.PipelineExecutor,
 	logger *slog.Logger,
-) *ExecuteCommandUseCase {
-	return &ExecuteCommandUseCase{
+) *UseCase {
+	return &UseCase{
 		builtinExecutor:  builtinExecutor,
 		commandExecutor:  commandExecutor,
 		pipelineExecutor: pipelineExecutor,
@@ -49,12 +51,12 @@ func NewExecuteCommandUseCase(
 	}
 }
 
-// Execute executes a command in the context of a session
-func (uc *ExecuteCommandUseCase) Execute(
+// Execute executes a command in the context of a session.
+func (uc *UseCase) Execute(
 	ctx context.Context,
-	req ExecuteCommandRequest,
+	req CommandRequest,
 	sess *session.Session,
-) (*ExecuteCommandResponse, error) {
+) (*CommandResponse, error) {
 	// Add command to history
 	if err := sess.AddToHistory(req.CommandLine); err != nil {
 		uc.logger.Warn("failed to add command to history", "error", err)
@@ -75,8 +77,8 @@ func (uc *ExecuteCommandUseCase) Execute(
 	return uc.executeCommand(ctx, cmd, sess)
 }
 
-// parseCommandLine parses the command line
-func (uc *ExecuteCommandUseCase) parseCommandLine(
+// parseCommandLine parses the command line.
+func (uc *UseCase) parseCommandLine(
 	commandLine string,
 ) (*command.Command, *pipeline.Pipeline, error) {
 	// Use parser from interfaces layer
@@ -85,12 +87,12 @@ func (uc *ExecuteCommandUseCase) parseCommandLine(
 	return parseCommandLineHelper(commandLine)
 }
 
-// executeCommand executes a single command
-func (uc *ExecuteCommandUseCase) executeCommand(
+// executeCommand executes a single command.
+func (uc *UseCase) executeCommand(
 	ctx context.Context,
 	cmd *command.Command,
 	sess *session.Session,
-) (*ExecuteCommandResponse, error) {
+) (*CommandResponse, error) {
 	uc.logger.Info("executing command",
 		"command", cmd.Name(),
 		"session", sess.ID(),
@@ -103,7 +105,7 @@ func (uc *ExecuteCommandUseCase) executeCommand(
 			return nil, err
 		}
 
-		return &ExecuteCommandResponse{
+		return &CommandResponse{
 			Stdout:   stdout,
 			Stderr:   stderr,
 			ExitCode: shared.ExitSuccess,
@@ -138,7 +140,7 @@ func (uc *ExecuteCommandUseCase) executeCommand(
 		}
 	}
 
-	return &ExecuteCommandResponse{
+	return &CommandResponse{
 		Process:  proc,
 		Stdout:   proc.Stdout(),
 		Stderr:   proc.Stderr(),
@@ -146,12 +148,12 @@ func (uc *ExecuteCommandUseCase) executeCommand(
 	}, nil
 }
 
-// executePipeline executes a pipeline of commands
-func (uc *ExecuteCommandUseCase) executePipeline(
+// executePipeline executes a pipeline of commands.
+func (uc *UseCase) executePipeline(
 	ctx context.Context,
 	pipe *pipeline.Pipeline,
 	sess *session.Session,
-) (*ExecuteCommandResponse, error) {
+) (*CommandResponse, error) {
 	uc.logger.Info("executing pipeline",
 		"length", pipe.Length(),
 		"session", sess.ID(),
@@ -173,7 +175,7 @@ func (uc *ExecuteCommandUseCase) executePipeline(
 	// Return result of the last process
 	if len(processes) > 0 {
 		lastProc := processes[len(processes)-1]
-		return &ExecuteCommandResponse{
+		return &CommandResponse{
 			Process:  lastProc,
 			Stdout:   lastProc.Stdout(),
 			Stderr:   lastProc.Stderr(),
@@ -181,13 +183,13 @@ func (uc *ExecuteCommandUseCase) executePipeline(
 		}, nil
 	}
 
-	return &ExecuteCommandResponse{
+	return &CommandResponse{
 		ExitCode: shared.ExitSuccess,
 	}, nil
 }
 
-// parseCommandLineHelper parses the command line using the parser package
-// TODO: Refactor to proper DI (dependency injection)
+// parseCommandLineHelper parses the command line using the parser package.
+// TODO: Refactor to proper DI (dependency injection).
 func parseCommandLineHelper(commandLine string) (*command.Command, *pipeline.Pipeline, error) {
 	return parser.ParseCommandLine(commandLine)
 }

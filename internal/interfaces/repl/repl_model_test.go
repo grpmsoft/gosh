@@ -25,16 +25,16 @@ func TestNewBubbleteaREPL(t *testing.T) {
 
 		// Create dependencies
 		fs := &mockFileSystem{}
-		builtinExecutor := builtin.NewBuiltinExecutor(fs, logger)
+		builtinExecutor := builtin.NewExecutor(fs, logger)
 		commandExecutor := executor.NewOSCommandExecutor(logger)
 		pipelineExecutor := executor.NewOSPipelineExecutor(logger)
-		executeUseCase := execute.NewExecuteCommandUseCase(
+		executeUseCase := execute.NewUseCase(
 			builtinExecutor,
 			commandExecutor,
 			pipelineExecutor,
 			logger,
 		)
-		sessionManager := appsession.NewSessionManager(logger)
+		sessionManager := appsession.NewManager(logger)
 
 		// Act
 		model, err := NewBubbleteaREPL(sessionManager, executeUseCase, logger, ctx, cfg)
@@ -80,16 +80,16 @@ func TestNewBubbleteaREPL(t *testing.T) {
 		ctx := context.Background()
 
 		fs := &mockFileSystem{}
-		builtinExecutor := builtin.NewBuiltinExecutor(fs, logger)
+		builtinExecutor := builtin.NewExecutor(fs, logger)
 		commandExecutor := executor.NewOSCommandExecutor(logger)
 		pipelineExecutor := executor.NewOSPipelineExecutor(logger)
-		executeUseCase := execute.NewExecuteCommandUseCase(
+		executeUseCase := execute.NewUseCase(
 			builtinExecutor,
 			commandExecutor,
 			pipelineExecutor,
 			logger,
 		)
-		sessionManager := appsession.NewSessionManager(logger)
+		sessionManager := appsession.NewManager(logger)
 
 		// Act
 		model, err := NewBubbleteaREPL(sessionManager, executeUseCase, logger, ctx, cfg)
@@ -112,16 +112,16 @@ func TestNewBubbleteaREPL(t *testing.T) {
 		ctx := context.Background()
 
 		fs := &mockFileSystem{}
-		builtinExecutor := builtin.NewBuiltinExecutor(fs, logger)
+		builtinExecutor := builtin.NewExecutor(fs, logger)
 		commandExecutor := executor.NewOSCommandExecutor(logger)
 		pipelineExecutor := executor.NewOSPipelineExecutor(logger)
-		executeUseCase := execute.NewExecuteCommandUseCase(
+		executeUseCase := execute.NewUseCase(
 			builtinExecutor,
 			commandExecutor,
 			pipelineExecutor,
 			logger,
 		)
-		sessionManager := appsession.NewSessionManager(logger)
+		sessionManager := appsession.NewManager(logger)
 
 		// Act
 		model, err := NewBubbleteaREPL(sessionManager, executeUseCase, logger, ctx, cfg)
@@ -142,16 +142,16 @@ func TestNewBubbleteaREPL(t *testing.T) {
 		ctx := context.Background()
 
 		fs := &mockFileSystem{}
-		builtinExecutor := builtin.NewBuiltinExecutor(fs, logger)
+		builtinExecutor := builtin.NewExecutor(fs, logger)
 		commandExecutor := executor.NewOSCommandExecutor(logger)
 		pipelineExecutor := executor.NewOSPipelineExecutor(logger)
-		executeUseCase := execute.NewExecuteCommandUseCase(
+		executeUseCase := execute.NewUseCase(
 			builtinExecutor,
 			commandExecutor,
 			pipelineExecutor,
 			logger,
 		)
-		sessionManager := appsession.NewSessionManager(logger)
+		sessionManager := appsession.NewManager(logger)
 
 		// Act
 		model, err := NewBubbleteaREPL(sessionManager, executeUseCase, logger, ctx, cfg)
@@ -173,16 +173,16 @@ func TestNewBubbleteaREPL(t *testing.T) {
 		ctx := context.Background()
 
 		fs := &mockFileSystem{}
-		builtinExecutor := builtin.NewBuiltinExecutor(fs, logger)
+		builtinExecutor := builtin.NewExecutor(fs, logger)
 		commandExecutor := executor.NewOSCommandExecutor(logger)
 		pipelineExecutor := executor.NewOSPipelineExecutor(logger)
-		executeUseCase := execute.NewExecuteCommandUseCase(
+		executeUseCase := execute.NewUseCase(
 			builtinExecutor,
 			commandExecutor,
 			pipelineExecutor,
 			logger,
 		)
-		sessionManager := appsession.NewSessionManager(logger)
+		sessionManager := appsession.NewManager(logger)
 
 		// Act
 		model, err := NewBubbleteaREPL(sessionManager, executeUseCase, logger, ctx, cfg)
@@ -203,16 +203,16 @@ func TestNewBubbleteaREPL(t *testing.T) {
 		ctx := context.Background()
 
 		fs := &mockFileSystem{}
-		builtinExecutor := builtin.NewBuiltinExecutor(fs, logger)
+		builtinExecutor := builtin.NewExecutor(fs, logger)
 		commandExecutor := executor.NewOSCommandExecutor(logger)
 		pipelineExecutor := executor.NewOSPipelineExecutor(logger)
-		executeUseCase := execute.NewExecuteCommandUseCase(
+		executeUseCase := execute.NewUseCase(
 			builtinExecutor,
 			commandExecutor,
 			pipelineExecutor,
 			logger,
 		)
-		sessionManager := appsession.NewSessionManager(logger)
+		sessionManager := appsession.NewManager(logger)
 
 		// Act
 		model, err := NewBubbleteaREPL(sessionManager, executeUseCase, logger, ctx, cfg)
@@ -240,16 +240,16 @@ func TestModelInit(t *testing.T) {
 		ctx := context.Background()
 
 		fs := &mockFileSystem{}
-		builtinExecutor := builtin.NewBuiltinExecutor(fs, logger)
+		builtinExecutor := builtin.NewExecutor(fs, logger)
 		commandExecutor := executor.NewOSCommandExecutor(logger)
 		pipelineExecutor := executor.NewOSPipelineExecutor(logger)
-		executeUseCase := execute.NewExecuteCommandUseCase(
+		executeUseCase := execute.NewUseCase(
 			builtinExecutor,
 			commandExecutor,
 			pipelineExecutor,
 			logger,
 		)
-		sessionManager := appsession.NewSessionManager(logger)
+		sessionManager := appsession.NewManager(logger)
 
 		model, err := NewBubbleteaREPL(sessionManager, executeUseCase, logger, ctx, cfg)
 		require.NoError(t, err)

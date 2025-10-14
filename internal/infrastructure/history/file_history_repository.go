@@ -1,3 +1,4 @@
+// Package history provides infrastructure for persisting command history to files.
 package history
 
 import (
@@ -10,14 +11,14 @@ import (
 	"github.com/grpmsoft/gosh/internal/domain/history"
 )
 
-// FileHistoryRepository implements history persistence to a file
-// This is an Adapter in Hexagonal Architecture (Ports & Adapters)
+// FileHistoryRepository implements history persistence to a file.
+// This is an Adapter in Hexagonal Architecture (Ports & Adapters).
 type FileHistoryRepository struct {
 	filePath string // Path to history file (e.g., ~/.gosh_history)
 }
 
-// NewFileHistoryRepository creates a new file-based history repository
-// Expands ~ to home directory if present in path
+// NewFileHistoryRepository creates a new file-based history repository.
+// Expands ~ to home directory if present in path.
 func NewFileHistoryRepository(filePath string) *FileHistoryRepository {
 	expandedPath := expandTilde(filePath)
 	return &FileHistoryRepository{
@@ -25,19 +26,19 @@ func NewFileHistoryRepository(filePath string) *FileHistoryRepository {
 	}
 }
 
-// FilePath returns the expanded file path
+// FilePath returns the expanded file path.
 func (r *FileHistoryRepository) FilePath() string {
 	return r.filePath
 }
 
-// Save persists history to file
-// Creates parent directories if needed
-// Overwrites existing file
-// Commands are saved in chronological order (oldest first)
+// Save persists history to file.
+// Creates parent directories if needed.
+// Overwrites existing file.
+// Commands are saved in chronological order (oldest first).
 func (r *FileHistoryRepository) Save(h *history.History) error {
 	// Create parent directories if they don't exist
 	dir := filepath.Dir(r.filePath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
 
@@ -59,10 +60,10 @@ func (r *FileHistoryRepository) Save(h *history.History) error {
 	return nil
 }
 
-// Load loads history from file into the provided History instance
-// Returns no error if file doesn't exist (empty history is OK)
-// Skips empty lines and whitespace-only lines
-// Commands are loaded in chronological order (oldest first)
+// Load loads history from file into the provided History instance.
+// Returns no error if file doesn't exist (empty history is OK).
+// Skips empty lines and whitespace-only lines.
+// Commands are loaded in chronological order (oldest first).
 func (r *FileHistoryRepository) Load(h *history.History) error {
 	// Check if file exists
 	if _, err := os.Stat(r.filePath); os.IsNotExist(err) {
@@ -96,10 +97,10 @@ func (r *FileHistoryRepository) Load(h *history.History) error {
 	return h.FromSlice(lines)
 }
 
-// Append adds a single command to the end of history file
-// Uses O_APPEND for atomic writes (safe for concurrent access)
-// More efficient than Save() for incremental updates
-// Creates file and parent directories if they don't exist
+// Append adds a single command to the end of history file.
+// Uses O_APPEND for atomic writes (safe for concurrent access).
+// More efficient than Save() for incremental updates.
+// Creates file and parent directories if they don't exist.
 func (r *FileHistoryRepository) Append(command string) error {
 	// Skip empty commands
 	if strings.TrimSpace(command) == "" {
@@ -108,14 +109,14 @@ func (r *FileHistoryRepository) Append(command string) error {
 
 	// Create parent directories if they don't exist
 	dir := filepath.Dir(r.filePath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
 
 	// Open file in append mode (O_APPEND ensures atomic writes)
 	// O_CREATE creates file if it doesn't exist
 	// O_WRONLY opens for writing only
-	file, err := os.OpenFile(r.filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(r.filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to open history file for append: %w", err)
 	}
@@ -136,7 +137,7 @@ func (r *FileHistoryRepository) Append(command string) error {
 	return nil
 }
 
-// expandTilde expands ~ to user's home directory
+// expandTilde expands ~ to user's home directory.
 func expandTilde(path string) string {
 	if !strings.HasPrefix(path, "~") {
 		return path

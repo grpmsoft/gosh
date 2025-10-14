@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// MockHistoryRepository mock for testing use case
+// MockHistoryRepository mock for testing use case.
 type MockHistoryRepository struct {
 	SaveCalled   bool
 	LoadCalled   bool
@@ -36,12 +36,12 @@ func (m *MockHistoryRepository) Load(h *history.History) error {
 	return m.LoadError
 }
 
-func (m *MockHistoryRepository) Append(command string) error {
+func (m *MockHistoryRepository) Append(_ string) error {
 	m.AppendCalled = true
 	return m.AppendError
 }
 
-// TestSearchHistoryUseCase_Execute checks the main search scenario
+// TestSearchHistoryUseCase_Execute checks the main search scenario.
 func TestSearchHistoryUseCase_Execute(t *testing.T) {
 	t.Run("searches and returns matching commands", func(t *testing.T) {
 		// Preparation: create history with commands
@@ -90,7 +90,7 @@ func TestSearchHistoryUseCase_Execute(t *testing.T) {
 	})
 }
 
-// TestAddToHistoryUseCase_Execute checks adding a command to history
+// TestAddToHistoryUseCase_Execute checks adding a command to history.
 func TestAddToHistoryUseCase_Execute(t *testing.T) {
 	t.Run("adds command and persists to repository", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
@@ -151,7 +151,7 @@ func TestAddToHistoryUseCase_Execute(t *testing.T) {
 	})
 }
 
-// TestLoadHistoryUseCase_Execute checks loading history on startup
+// TestLoadHistoryUseCase_Execute checks loading history on startup.
 func TestLoadHistoryUseCase_Execute(t *testing.T) {
 	t.Run("loads history from repository", func(t *testing.T) {
 		// Preparation: create saved history
@@ -190,7 +190,7 @@ func TestLoadHistoryUseCase_Execute(t *testing.T) {
 	})
 }
 
-// TestClearHistoryUseCase_Execute checks clearing history
+// TestClearHistoryUseCase_Execute checks clearing history.
 func TestClearHistoryUseCase_Execute(t *testing.T) {
 	t.Run("clears history and persists", func(t *testing.T) {
 		h := history.NewHistory(history.DefaultConfig())
@@ -212,7 +212,7 @@ func TestClearHistoryUseCase_Execute(t *testing.T) {
 	})
 }
 
-// TestHistoryUseCaseIntegration checks interaction between use cases
+// TestHistoryUseCaseIntegration checks interaction between use cases.
 func TestHistoryUseCaseIntegration(t *testing.T) {
 	t.Run("full workflow: add, search, clear", func(t *testing.T) {
 		h := history.NewHistory(history.Config{

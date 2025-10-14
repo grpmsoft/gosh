@@ -1,34 +1,35 @@
 package job
 
 import (
+	"sync"
+
 	"github.com/google/uuid"
 	"github.com/grpmsoft/gosh/internal/domain/command"
 	"github.com/grpmsoft/gosh/internal/domain/process"
 	"github.com/grpmsoft/gosh/internal/domain/shared"
-	"sync"
 )
 
-// JobManager manages background jobs (Domain Service)
-// Thread-safe collection of Job entities
-type JobManager struct {
+// Manager manages background jobs (Domain Service).
+// Thread-safe collection of Job entities.
+type Manager struct {
 	jobs         map[string]*Job // job ID -> Job
 	jobsByNumber map[int]*Job    // job number -> Job
 	nextNumber   int             // next available job number
 	mu           sync.RWMutex    // protects concurrent access
 }
 
-// NewJobManager creates a new job manager
-func NewJobManager() *JobManager {
-	return &JobManager{
+// NewManager creates a new job manager.
+func NewManager() *Manager {
+	return &Manager{
 		jobs:         make(map[string]*Job),
 		jobsByNumber: make(map[int]*Job),
 		nextNumber:   1,
 	}
 }
 
-// AddJob adds a new background job
-// Automatically assigns job number and generates ID
-func (jm *JobManager) AddJob(cmd *command.Command, proc *process.Process) (*Job, error) {
+// AddJob adds a new background job.
+// Automatically assigns job number and generates ID.
+func (jm *Manager) AddJob(cmd *command.Command, proc *process.Process) (*Job, error) {
 	if cmd == nil {
 		return nil, shared.NewDomainError(
 			"AddJob",
@@ -68,8 +69,8 @@ func (jm *JobManager) AddJob(cmd *command.Command, proc *process.Process) (*Job,
 	return job, nil
 }
 
-// GetJob returns job by job number (%1, %2, etc.)
-func (jm *JobManager) GetJob(jobNumber int) (*Job, error) {
+// GetJob returns job by job number (%1, %2, etc.).
+func (jm *Manager) GetJob(jobNumber int) (*Job, error) {
 	jm.mu.RLock()
 	defer jm.mu.RUnlock()
 
@@ -85,8 +86,8 @@ func (jm *JobManager) GetJob(jobNumber int) (*Job, error) {
 	return job, nil
 }
 
-// GetJobByID returns job by UUID
-func (jm *JobManager) GetJobByID(jobID string) (*Job, error) {
+// GetJobByID returns job by UUID.
+func (jm *Manager) GetJobByID(jobID string) (*Job, error) {
 	jm.mu.RLock()
 	defer jm.mu.RUnlock()
 
@@ -102,9 +103,9 @@ func (jm *JobManager) GetJobByID(jobID string) (*Job, error) {
 	return job, nil
 }
 
-// ListJobs returns all jobs (running, stopped, finished)
-// Returns jobs sorted by job number
-func (jm *JobManager) ListJobs() []*Job {
+// ListJobs returns all jobs (running, stopped, finished).
+// Returns jobs sorted by job number.
+func (jm *Manager) ListJobs() []*Job {
 	jm.mu.RLock()
 	defer jm.mu.RUnlock()
 
@@ -126,8 +127,8 @@ func (jm *JobManager) ListJobs() []*Job {
 	return jobs
 }
 
-// ListActiveJobs returns only running and stopped jobs (excludes finished)
-func (jm *JobManager) ListActiveJobs() []*Job {
+// ListActiveJobs returns only running and stopped jobs (excludes finished).
+func (jm *Manager) ListActiveJobs() []*Job {
 	jm.mu.RLock()
 	defer jm.mu.RUnlock()
 
@@ -151,9 +152,9 @@ func (jm *JobManager) ListActiveJobs() []*Job {
 	return jobs
 }
 
-// RemoveFinishedJobs removes all finished jobs from tracking
-// Returns count of removed jobs
-func (jm *JobManager) RemoveFinishedJobs() int {
+// RemoveFinishedJobs removes all finished jobs from tracking.
+// Returns count of removed jobs.
+func (jm *Manager) RemoveFinishedJobs() int {
 	jm.mu.Lock()
 	defer jm.mu.Unlock()
 
@@ -169,9 +170,9 @@ func (jm *JobManager) RemoveFinishedJobs() int {
 	return count
 }
 
-// RemoveJob removes specific job by job number
-// Returns error if job doesn't exist or is still running
-func (jm *JobManager) RemoveJob(jobNumber int) error {
+// RemoveJob removes specific job by job number.
+// Returns error if job doesn't exist or is still running.
+func (jm *Manager) RemoveJob(jobNumber int) error {
 	jm.mu.Lock()
 	defer jm.mu.Unlock()
 
@@ -200,24 +201,24 @@ func (jm *JobManager) RemoveJob(jobNumber int) error {
 	return nil
 }
 
-// Count returns total number of tracked jobs
-func (jm *JobManager) Count() int {
+// Count returns total number of tracked jobs.
+func (jm *Manager) Count() int {
 	jm.mu.RLock()
 	defer jm.mu.RUnlock()
 
 	return len(jm.jobs)
 }
 
-// HasJobs returns true if there are any tracked jobs
-func (jm *JobManager) HasJobs() bool {
+// HasJobs returns true if there are any tracked jobs.
+func (jm *Manager) HasJobs() bool {
 	jm.mu.RLock()
 	defer jm.mu.RUnlock()
 
 	return len(jm.jobs) > 0
 }
 
-// Clear removes all jobs (useful for cleanup/testing)
-func (jm *JobManager) Clear() {
+// Clear removes all jobs (useful for cleanup/testing).
+func (jm *Manager) Clear() {
 	jm.mu.Lock()
 	defer jm.mu.Unlock()
 

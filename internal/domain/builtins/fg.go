@@ -2,20 +2,21 @@ package builtins
 
 import (
 	"fmt"
-	"github.com/grpmsoft/gosh/internal/domain/session"
-	"github.com/grpmsoft/gosh/internal/domain/shared"
 	"strconv"
 	"strings"
+
+	"github.com/grpmsoft/gosh/internal/domain/session"
+	"github.com/grpmsoft/gosh/internal/domain/shared"
 )
 
-// FgCommand represents the fg builtin command
-// Brings a background job to foreground
+// FgCommand represents the fg builtin command.
+// Brings a background job to foreground.
 type FgCommand struct {
 	args    []string
 	session *session.Session
 }
 
-// NewFgCommand creates a new fg command
+// NewFgCommand creates a new fg command.
 func NewFgCommand(args []string, sess *session.Session) (*FgCommand, error) {
 	if sess == nil {
 		return nil, shared.NewDomainError(
@@ -31,8 +32,8 @@ func NewFgCommand(args []string, sess *session.Session) (*FgCommand, error) {
 	}, nil
 }
 
-// Execute executes the fg command
-// Syntax: fg [%n] - brings job n to foreground, or most recent if no arg
+// Execute executes the fg command.
+// Syntax: fg [%n] - brings job n to foreground, or most recent if no arg.
 func (f *FgCommand) Execute() error {
 	jobManager := f.session.JobManager()
 	if jobManager == nil {

@@ -1,23 +1,29 @@
+// Package job provides domain models for background job management.
 package job
 
 import (
+	"time"
+
 	"github.com/grpmsoft/gosh/internal/domain/command"
 	"github.com/grpmsoft/gosh/internal/domain/process"
 	"github.com/grpmsoft/gosh/internal/domain/shared"
-	"time"
 )
 
-// State represents the state of a background job
+// State represents the state of a background job.
 type State int
 
 const (
-	StateRunning   State = iota // Running
-	StateStopped                // Stopped (Ctrl+Z)
-	StateCompleted              // Completed successfully
-	StateFailed                 // Failed with error
+	// StateRunning indicates the job is currently running.
+	StateRunning State = iota
+	// StateStopped indicates the job was stopped (Ctrl+Z).
+	StateStopped
+	// StateCompleted indicates the job completed successfully.
+	StateCompleted
+	// StateFailed indicates the job failed with an error.
+	StateFailed
 )
 
-// String returns the string representation of the state
+// String returns the string representation of the state.
 func (s State) String() string {
 	switch s {
 	case StateRunning:
@@ -33,8 +39,8 @@ func (s State) String() string {
 	}
 }
 
-// Job represents a background job (Entity)
-// Has identity (id) and mutable state
+// Job represents a background job (Entity).
+// Has identity (id) and mutable state.
 type Job struct {
 	id           string
 	jobNumber    int // Number for user display (%1, %2, etc.)
@@ -46,7 +52,7 @@ type Job struct {
 	isForeground bool // Is currently running in foreground
 }
 
-// NewJob creates a new background job
+// NewJob creates a new background job.
 func NewJob(id string, jobNumber int, cmd *command.Command, proc *process.Process) (*Job, error) {
 	if id == "" {
 		return nil, shared.NewDomainError(
@@ -91,67 +97,67 @@ func NewJob(id string, jobNumber int, cmd *command.Command, proc *process.Proces
 	}, nil
 }
 
-// ID returns the unique job identifier
+// ID returns the unique job identifier.
 func (j *Job) ID() string {
 	return j.id
 }
 
-// JobNumber returns the job number for user display
+// JobNumber returns the job number for user display.
 func (j *Job) JobNumber() int {
 	return j.jobNumber
 }
 
-// Command returns the job command
+// Command returns the job command.
 func (j *Job) Command() *command.Command {
 	return j.command.Clone()
 }
 
-// Process returns the job process
+// Process returns the job process.
 func (j *Job) Process() *process.Process {
 	return j.process
 }
 
-// State returns the current job state
+// State returns the current job state.
 func (j *Job) State() State {
 	return j.state
 }
 
-// StartTime returns the start time
+// StartTime returns the start time.
 func (j *Job) StartTime() time.Time {
 	return j.startTime
 }
 
-// EndTime returns the end time
+// EndTime returns the end time.
 func (j *Job) EndTime() time.Time {
 	return j.endTime
 }
 
-// IsForeground checks if the job is running in foreground
+// IsForeground checks if the job is running in foreground.
 func (j *Job) IsForeground() bool {
 	return j.isForeground
 }
 
-// IsBackground checks if the job is running in background
+// IsBackground checks if the job is running in background.
 func (j *Job) IsBackground() bool {
 	return !j.isForeground
 }
 
-// IsRunning checks if the job is running
+// IsRunning checks if the job is running.
 func (j *Job) IsRunning() bool {
 	return j.state == StateRunning
 }
 
-// IsStopped checks if the job is stopped
+// IsStopped checks if the job is stopped.
 func (j *Job) IsStopped() bool {
 	return j.state == StateStopped
 }
 
-// IsFinished checks if the job is finished
+// IsFinished checks if the job is finished.
 func (j *Job) IsFinished() bool {
 	return j.state == StateCompleted || j.state == StateFailed
 }
 
-// Stop stops the job (Ctrl+Z)
+// Stop stops the job (Ctrl+Z).
 func (j *Job) Stop() error {
 	if j.state != StateRunning {
 		return shared.NewDomainError(
@@ -165,7 +171,7 @@ func (j *Job) Stop() error {
 	return nil
 }
 
-// Resume resumes a stopped job
+// Resume resumes a stopped job.
 func (j *Job) Resume() error {
 	if j.state != StateStopped {
 		return shared.NewDomainError(
@@ -179,7 +185,7 @@ func (j *Job) Resume() error {
 	return nil
 }
 
-// Complete completes the job successfully
+// Complete completes the job successfully.
 func (j *Job) Complete() error {
 	if j.state != StateRunning {
 		return shared.NewDomainError(
@@ -194,7 +200,7 @@ func (j *Job) Complete() error {
 	return nil
 }
 
-// Fail completes the job with an error
+// Fail completes the job with an error.
 func (j *Job) Fail() error {
 	if j.state != StateRunning {
 		return shared.NewDomainError(
@@ -209,7 +215,7 @@ func (j *Job) Fail() error {
 	return nil
 }
 
-// BringToForeground brings the job to foreground (fg)
+// BringToForeground brings the job to foreground (fg).
 func (j *Job) BringToForeground() error {
 	if j.IsFinished() {
 		return shared.NewDomainError(
@@ -223,7 +229,7 @@ func (j *Job) BringToForeground() error {
 	return nil
 }
 
-// SendToBackground sends the job to background (bg)
+// SendToBackground sends the job to background (bg).
 func (j *Job) SendToBackground() error {
 	if j.IsFinished() {
 		return shared.NewDomainError(
@@ -237,7 +243,7 @@ func (j *Job) SendToBackground() error {
 	return nil
 }
 
-// StatusLine returns a status line for display in jobs
+// StatusLine returns a status line for display in jobs.
 func (j *Job) StatusLine() string {
 	var status string
 	if j.isForeground {

@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v0.1.0-rc.1 (after feedback collection)
 - v0.1.0 stable release
 
-## [0.1.0-beta.4] - 2025-10-13
+## [0.1.0-beta.4] - 2025-10-14
 
 ### Added - REPL Refactoring & Improved UI 🎨
 - **`-c` flag**: Execute command and exit (non-interactive mode)
@@ -72,12 +72,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Native terminal feel preserved
 
 ### Improved - Code Quality 📊
-- **141 linter warnings fixed** (1,735 → 1,594, -8.1%)
-  - Fixed all godot warnings in repl package (21 fixes): Added periods to comments
-  - Fixed all octalLiteral warnings (25 fixes): 0644 → 0o644 (Go 1.13+ style)
-  - Fixed importShadow in bg.go (1 fix): Renamed variable to avoid package shadowing
+- **Comprehensive Linter Cleanup: 524 → 46 errors (-478, -91%)**
+  - **Security fixes** (gosec): File permissions hardened (0o600/0o750), shell operations justified
+  - **API improvements** (revive): Renamed 7 stuttering types for Go idioms
+    - `ExecuteCommandRequest` → `CommandRequest`, `SessionManager` → `Manager`, etc.
+  - **Code quality** (gocritic): Fixed 40+ issues (importShadow, ifElseChain, paramTypeCombine)
+  - **Documentation** (godot): Added 385 missing comment periods across all layers
+  - **Deprecated APIs** (staticcheck): Updated to current Bubbletea MouseMsg API
+  - **Dead code**: Removed 2 unused functions
+  - **Remaining 46 warnings documented**: Bubbletea MVU requirements (15), Shell complexity (21), TODOs (5)
+- **Previous cleanup** (141 warnings fixed, 1,735 → 1,594):
+  - Fixed godot warnings in repl package (21 fixes)
+  - Fixed octalLiteral warnings (25 fixes): 0644 → 0o644
+  - Fixed importShadow in bg.go (1 fix)
 - **Open source readiness**: Professional code quality for public release
-- **All 130+ tests passing**, zero regressions
+- **All 130+ tests passing** across 21 packages, zero regressions
 
 ### Changed
 - **Builtin command execution**: Refactored to execute synchronously through ExecuteCommandUseCase

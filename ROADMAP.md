@@ -4,18 +4,23 @@ This document outlines the planned development roadmap for GoSh, organized by re
 
 ---
 
-## 📍 Current Version: v0.1.0-beta.6 ✅
+## 📍 Current Version: v0.1.0-beta.7 ✅
 
 **Status**: Released (2025-10-14)
-**Focus**: Classic Mode + Linter Fixes
+**Focus**: Git-Flow + Cross-Platform Testing
 
 ### What's New
-- ✅ **Classic mode spinner fix**: Fixed spinner continuing after command completion
-- ✅ **Classic mode UX**: Removed spinner entirely from Classic mode (matches bash behavior)
-- ✅ **Command echo**: Fixed missing command line in terminal history (now prints to stdout)
-- ✅ **Configurable separator**: Added `output_separator` config option (default: `\n`)
-- ✅ **gocritic tuning**: Configured linter for Bubbletea MVU pattern (increased hugeParam threshold)
-- ✅ **Dependency cleanup**: Removed unused deps (chroma, readline)
+- ✅ **macOS CI fix**: Fixed path comparison in pwd test (cross-platform compatibility)
+- ✅ **Git-Flow implementation**: Release branches for safer releases (feature → release → CI → main → tag)
+- ✅ **CI validation**: Tests run on release branches before merging to main
+- ✅ **All platforms passing**: Linux, macOS, Windows CI tests successful
+- ✅ **Documentation updates**: Complete git-flow workflow in CONTRIBUTING.md and RELEASE_PROCESS.md
+
+### Previously in v0.1.0-beta.6
+- ✅ Classic mode spinner fix, UX improvements
+- ✅ Command echo to terminal, configurable separator
+- ✅ gocritic tuning, dependency cleanup
+- ✅ Linter errors resolved (47 → 0)
 
 ### Previously in v0.1.0-beta.4
 - ✅ Comprehensive linter cleanup (524→46 errors, 91% reduction)

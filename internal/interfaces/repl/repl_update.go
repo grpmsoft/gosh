@@ -419,7 +419,6 @@ func (m Model) handleModeCommand(commandLine string) (tea.Model, tea.Cmd) {
 }
 
 // handleTabCompletion handles Tab-completion.
-//
 func (m Model) handleTabCompletion() (tea.Model, tea.Cmd) {
 	input := m.textarea.Value()
 

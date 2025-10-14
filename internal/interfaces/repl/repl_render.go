@@ -191,20 +191,23 @@ func (m Model) renderChatMode() string {
 	return b.String()
 }
 
-// renderInputWithCursor renders input with syntax highlighting.
-// IMPORTANT: We use textarea.View() which provides the native Bubbletea blinking cursor.
-// Syntax highlighting is applied on top WITHOUT manually inserting cursor ANSI codes.
+// renderInputWithCursor renders input with blinking cursor.
+// IMPORTANT: We use textarea.View() for native blinking cursor.
+//
+// TODO(v0.2.0): Syntax highlighting temporarily disabled due to Bubbletea/Bubbles limitations.
+// Problem: textarea doesn't expose cursor position API (fields col, row are private).
+// When we apply syntax highlighting to textarea.Value(), cursor disappears because
+// highlighting bypasses textarea.View()'s cursor injection logic.
+//
+// Solution: Migrate to custom ShellUI library (see docs/dev/TUI_LIBRARY_REQUIREMENTS.md)
+// ShellUI will provide public Position() API and standalone cursor rendering,
+// enabling syntax highlighting + visible cursor simultaneously.
+//
+// For now: Cursor visibility > Syntax highlighting (basic shell functionality first).
 func (m Model) renderInputWithCursor() string {
-	currentText := m.textarea.Value()
-	if currentText == "" {
-		// Empty input - use textarea's native blinking cursor.
-		return m.textarea.View()
-	}
-
-	// Apply syntax highlighting WITHOUT cursor overlay.
-	// The textarea.View() underneath provides the blinking cursor.
-	highlighted := m.applySyntaxHighlight(currentText)
-	return highlighted
+	// Use textarea's native blinking cursor (no syntax highlighting).
+	// This ensures cursor is always visible and blinking properly.
+	return m.textarea.View()
 }
 
 // renderHints renders hints (completion, scroll indicator).

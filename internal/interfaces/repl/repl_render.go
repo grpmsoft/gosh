@@ -17,7 +17,6 @@ import (
 //nolint:gocritic // All Model methods: Bubbletea MVU requires value receivers
 
 // View renders UI (Elm Architecture).
-//
 func (m Model) View() string {
 	if !m.ready {
 		return ""
@@ -88,7 +87,6 @@ func (m Model) renderClassicMode() string {
 
 // renderWarpMode renders modern Warp-like mode.
 // Prompt on top, output below with separator.
-//
 func (m Model) renderWarpMode() string {
 	// Update viewport content.
 	m.viewport.SetContent(strings.Join(m.output, "\n"))
@@ -129,7 +127,6 @@ func (m Model) renderWarpMode() string {
 
 // renderCompactMode renders compact mode.
 // Minimalist prompt, maximum space for output.
-//
 func (m Model) renderCompactMode() string {
 	// Update viewport content.
 	m.viewport.SetContent(strings.Join(m.output, "\n"))
@@ -166,7 +163,6 @@ func (m Model) renderCompactMode() string {
 
 // renderChatMode renders chat mode (Telegram/ChatGPT-like).
 // Input fixed at bottom, history scrolls at top.
-//
 func (m Model) renderChatMode() string {
 	// Update viewport content.
 	m.viewport.SetContent(strings.Join(m.output, "\n"))
@@ -208,7 +204,6 @@ func (m Model) renderChatMode() string {
 // renderInputWithCursor renders input with syntax highlighting.
 // IMPORTANT: We use textarea.View() which provides the native Bubbletea blinking cursor.
 // Syntax highlighting is applied on top WITHOUT manually inserting cursor ANSI codes.
-//
 func (m Model) renderInputWithCursor() string {
 	currentText := m.textarea.Value()
 	if currentText == "" {
@@ -223,7 +218,6 @@ func (m Model) renderInputWithCursor() string {
 }
 
 // renderHints renders hints (completion, scroll indicator).
-//
 func (m Model) renderHints() string {
 	var hints []string
 
@@ -246,7 +240,6 @@ func (m Model) renderHints() string {
 }
 
 // applySyntaxHighlight applies simple bash syntax highlighting WITHOUT Chroma.
-//
 func (m Model) applySyntaxHighlight(text string) string {
 	if text == "" {
 		return ""
@@ -288,7 +281,6 @@ func (m Model) applySyntaxHighlight(text string) string {
 }
 
 // renderPromptForHistoryANSI renders prompt for history (ANSI codes only).
-//
 func (m Model) renderPromptForHistoryANSI() string {
 	const (
 		reset      = "\033[0m"
@@ -345,7 +337,6 @@ func (m Model) renderPromptForHistoryANSI() string {
 }
 
 // renderWithHelpOverlay renders help overlay on top of main UI.
-//
 func (m Model) renderWithHelpOverlay() string {
 	// Create help overlay.
 	helpOverlay := m.renderHelpOverlay()
@@ -359,7 +350,6 @@ func (m Model) renderWithHelpOverlay() string {
 }
 
 // renderHelpOverlay creates modal help window.
-//
 func (m Model) renderHelpOverlay() string {
 	// Style for overlay box.
 	boxStyle := lipgloss.NewStyle().
@@ -432,7 +422,6 @@ func (m Model) renderHelpOverlay() string {
 }
 
 // shortenPath shortens path for display.
-//
 func (m Model) shortenPath(path string) string {
 	home, _ := os.UserHomeDir()
 

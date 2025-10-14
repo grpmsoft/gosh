@@ -199,8 +199,8 @@ func (m Model) renderChatMode() string {
 // When we apply syntax highlighting to textarea.Value(), cursor disappears because
 // highlighting bypasses textarea.View()'s cursor injection logic.
 //
-// Solution: Migrate to custom ShellUI library (see docs/dev/TUI_LIBRARY_REQUIREMENTS.md)
-// ShellUI will provide public Position() API and standalone cursor rendering,
+// Solution: Migrate to Phoenix TUI framework (see docs/dev/TUI_LIBRARY_REQUIREMENTS.md)
+// Phoenix TUI will provide public Position() API and standalone cursor rendering,
 // enabling syntax highlighting + visible cursor simultaneously.
 //
 // For now: Cursor visibility > Syntax highlighting (basic shell functionality first).

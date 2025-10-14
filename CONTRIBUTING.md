@@ -257,14 +257,22 @@ git push origin release/v0.1.0-beta.X
 
 # 6. ONLY if CI passes: Merge to main
 git checkout main
-git merge --no-ff release/v0.1.0-beta.X
+git pull origin main
+git merge --no-ff release/v0.1.0-beta.X -m "Merge release/v0.1.0-beta.X into main
+
+Release v0.1.0-beta.X:
+- [Brief summary]
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
 git push origin main
 
 # 7. Create and push tag (triggers release)
-git tag -a v0.1.0-beta.X -m "Release description"
+git tag -a v0.1.0-beta.X -m "Release v0.1.0-beta.X: [Title]
+
+[Detailed release notes]"
 git push origin v0.1.0-beta.X
 
-# 8. Cleanup
+# 8. Cleanup (delete release branch)
 git branch -d release/v0.1.0-beta.X
 git push origin --delete release/v0.1.0-beta.X
 ```

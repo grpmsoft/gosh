@@ -1,5 +1,12 @@
 # 🐚 GoSh - Cross-Platform Go Shell
 
+[![Go Version](https://img.shields.io/github/go-mod/go-version/grpmsoft/gosh)](https://go.dev/)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/grpmsoft/gosh/test.yml?branch=main)](https://github.com/grpmsoft/gosh/actions/workflows/test.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/grpmsoft/gosh)](https://goreportcard.com/report/github.com/grpmsoft/gosh)
+[![Release](https://img.shields.io/github/v/release/grpmsoft/gosh?include_prereleases)](https://github.com/grpmsoft/gosh/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue)](https://github.com/grpmsoft/gosh)
+
 **Version**: 0.1.0-beta.7
 **Status**: Beta - Git-Flow + Cross-Platform Testing
 **License**: MIT

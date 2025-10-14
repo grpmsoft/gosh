@@ -10,9 +10,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned
 - Ctrl+R fuzzy search UI
 - Command sequences with && and || operators
-- Gather community feedback on beta.6
+- Gather community feedback on beta.7
 - v0.1.0-rc.1 (after feedback collection)
 - v0.1.0 stable release
+
+## [0.1.0-beta.7] - 2025-10-14
+
+### Fixed - Cross-Platform Testing 🧪
+- **macOS CI test failure**: Fixed path comparison in pwd builtin test
+  - Issue: `TestExecBuiltinCommand_Pwd` failed on macOS CI due to trailing slash differences
+  - Error: `"/var/folders/.../T" does not contain "/var/folders/.../T/"`
+  - Root Cause: `os.TempDir()` returns paths without trailing slashes on macOS
+  - Solution: Used `filepath.Clean()` to normalize paths before comparison
+  - Impact: All tests now pass consistently on Linux, macOS, and Windows
+  - CI validation: https://github.com/grpmsoft/gosh/actions/runs/18499965130
+
+### Improved - Release Process 🚀
+- **Git-Flow Implementation**: Introduced release branches for safer releases
+  - Feature branches → `release/vX.Y.Z` → CI validation → `main` → tag
+  - CI tests run on release branches before merging to main
+  - Main branch now contains only production-ready, CI-validated code
+  - Updated `.github/workflows/test.yml` to test `release/**` branches
+  - Updated `CONTRIBUTING.md` with complete git-flow documentation
+  - Updated `.claude/RELEASE_PROCESS.md` with troubleshooting guide
+  - Follows Git-Flow best practices (2025 standard)
+
+### Technical
+- All tests passing on 3 platforms (Linux, macOS, Windows)
+- Test coverage: 60.1% overall
+- Build: SUCCESS (gosh.exe 8.3 MB)
+- Linter: 0 errors (clean pipeline)
+- Release workflow: feature → release → CI → main → tag
 
 ## [0.1.0-beta.6] - 2025-10-14
 
@@ -260,7 +288,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 *Development history omitted for brevity. Beta.2 was the first public release.*
 
-[unreleased]: https://github.com/grpmsoft/gosh/compare/v0.1.0-beta.6...HEAD
+[unreleased]: https://github.com/grpmsoft/gosh/compare/v0.1.0-beta.7...HEAD
+[0.1.0-beta.7]: https://github.com/grpmsoft/gosh/compare/v0.1.0-beta.6...v0.1.0-beta.7
 [0.1.0-beta.6]: https://github.com/grpmsoft/gosh/compare/v0.1.0-beta.4...v0.1.0-beta.6
 [0.1.0-beta.5]: https://github.com/grpmsoft/gosh/compare/v0.1.0-beta.4...v0.1.0-beta.5
 [0.1.0-beta.4]: https://github.com/grpmsoft/gosh/compare/v0.1.0-beta.3.1...v0.1.0-beta.4

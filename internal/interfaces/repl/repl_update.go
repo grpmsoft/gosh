@@ -75,29 +75,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.output != "" {
 			if m.config.UI.Mode == config.UIModeClassic {
 				// Classic mode: Print directly to stdout (native terminal scrolling)
-				// This bypasses viewport and allows terminal's native scrollback to work.
-				// Output remains in terminal after shell exit (like bash).
-				//
 				// Output sequence (bash-style):
-				// 1. User types command at prompt: "user@host $ pwd█"
-				// 2. User presses Enter → Bubbletea re-renders, cursor stays at end of line
-				// 3. Command output is printed starting from current position
-				// 4. Empty line after output (bash-style spacing)
-				// 5. New prompt appears on next line
+				// 1. User types command: "user@host $ ls█"
+				// 2. Presses Enter → command line is frozen in history
+				// 3. Output prints line by line
+				// 4. Separator printed (configurable via OutputSeparator)
+				// 5. Prompt reappears below output
 
-				// Step 2: Move cursor to new line (before printing output)
-				// CRITICAL: This prevents command output from overwriting the prompt line
-				fmt.Print("\n")
-
-				// Step 3: Print command output line by line
+				// Print command output line by line
 				lines := strings.Split(strings.TrimRight(msg.output, "\n"), "\n")
 				for _, line := range lines {
-					fmt.Println(line) // Direct stdout output (includes \n)
+					fmt.Println(line) // Each line includes \n
 				}
 
-				// Step 4: Print empty line after output (bash-style spacing)
-				// This creates visual separation between output and next prompt
-				fmt.Println()
+				// Print separator after output (configurable)
+				if m.config.UI.OutputSeparator != "" {
+					fmt.Print(m.config.UI.OutputSeparator)
+				}
 			} else {
 				// Other modes (Warp/Compact/Chat): Use viewport for scrolling
 				// Add blank line for visual separation
@@ -151,9 +145,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Update spinner if executing
 	if m.executing {
 		m.executingSpinner, spCmd = m.executingSpinner.Update(msg)
+		return m, tea.Batch(taCmd, vpCmd, spCmd)
 	}
 
-	return m, tea.Batch(taCmd, vpCmd, spCmd)
+	return m, tea.Batch(taCmd, vpCmd)
 }
 
 // handleKeyPress handles key presses.

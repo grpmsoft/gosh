@@ -118,13 +118,23 @@ linters:
         - name: redefines-builtin-id
 
     gocritic:
-      # Enable all checks
+      # Enable important checks, tune for Bubbletea MVU pattern
       enabled-tags:
         - diagnostic
         - style
         - performance
-        - experimental
-        - opinionated
+
+      # Disable overly opinionated/experimental checks
+      disabled-checks:
+        - commentFormatting  # Too opinionated about comment style
+        - whyNoLint          # We document nolints when needed
+        - unnamedResult      # Named results can reduce readability
+
+      settings:
+        hugeParam:
+          # Increase threshold for Bubbletea Model (MVU pattern uses value receivers)
+          # Default is 80 bytes, Model struct is ~400 bytes which is acceptable for MVU
+          sizeThreshold: 512
 
   # Exclusions (v2 structure)
   exclusions:

@@ -149,6 +149,14 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 
 // handleKeyPress handles key presses.
 func (m Model) handleKeyPress(msg api.KeyMsg) (Model, api.Cmd) {
+	// IMPORTANT: Check msg.Type for Enter FIRST (before String() checks)
+	// Phoenix may send KeyEnter as Type when Enter is pressed after UTF-8 input
+	if msg.Type == api.KeyEnter {
+		// Regular Enter - execute command
+		m.autoScroll = true
+		return m.executeCommand()
+	}
+
 	// ESC - close help overlay (if open).
 	if msg.String() == "esc" && m.showingHelp {
 		m.showingHelp = false
@@ -244,6 +252,12 @@ func (m Model) handleKeyPress(msg api.KeyMsg) (Model, api.Cmd) {
 
 	var cmd api.Cmd
 	m.shellInput, cmd = m.shellInput.Update(msg)
+
+	// CRITICAL: Sync input state after update (same as in main Update())
+	// Without this, m.inputText stays stale and other code may use old value
+	m.inputText = m.shellInput.Value()
+	m.cursorPos = len([]rune(m.inputText))
+
 	return m, cmd
 }
 

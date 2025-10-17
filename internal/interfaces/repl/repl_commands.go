@@ -94,8 +94,14 @@ func (m Model) executeCommand() (Model, api.Cmd) {
 	// Classic mode: print directly to stdout (like bash)
 	// Other modes: add to viewport buffer
 	if m.config.UI.Mode == config.UIModeClassic {
-		// Print command line with prompt (freezes it in terminal history)
-		fmt.Println(m.renderPromptForHistoryANSI() + m.applySyntaxHighlight(value))
+		// Render final command line WITHOUT cursor before freezing
+		// 1. Clear current line (which has cursor)
+		// 2. Render prompt + command (no cursor)
+		// 3. Move to next line - command is now frozen without cursor
+		fmt.Print("\r\033[2K")                                         // Clear line
+		fmt.Print(m.renderPromptForHistoryANSI())                      // Prompt
+		fmt.Print(m.applySyntaxHighlight(value))                       // Command (no cursor!)
+		fmt.Print("\n")                                                // Freeze and move to next line
 	} else {
 		// Add to viewport buffer
 		m.addOutputRaw(m.renderPromptForHistoryANSI() + m.applySyntaxHighlight(value))

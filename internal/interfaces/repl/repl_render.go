@@ -58,19 +58,29 @@ func (m Model) View() string {
 //
 // We only render the current prompt + input line here (last line of terminal).
 func (m Model) renderClassicMode() string {
-	var b strings.Builder
-
-	// Render only the current input line (prompt + input).
-	// Classic mode: NO spinner (like real bash/pwsh).
-	// When executing, simply don't render anything - command output will appear naturally.
-	if !m.executing {
-		// Normal prompt with input.
-		b.WriteString(m.renderPromptForHistoryANSI())
-		b.WriteString(m.renderInputWithCursor())
-		b.WriteString(m.renderHints())
+	// While executing, don't render anything (output is being printed directly to stdout)
+	// This prevents View() from overwriting command output with prompt
+	if m.executing {
+		return ""
 	}
 
-	// Return only prompt+input (no viewport, no history rendering).
+	var b strings.Builder
+
+	// Phoenix writes View() at current cursor position without terminal control.
+	// We need to:
+	// 1. Return cursor to beginning of line (\r)
+	// 2. Clear the line (\033[2K)
+	// 3. Render prompt + input
+	//
+	// This ensures prompt is always visible and properly positioned.
+	b.WriteString("\r\033[2K") // CR + clear entire line
+
+	// Render prompt + input
+	b.WriteString(m.renderPromptForHistoryANSI())
+	b.WriteString(m.renderInputWithCursor())
+	b.WriteString(m.renderHints())
+
+	// Return prompt+input (no viewport, no history rendering).
 	// History is already in terminal via fmt.Println() from Update().
 	return b.String()
 }

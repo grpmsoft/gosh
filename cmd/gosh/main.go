@@ -70,13 +70,8 @@ func main() {
 			os.Exit(1)
 		}
 
-		// CRITICAL: Hide system cursor (we render our own cursor in View())
-		// ANSI: \033[?25l = hide cursor, \033[?25h = show cursor
-		fmt.Print("\033[?25l") // Hide system cursor
-
 		defer func() {
 			// Always restore terminal state on exit
-			fmt.Print("\033[?25h") // Show system cursor
 			if oldState != nil {
 				_ = term.Restore(int(os.Stdin.Fd()), oldState)
 			}

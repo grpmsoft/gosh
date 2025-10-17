@@ -196,7 +196,7 @@ func NewBubbleteaREPL(
 		historyRepo:      historyRepo,
 		addToHistoryUC:   addToHistoryUC,
 		maxOutputLines:   10000,
-		ready:            false,
+		ready:            true, // Start ready (Phoenix doesn't auto-send WindowSizeMsg yet)
 		quitting:         false,
 		executing:        false,
 		startTime:        time.Now(),
@@ -209,6 +209,8 @@ func NewBubbleteaREPL(
 		cursorPos:        0,
 		autoScroll:       true, // Auto-scroll down by default
 		showingHelp:      false,
+		width:            80,   // Default width
+		height:           24,   // Default height
 	}
 
 	// Determine Git status

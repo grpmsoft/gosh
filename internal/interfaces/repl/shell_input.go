@@ -144,30 +144,19 @@ func renderCursor(char string) string {
 
 // renderCursorWithHighlight renders cursor with syntax highlighting context.
 // Determines the color of the character under cursor based on what comes before it.
+//
+// IMPORTANT: Apply reverse video to plain character, NOT colored one!
+// If we apply reverse video to coloredChar, the \033[0m reset code will cancel reverse video.
 func renderCursorWithHighlight(char string, before string) string {
 	if char == "" {
 		// At end of line - render block cursor
 		char = " "
 	}
 
-	// Determine cursor color based on context
-	var coloredChar string
-	if isOption(before + char) {
-		// Inside option (starts with -)
-		coloredChar = "\033[36m" + char + "\033[0m" // Cyan
-	} else if isInString(before) {
-		// Inside quoted string
-		coloredChar = "\033[33m" + char + "\033[0m" // Yellow
-	} else if isCommand(before) {
-		// First word (command)
-		coloredChar = "\033[32m" + char + "\033[0m" // Green
-	} else {
-		// Default (arguments)
-		coloredChar = char
-	}
-
-	// Apply reverse video for cursor visibility
-	return "\033[7m" + coloredChar
+	// Apply reverse video to PLAIN character for cursor visibility
+	// This ensures cursor is always visible regardless of syntax highlighting
+	// ANSI: \033[7m = reverse video, \033[27m = normal video
+	return "\033[7m" + char + "\033[27m"
 }
 
 // applySyntaxHighlighting applies ANSI color codes to shell syntax elements.
@@ -180,12 +169,25 @@ func renderCursorWithHighlight(char string, before string) string {
 // - Redirects (>, >>, <): Bold white
 // - Variables ($VAR, ${VAR}): Magenta
 // - Operators (&&, ||, ;): Bold white
+//
+// IMPORTANT: Currently only works with ASCII.
+// For UTF-8 (Russian, Chinese, etc.), returns text as-is to avoid breaking multi-byte sequences.
 func applySyntaxHighlighting(text string) string {
 	if text == "" {
 		return text
 	}
 
-	// Work character by character to preserve cursor position
+	// TEMPORARY: Check if text contains non-ASCII (UTF-8) characters
+	// If yes, return as-is to avoid breaking multi-byte sequences
+	// TODO: Rewrite to work with runes instead of bytes
+	for _, b := range []byte(text) {
+		if b >= 0x80 {
+			// Contains UTF-8 multi-byte character - return as-is (no highlighting)
+			return text
+		}
+	}
+
+	// Work character by character to preserve cursor position (ASCII only)
 	var result strings.Builder
 	inString := false
 	inSingleQuote := false

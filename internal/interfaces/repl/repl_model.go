@@ -17,10 +17,9 @@ import (
 	"github.com/grpmsoft/gosh/internal/infrastructure/executor"
 	historyInfra "github.com/grpmsoft/gosh/internal/infrastructure/history"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
+	viewport "github.com/phoenix-tui/phoenix/components/viewport/api"
 	"github.com/phoenix-tui/phoenix/tea/api"
 )
 
@@ -39,8 +38,8 @@ import (
 //nolint:gocritic // hugeParam: Bubbletea MVU architecture requires value receivers
 type Model struct {
 	// Core components
-	shellInput       *ShellInput    // Phoenix-based input with history navigation
-	viewport         viewport.Model
+	shellInput       *ShellInput      // Phoenix-based input with history navigation
+	viewport         *viewport.Viewport // Phoenix-based viewport for scrolling
 	sessionManager   *appsession.Manager
 	executeUseCase   *execute.UseCase
 	pipelineExecutor *executor.OSPipelineExecutor
@@ -65,9 +64,6 @@ type Model struct {
 	startTime        time.Time
 	gitBranch        string
 	gitDirty         bool
-
-	// Spinner for execution
-	executingSpinner spinner.Model
 
 	// Tab completion
 	completions      []string
@@ -140,18 +136,10 @@ func NewBubbleteaREPL(
 	// Create styles
 	styles := makeProfessionalStyles()
 
-	// Create spinner
-	execSpinner := spinner.New()
-	execSpinner.Spinner = spinner.Dot
-	execSpinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("12")) // Blue
-
-	// Create viewport for scrolling
-	vp := viewport.New(80, 24)
-	vp.MouseWheelEnabled = true
-	// Disable default up/down keys (needed for command history)
-	vp.KeyMap.Up.SetEnabled(false)
-	vp.KeyMap.Down.SetEnabled(false)
-	// Keep PageUp/PageDown enabled
+	// Create viewport for scrolling (Phoenix Viewport)
+	vp := viewport.New(80, 24).MouseEnabled(true)
+	// Phoenix Viewport's Update() doesn't interfere with parent Model.Update(),
+	// so Up/Down keys work for command history without explicit disabling
 
 	// Create history repository and use cases
 	historyFilePath := getHistoryFilePath()
@@ -213,7 +201,6 @@ func NewBubbleteaREPL(
 		executing:        false,
 		startTime:        time.Now(),
 		styles:           styles,
-		executingSpinner: execSpinner,
 		completions:      []string{},
 		completionIndex:  -1,
 		completionActive: false,

@@ -136,9 +136,7 @@ func (m Model) executeCommand() (Model, api.Cmd) {
 	if err != nil {
 		m.addOutputRaw("\033[31mError: " + err.Error() + "\033[0m")
 		m.updateViewportContent()
-		if m.autoScroll {
-			m.viewport.GotoBottom()
-		}
+		// FollowMode handles auto-scroll in render functions
 		return m, nil
 	}
 

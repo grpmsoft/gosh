@@ -19,8 +19,6 @@ import (
 func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 	var (
 		taCmd api.Cmd
-		vpCmd api.Cmd
-		spCmd api.Cmd
 	)
 
 	switch msg := msg.(type) {
@@ -28,9 +26,11 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 		return m.handleKeyPress(msg)
 
 	case api.MouseMsg:
-		// Handle mouse wheel for viewport
+		// Handle mouse wheel for viewport (Phoenix Viewport uses api types now)
 		if msg.Action == api.MouseActionPress && (msg.Button == api.MouseButtonWheelUp || msg.Button == api.MouseButtonWheelDown) {
 			m.autoScroll = false // Disable auto-scroll on manual scrolling
+			// Phoenix Viewport.Update() returns (*Viewport, api.Cmd) directly
+			var vpCmd api.Cmd
 			m.viewport, vpCmd = m.viewport.Update(msg)
 			return m, vpCmd
 		}
@@ -59,8 +59,8 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 		if viewportHeight < 1 {
 			viewportHeight = 1
 		}
-		m.viewport.Width = msg.Width
-		m.viewport.Height = viewportHeight
+		// Phoenix Viewport uses fluent SetSize() API
+		m.viewport = m.viewport.SetSize(msg.Width, viewportHeight)
 		m.updateViewportContent()
 
 		m.ready = true
@@ -119,12 +119,10 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 		// Update Git status after each command
 		m.updateGitInfo()
 
-		// Update viewport content and scroll (only for non-Classic modes)
+		// Update viewport content (only for non-Classic modes)
+		// FollowMode in render functions handles auto-scroll automatically
 		if m.config.UI.Mode != config.UIModeClassic {
 			m.updateViewportContent()
-			if m.autoScroll {
-				m.viewport.GotoBottom()
-			}
 		}
 
 		return m, nil
@@ -138,16 +136,14 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 	// Cursor always at end after normal input (textarea doesn't give position API)
 	m.cursorPos = len([]rune(m.inputText))
 
-	// Update viewport (for PageUp/PageDown scrolling)
-	m.viewport, vpCmd = m.viewport.Update(msg)
+	// Update viewport (for PageUp/PageDown scrolling) - Phoenix Viewport
+	// Note: Viewport handles its own key bindings internally
+	// We don't need to update it here since we're handling keys in handleKeyPress
 
-	// Update spinner if executing
-	if m.executing {
-		m.executingSpinner, spCmd = m.executingSpinner.Update(msg)
-		return m, api.Batch(taCmd, vpCmd, spCmd)
-	}
+	// No spinner update needed - Phoenix migration removed spinner
+	// Executing state is shown via text in render functions
 
-	return m, api.Batch(taCmd, vpCmd)
+	return m, taCmd
 }
 
 // handleKeyPress handles key presses.
@@ -207,11 +203,11 @@ func (m Model) handleKeyPress(msg api.KeyMsg) (Model, api.Cmd) {
 		return m, nil // Phoenix doesn't have ClearScreen, we handle it in View
 
 	case "pgup", "pgdown":
-		// Viewport scrolling.
+		// Viewport scrolling - Phoenix Viewport handles internally (uses api types)
 		m.autoScroll = false
-		var cmd api.Cmd
-		m.viewport, cmd = m.viewport.Update(msg)
-		return m, cmd
+		var vpCmd api.Cmd
+		m.viewport, vpCmd = m.viewport.Update(msg)
+		return m, vpCmd
 
 	// Hotkeys for switching UI modes (Alt+1-4).
 	case "alt+1", "alt+2", "alt+3", "alt+4":
@@ -279,7 +275,8 @@ func (m Model) switchUIMode(key string) (Model, api.Cmd) {
 	if viewportHeight < 1 {
 		viewportHeight = 1
 	}
-	m.viewport.Height = viewportHeight
+	// Phoenix Viewport uses fluent SetSize() API
+	m.viewport = m.viewport.SetSize(m.width, viewportHeight)
 
 	// Log switch.
 	m.logger.Info("UI mode switched", "from", oldMode, "to", newMode)
@@ -291,13 +288,9 @@ func (m Model) switchUIMode(key string) (Model, api.Cmd) {
 		fmt.Println(notification)
 	} else {
 		// Other modes: add to viewport buffer.
+		// FollowMode handles auto-scroll in render functions
 		m.addOutputRaw(notification)
 		m.updateViewportContent()
-
-		// Scroll down if auto-scroll enabled.
-		if m.autoScroll {
-			m.viewport.GotoBottom()
-		}
 	}
 
 	return m, nil
@@ -309,9 +302,7 @@ func (m Model) handleModeCommand(commandLine string) (Model, api.Cmd) {
 	if !m.config.UI.AllowModeSwitching {
 		m.addOutputRaw("\033[31mError: UI mode switching is disabled in config\033[0m")
 		m.updateViewportContent()
-		if m.autoScroll {
-			m.viewport.GotoBottom()
-		}
+		// FollowMode handles auto-scroll in render functions
 		return m, nil
 	}
 
@@ -324,9 +315,7 @@ func (m Model) handleModeCommand(commandLine string) (Model, api.Cmd) {
 		m.addOutputRaw("\033[90mAvailable modes: classic, warp, compact, chat\033[0m")
 		m.addOutputRaw("\033[90mUsage: :mode <name>\033[0m")
 		m.updateViewportContent()
-		if m.autoScroll {
-			m.viewport.GotoBottom()
-		}
+		// FollowMode handles auto-scroll in render functions
 		return m, nil
 	}
 
@@ -348,9 +337,7 @@ func (m Model) handleModeCommand(commandLine string) (Model, api.Cmd) {
 		m.addOutputRaw(fmt.Sprintf("\033[31mError: unknown mode '%s'\033[0m", modeName))
 		m.addOutputRaw("\033[90mAvailable modes: classic, warp, compact, chat\033[0m")
 		m.updateViewportContent()
-		if m.autoScroll {
-			m.viewport.GotoBottom()
-		}
+		// FollowMode handles auto-scroll in render functions
 		return m, nil
 	}
 
@@ -358,9 +345,7 @@ func (m Model) handleModeCommand(commandLine string) (Model, api.Cmd) {
 	if m.config.UI.Mode == newMode {
 		m.addOutputRaw(fmt.Sprintf("\033[90mAlready in %s mode\033[0m", newMode))
 		m.updateViewportContent()
-		if m.autoScroll {
-			m.viewport.GotoBottom()
-		}
+		// FollowMode handles auto-scroll in render functions
 		return m, nil
 	}
 
@@ -383,7 +368,8 @@ func (m Model) handleModeCommand(commandLine string) (Model, api.Cmd) {
 	if viewportHeight < 1 {
 		viewportHeight = 1
 	}
-	m.viewport.Height = viewportHeight
+	// Phoenix Viewport uses fluent SetSize() API
+	m.viewport = m.viewport.SetSize(m.width, viewportHeight)
 
 	// Log switch.
 	m.logger.Info("UI mode switched via :mode command", "from", oldMode, "to", newMode)
@@ -395,13 +381,9 @@ func (m Model) handleModeCommand(commandLine string) (Model, api.Cmd) {
 		fmt.Println(notification)
 	} else {
 		// Other modes: add to viewport buffer.
+		// FollowMode handles auto-scroll in render functions
 		m.addOutputRaw(notification)
 		m.updateViewportContent()
-
-		// Scroll down if auto-scroll enabled.
-		if m.autoScroll {
-			m.viewport.GotoBottom()
-		}
 	}
 
 	return m, nil

@@ -7,6 +7,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/google/uuid v1.6.0
+	github.com/phoenix-tui/phoenix/components v0.0.0-00010101000000-000000000000
 	github.com/phoenix-tui/phoenix/tea v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.11.1
 	mvdan.cc/sh/v3 v3.12.0

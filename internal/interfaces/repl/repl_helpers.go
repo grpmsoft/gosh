@@ -54,7 +54,8 @@ func (m *Model) addOutputRaw(line string) {
 // updateViewportContent updates viewport content from output.
 func (m *Model) updateViewportContent() {
 	content := strings.Join(m.output, "\n")
-	m.viewport.SetContent(content)
+	// Phoenix Viewport uses fluent API (returns new viewport)
+	m.viewport = m.viewport.SetContent(content)
 }
 
 // updateGitInfo updates Git repository information.

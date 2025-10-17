@@ -35,7 +35,8 @@ func main() {
 	}
 
 	// Run (without AltScreen - using native terminal scrolling)
-	p := api.New(model)
+	// Phoenix tea/api requires value type for MVU pattern
+	p := api.New(*model)
 
 	if err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)

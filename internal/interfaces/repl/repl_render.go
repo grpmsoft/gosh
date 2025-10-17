@@ -78,12 +78,9 @@ func (m Model) renderClassicMode() string {
 // renderWarpMode renders modern Warp-like mode.
 // Prompt on top, output below with separator.
 func (m Model) renderWarpMode() string {
-	// Update viewport content.
-	m.viewport.SetContent(strings.Join(m.output, "\n"))
-
-	if m.autoScroll {
-		m.viewport.GotoBottom()
-	}
+	// Update viewport content (Phoenix fluent API with FollowMode)
+	// FollowMode automatically scrolls to bottom when content changes
+	m.viewport = m.viewport.FollowMode(m.autoScroll).SetContent(strings.Join(m.output, "\n"))
 
 	var b strings.Builder
 
@@ -91,9 +88,8 @@ func (m Model) renderWarpMode() string {
 	if !m.executing {
 		b.WriteString(m.renderPromptForHistoryANSI())
 	} else {
-		b.WriteString(m.executingSpinner.View())
-		b.WriteString(" ")
-		b.WriteString(m.styles.Executing.Render("Executing..."))
+		// Simple text indicator without spinner (Phoenix Progress can be added later)
+		b.WriteString(m.styles.Executing.Render("⟳ Executing..."))
 		b.WriteString(" ")
 	}
 
@@ -118,12 +114,8 @@ func (m Model) renderWarpMode() string {
 // renderCompactMode renders compact mode.
 // Minimalist prompt, maximum space for output.
 func (m Model) renderCompactMode() string {
-	// Update viewport content.
-	m.viewport.SetContent(strings.Join(m.output, "\n"))
-
-	if m.autoScroll {
-		m.viewport.GotoBottom()
-	}
+	// Update viewport content (Phoenix fluent API with FollowMode)
+	m.viewport = m.viewport.FollowMode(m.autoScroll).SetContent(strings.Join(m.output, "\n"))
 
 	var b strings.Builder
 
@@ -131,14 +123,10 @@ func (m Model) renderCompactMode() string {
 	b.WriteString(m.viewport.View())
 	b.WriteString("\n")
 
-	// Executing indicator (compact).
+	// Executing indicator (compact) or prompt.
 	if m.executing {
-		b.WriteString(m.executingSpinner.View())
-		b.WriteString(" ")
-	}
-
-	// Compact prompt.
-	if !m.executing {
+		b.WriteString("⟳ ") // Simple rotating arrow icon
+	} else {
 		b.WriteString("$ ")
 	}
 
@@ -154,12 +142,8 @@ func (m Model) renderCompactMode() string {
 // renderChatMode renders chat mode (Telegram/ChatGPT-like).
 // Input fixed at bottom, history scrolls at top.
 func (m Model) renderChatMode() string {
-	// Update viewport content.
-	m.viewport.SetContent(strings.Join(m.output, "\n"))
-
-	if m.autoScroll {
-		m.viewport.GotoBottom()
-	}
+	// Update viewport content (Phoenix fluent API with FollowMode)
+	m.viewport = m.viewport.FollowMode(m.autoScroll).SetContent(strings.Join(m.output, "\n"))
 
 	var b strings.Builder
 
@@ -171,11 +155,10 @@ func (m Model) renderChatMode() string {
 	b.WriteString(strings.Repeat("─", m.width))
 	b.WriteString("\n")
 
-	// Executing indicator.
+	// Executing indicator or prompt.
 	if m.executing {
-		b.WriteString(m.executingSpinner.View())
-		b.WriteString(" ")
-		b.WriteString(m.styles.Executing.Render("Executing..."))
+		// Simple text indicator without spinner (Phoenix Progress can be added later)
+		b.WriteString(m.styles.Executing.Render("⟳ Executing..."))
 		b.WriteString(" ")
 	} else {
 		// Compact prompt for chat mode.
@@ -213,8 +196,8 @@ func (m Model) renderHints() string {
 		hints = append(hints, m.styles.CompletionHint.Render(hint))
 	}
 
-	// Scroll indicator.
-	if !m.autoScroll && m.viewport.ScrollPercent() < 0.99 {
+	// Scroll indicator (Phoenix Viewport: IsAtBottom instead of ScrollPercent)
+	if !m.autoScroll && !m.viewport.IsAtBottom() {
 		hints = append(hints, m.styles.CompletionHint.Render("[↑ scrolled]"))
 	}
 

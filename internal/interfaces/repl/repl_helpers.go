@@ -32,10 +32,7 @@ func (m Model) navigateHistory(direction string) (Model, api.Cmd) {
 
 	// If navigation successful, set value
 	if ok || direction == directionDown {
-		m.textarea.SetValue(cmd)
-		if cmd != "" {
-			m.textarea.CursorEnd()
-		}
+		m.shellInput.SetValue(cmd)
 		// Sync input state
 		m.inputText = cmd
 		m.cursorPos = len([]rune(m.inputText))

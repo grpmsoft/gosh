@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/grpmsoft/gosh/internal/application/execute"
+	"github.com/phoenix-tui/phoenix/tea/api"
 )
 
 func main() {
@@ -35,9 +35,9 @@ func main() {
 	}
 
 	// Run (without AltScreen - using native terminal scrolling)
-	p := tea.NewProgram(model)
+	p := api.New(model)
 
-	if _, err := p.Run(); err != nil {
+	if err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)
 		os.Exit(1)
 	}

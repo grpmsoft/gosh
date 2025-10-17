@@ -7,8 +7,7 @@ import (
 	"strings"
 
 	"github.com/grpmsoft/gosh/internal/domain/config"
-
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/phoenix-tui/phoenix/tea/api"
 )
 
 // All methods in this file use Bubbletea's MVU (Model-View-Update) pattern,.
@@ -17,26 +16,26 @@ import (
 //nolint:gocritic // All Model methods: Bubbletea MVU requires value receivers
 
 // Update handles messages (Elm Architecture).
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 	var (
-		taCmd tea.Cmd
-		vpCmd tea.Cmd
-		spCmd tea.Cmd
+		taCmd api.Cmd
+		vpCmd api.Cmd
+		spCmd api.Cmd
 	)
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case api.KeyMsg:
 		return m.handleKeyPress(msg)
 
-	case tea.MouseMsg:
+	case api.MouseMsg:
 		// Handle mouse wheel for viewport
-		if msg.Action == tea.MouseActionPress && (msg.Button == tea.MouseButtonWheelUp || msg.Button == tea.MouseButtonWheelDown) {
+		if msg.Action == api.MouseActionPress && (msg.Button == api.MouseButtonWheelUp || msg.Button == api.MouseButtonWheelDown) {
 			m.autoScroll = false // Disable auto-scroll on manual scrolling
 			m.viewport, vpCmd = m.viewport.Update(msg)
 			return m, vpCmd
 		}
 
-	case tea.WindowSizeMsg:
+	case api.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 		m.textarea.SetWidth(msg.Width)
@@ -145,14 +144,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Update spinner if executing
 	if m.executing {
 		m.executingSpinner, spCmd = m.executingSpinner.Update(msg)
-		return m, tea.Batch(taCmd, vpCmd, spCmd)
+		return m, api.Batch(taCmd, vpCmd, spCmd)
 	}
 
-	return m, tea.Batch(taCmd, vpCmd)
+	return m, api.Batch(taCmd, vpCmd)
 }
 
 // handleKeyPress handles key presses.
-func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) handleKeyPress(msg api.KeyMsg) (Model, api.Cmd) {
 	// ESC - close help overlay (if open).
 	if msg.String() == "esc" && m.showingHelp {
 		m.showingHelp = false
@@ -173,12 +172,12 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c":
 		m.quitting = true
-		return m, tea.Quit
+		return m, api.Quit()
 
 	case "ctrl+d":
 		if m.textarea.Value() == "" {
 			m.quitting = true
-			return m, tea.Quit
+			return m, api.Quit()
 		}
 
 	case "enter":
@@ -193,7 +192,7 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.textarea.SetHeight(currentHeight + 1)
 		}
 		// Let textarea handle new line insertion.
-		var cmd tea.Cmd
+		var cmd api.Cmd
 		m.textarea, cmd = m.textarea.Update(msg)
 		return m, cmd
 
@@ -210,12 +209,12 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.output = make([]string, 0)
 		m.updateViewportContent()
 		m.autoScroll = true
-		return m, tea.ClearScreen
+		return m, nil // Phoenix doesn't have ClearScreen, we handle it in View
 
 	case "pgup", "pgdown":
 		// Viewport scrolling.
 		m.autoScroll = false
-		var cmd tea.Cmd
+		var cmd api.Cmd
 		m.viewport, cmd = m.viewport.Update(msg)
 		return m, cmd
 
@@ -235,17 +234,17 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Return auto-scroll on any input.
-	if msg.Type == tea.KeyRunes {
+	if msg.Type == api.KeyRune {
 		m.autoScroll = true
 	}
 
-	var cmd tea.Cmd
+	var cmd api.Cmd
 	m.textarea, cmd = m.textarea.Update(msg)
 	return m, cmd
 }
 
 // switchUIMode switches UI mode.
-func (m Model) switchUIMode(key string) (tea.Model, tea.Cmd) {
+func (m Model) switchUIMode(key string) (Model, api.Cmd) {
 	var newMode config.UIMode
 
 	switch key {
@@ -310,7 +309,7 @@ func (m Model) switchUIMode(key string) (tea.Model, tea.Cmd) {
 }
 
 // handleModeCommand handles :mode command for switching UI modes.
-func (m Model) handleModeCommand(commandLine string) (tea.Model, tea.Cmd) {
+func (m Model) handleModeCommand(commandLine string) (Model, api.Cmd) {
 	// Check if mode switching is enabled.
 	if !m.config.UI.AllowModeSwitching {
 		m.addOutputRaw("\033[31mError: UI mode switching is disabled in config\033[0m")
@@ -414,7 +413,7 @@ func (m Model) handleModeCommand(commandLine string) (tea.Model, tea.Cmd) {
 }
 
 // handleTabCompletion handles Tab-completion.
-func (m Model) handleTabCompletion() (tea.Model, tea.Cmd) {
+func (m Model) handleTabCompletion() (Model, api.Cmd) {
 	input := m.textarea.Value()
 
 	// First Tab press - generate completions.

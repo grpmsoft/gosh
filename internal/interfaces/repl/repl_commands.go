@@ -15,7 +15,7 @@ import (
 	"github.com/grpmsoft/gosh/internal/domain/session"
 	"github.com/grpmsoft/gosh/internal/interfaces/parser"
 
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/phoenix-tui/phoenix/tea/api"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/interp"
 	"mvdan.cc/sh/v3/syntax"
@@ -68,7 +68,7 @@ func (m *Model) expandAliases(commandLine string, depth int) (string, error) {
 }
 
 // executeCommand executes entered command.
-func (m Model) executeCommand() (tea.Model, tea.Cmd) {
+func (m Model) executeCommand() (Model, api.Cmd) {
 	value := strings.TrimSpace(m.textarea.Value())
 
 	// Empty command
@@ -112,13 +112,13 @@ func (m Model) executeCommand() (tea.Model, tea.Cmd) {
 	// Built-in exit command
 	if value == "exit" || value == "quit" {
 		m.quitting = true
-		return m, tea.Quit
+		return m, api.Quit()
 	}
 
 	// Built-in clear command
 	if value == "clear" || value == "cls" {
 		m.output = make([]string, 0)
-		return m, tea.ClearScreen
+		return m, nil // Phoenix doesn't have ClearScreen, we handle it in View
 	}
 
 	// Built-in help command
@@ -212,8 +212,8 @@ func (m *Model) showHelp() {
 }
 
 // execCommandAsync executes command in background.
-func (m *Model) execCommandAsync(commandLine string) tea.Cmd {
-	return func() tea.Msg {
+func (m *Model) execCommandAsync(commandLine string) api.Cmd {
+	return func() api.Msg {
 		// Parse command
 		cmd, pipe, err := parser.ParseCommandLine(commandLine)
 		if err != nil {
@@ -481,8 +481,8 @@ func (m *Model) isInteractiveCommand(cmdName string) bool {
 }
 
 // executeShellScriptNative executes .sh/.bash script natively via mvdan.cc/sh.
-func (m *Model) executeShellScriptNative(scriptPath string, args []string) tea.Cmd {
-	return func() tea.Msg {
+func (m *Model) executeShellScriptNative(scriptPath string, args []string) api.Cmd {
+	return func() api.Msg {
 		// Open script file
 		file, err := os.Open(scriptPath) //nolint:gosec // G304: This is a shell - dynamic script execution is expected
 		if err != nil {
@@ -597,13 +597,13 @@ func expandEnv(sess *session.Session) expand.Environ {
 	return &sessionEnviron{sess: sess}
 }
 
-// execInteractiveCommand executes interactive command via tea.ExecProcess.
+// execInteractiveCommand executes interactive command via api.ExecProcess.
 // Used for scripts requiring full TTY (clear, read, menu).
-func (m *Model) execInteractiveCommand(commandLine string) tea.Cmd {
+func (m *Model) execInteractiveCommand(commandLine string) api.Cmd {
 	// Parse command
 	cmd, pipe, err := parser.ParseCommandLine(commandLine)
 	if err != nil {
-		return func() tea.Msg {
+		return func() api.Msg {
 			return commandExecutedMsg{
 				err:      err,
 				exitCode: 1,
@@ -613,7 +613,7 @@ func (m *Model) execInteractiveCommand(commandLine string) tea.Cmd {
 
 	// Pipes not yet supported in interactive mode
 	if pipe != nil {
-		return func() tea.Msg {
+		return func() api.Msg {
 			return commandExecutedMsg{
 				output:   "[Interactive pipes not yet supported]",
 				exitCode: 1,
@@ -622,7 +622,7 @@ func (m *Model) execInteractiveCommand(commandLine string) tea.Cmd {
 	}
 
 	if cmd == nil {
-		return func() tea.Msg {
+		return func() api.Msg {
 			return commandExecutedMsg{
 				output:   "",
 				exitCode: 0,
@@ -638,24 +638,13 @@ func (m *Model) execInteractiveCommand(commandLine string) tea.Cmd {
 	osCmd.Dir = m.currentSession.WorkingDirectory()
 	osCmd.Env = m.currentSession.Environment().ToSlice()
 
-	// Create exec.Cmd for interactive execution
-	return tea.ExecProcess(osCmd, func(err error) tea.Msg {
-		exitCode := 0
-		if err != nil {
-			var exitErr *exec.ExitError
-			if errors.As(err, &exitErr) {
-				exitCode = exitErr.ExitCode()
-			} else {
-				exitCode = 1
-			}
-		}
-
-		// Return completion message
-		// Output was already shown directly to terminal
+	// TODO: Phoenix doesn't have ExecProcess yet - need to add it to Phoenix tea/api
+	// For now, return error
+	return func() api.Msg {
 		return commandExecutedMsg{
-			output:   "", // Empty - output was interactive
-			err:      err,
-			exitCode: exitCode,
+			output:   "[Interactive commands not yet supported - Phoenix migration in progress]",
+			err:      fmt.Errorf("ExecProcess not available in Phoenix yet"),
+			exitCode: 1,
 		}
-	})
+	}
 }

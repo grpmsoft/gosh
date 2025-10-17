@@ -181,14 +181,15 @@ func (s *ShellInput) renderCursorWithBlink(char string) string {
 
 // applySyntaxHighlighting applies ANSI color codes to shell syntax elements.
 //
-// Highlighting rules:
-// - Commands (first word): Green
-// - Options (-x, --long): Cyan
-// - Strings ("...", '...'): Yellow
-// - Pipes (|): Bold white
-// - Redirects (>, >>, <): Bold white
-// - Variables ($VAR, ${VAR}): Magenta
-// - Operators (&&, ||, ;): Bold white
+// Highlighting rules (matching repl_render.go for consistency):
+// - Commands (first word): Bright Yellow + Bold (\033[1;33m) - stands out!
+// - Options (-x, --long): Dark Gray (\033[90m) - subdued
+// - Arguments: Green (\033[32m) - visible but not dominant
+// - Strings ("...", '...'): Yellow (\033[33m)
+// - Pipes (|): Bold white (\033[1;37m)
+// - Redirects (>, >>, <): Bold white (\033[1;37m)
+// - Variables ($VAR, ${VAR}): Magenta (\033[35m)
+// - Operators (&&, ||, ;): Bold white (\033[1;37m)
 //
 // IMPORTANT: Currently only works with ASCII.
 // For UTF-8 (Russian, Chinese, etc.), returns text as-is to avoid breaking multi-byte sequences.
@@ -328,15 +329,16 @@ func applySyntaxHighlighting(text string) string {
 			// Start of word
 			word := extractWord(text[i:])
 			if strings.HasPrefix(word, "-") {
-				// Option - cyan
-				result.WriteString("\033[36m")
+				// Option - dark gray (subdued)
+				result.WriteString("\033[90m")
 				result.WriteString(string(ch))
 			} else if isFirstWord {
-				// Command (first word) - green
-				result.WriteString("\033[32m")
+				// Command (first word) - bright yellow + bold (stands out!)
+				result.WriteString("\033[1;33m")
 				result.WriteString(string(ch))
 			} else {
-				// Argument - default color
+				// Argument - green (visible but not dominant)
+				result.WriteString("\033[32m")
 				result.WriteString(string(ch))
 			}
 		} else {
@@ -346,9 +348,9 @@ func applySyntaxHighlighting(text string) string {
 
 		// Check if end of word
 		if i == len(text)-1 || text[i+1] == ' ' || text[i+1] == '|' || text[i+1] == '>' || text[i+1] == '<' {
-			// End current color
+			// End current color for all colored words (command, option, argument)
 			word := text[wordStart : i+1]
-			if strings.HasPrefix(word, "-") || (isFirstWord && wordStart == 0) {
+			if strings.HasPrefix(word, "-") || (isFirstWord && wordStart == 0) || (!isFirstWord && wordStart > 0) {
 				result.WriteString("\033[0m")
 			}
 		}

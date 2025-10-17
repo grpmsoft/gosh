@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/grpmsoft/gosh/internal/domain/config"
+	clipapi "github.com/phoenix-tui/phoenix/clipboard/api"
 	"github.com/phoenix-tui/phoenix/tea/api"
 )
 
@@ -155,7 +156,7 @@ func (m Model) handleKeyPress(msg api.KeyMsg) (Model, api.Cmd) {
 	}
 
 	// F1 or ? - open help overlay.
-	if msg.String() == "f1" || msg.String() == "?" {
+	if msg.String() == "F1" || msg.String() == "?" {
 		m.showingHelp = true
 		return m, nil
 	}
@@ -175,6 +176,18 @@ func (m Model) handleKeyPress(msg api.KeyMsg) (Model, api.Cmd) {
 			m.quitting = true
 			return m, api.Quit()
 		}
+
+	case "ctrl+v":
+		// Paste from clipboard
+		text, err := clipapi.Read()
+		if err == nil && text != "" {
+			// Insert clipboard text at cursor position
+			currentValue := m.shellInput.Value()
+			m.shellInput.SetValue(currentValue + text)
+			m.inputText = m.shellInput.Value()
+			m.cursorPos = len([]rune(m.inputText))
+		}
+		return m, nil
 
 	case "enter":
 		// Regular Enter - execute command.

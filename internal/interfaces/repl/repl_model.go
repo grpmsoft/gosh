@@ -20,9 +20,9 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
+	"github.com/phoenix-tui/phoenix/tea/api"
 )
 
 // Model represents REPL state (Elm Architecture).
@@ -277,7 +277,7 @@ func NewBubbleteaREPL(
 // Init initializes the model (Elm Architecture).
 //
 //nolint:gocritic // hugeParam: Bubbletea MVU requires value receiver
-func (m Model) Init() tea.Cmd {
+func (m Model) Init() api.Cmd {
 	return textarea.Blink
 }
 

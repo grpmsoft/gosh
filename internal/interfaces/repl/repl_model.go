@@ -18,7 +18,6 @@ import (
 	historyInfra "github.com/grpmsoft/gosh/internal/infrastructure/history"
 
 	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
@@ -40,7 +39,7 @@ import (
 //nolint:gocritic // hugeParam: Bubbletea MVU architecture requires value receivers
 type Model struct {
 	// Core components
-	textarea         textarea.Model
+	shellInput       *ShellInput    // Phoenix-based input with history navigation
 	viewport         viewport.Model
 	sessionManager   *appsession.Manager
 	executeUseCase   *execute.UseCase
@@ -138,20 +137,6 @@ func NewBubbleteaREPL(
 		return nil, err
 	}
 
-	// Create textarea (for multiline with Alt+Enter)
-	ta := textarea.New()
-	ta.Placeholder = ""
-	ta.Focus()
-	ta.CharLimit = 0
-	ta.SetWidth(80)
-	ta.SetHeight(1) // Start with one line
-	ta.Prompt = ""  // We'll render our own prompt
-	ta.ShowLineNumbers = false
-
-	// Styles for textarea
-	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
-	ta.FocusedStyle.Base = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
-
 	// Create styles
 	styles := makeProfessionalStyles()
 
@@ -196,6 +181,9 @@ func NewBubbleteaREPL(
 		}
 	}
 
+	// Create ShellInput (Phoenix TextInput with history integration)
+	shellInput := NewShellInput(80, sess.History())
+
 	// Create navigator and use case for adding to history
 	historyNavigator := sess.NewHistoryNavigator()
 	addToHistoryUC := apphistory.NewAddToHistoryUseCase(sess.History(), historyRepo)
@@ -205,7 +193,7 @@ func NewBubbleteaREPL(
 	commandExecutor := executor.NewOSCommandExecutor(logger)
 
 	m := &Model{
-		textarea:         ta,
+		shellInput:       shellInput,
 		viewport:         vp,
 		sessionManager:   sessionManager,
 		executeUseCase:   executeUseCase,
@@ -278,7 +266,8 @@ func NewBubbleteaREPL(
 //
 //nolint:gocritic // hugeParam: Bubbletea MVU requires value receiver
 func (m Model) Init() api.Cmd {
-	return textarea.Blink
+	// ShellInput handles cursor blinking internally, no need for explicit Blink command
+	return nil
 }
 
 // getHistoryFilePath returns the path to the history file.

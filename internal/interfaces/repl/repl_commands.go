@@ -69,7 +69,7 @@ func (m *Model) expandAliases(commandLine string, depth int) (string, error) {
 
 // executeCommand executes entered command.
 func (m Model) executeCommand() (Model, api.Cmd) {
-	value := strings.TrimSpace(m.textarea.Value())
+	value := strings.TrimSpace(m.shellInput.Value())
 
 	// Empty command
 	if value == "" {
@@ -101,9 +101,8 @@ func (m Model) executeCommand() (Model, api.Cmd) {
 		m.addOutputRaw(m.renderPromptForHistoryANSI() + m.applySyntaxHighlight(value))
 	}
 
-	// Clear textarea and return height to 1
-	m.textarea.SetValue("")
-	m.textarea.SetHeight(1)
+	// Clear shell input
+	m.shellInput.Reset()
 
 	// Sync input state
 	m.inputText = ""

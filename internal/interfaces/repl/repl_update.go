@@ -38,7 +38,7 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 	case api.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.textarea.SetWidth(msg.Width)
+		m.shellInput.SetWidth(msg.Width)
 
 		// Update viewport size
 		// Classic mode: prompt inside viewport, use full height (we preserve scroll via YOffset)
@@ -130,11 +130,11 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 		return m, nil
 	}
 
-	// Update textarea
-	m.textarea, taCmd = m.textarea.Update(msg)
+	// Update shell input
+	m.shellInput, taCmd = m.shellInput.Update(msg)
 
-	// Sync our input state with textarea
-	m.inputText = m.textarea.Value()
+	// Sync our input state with shell input
+	m.inputText = m.shellInput.Value()
 	// Cursor always at end after normal input (textarea doesn't give position API)
 	m.cursorPos = len([]rune(m.inputText))
 
@@ -175,7 +175,7 @@ func (m Model) handleKeyPress(msg api.KeyMsg) (Model, api.Cmd) {
 		return m, api.Quit()
 
 	case "ctrl+d":
-		if m.textarea.Value() == "" {
+		if m.shellInput.Value() == "" {
 			m.quitting = true
 			return m, api.Quit()
 		}
@@ -186,14 +186,9 @@ func (m Model) handleKeyPress(msg api.KeyMsg) (Model, api.Cmd) {
 		return m.executeCommand()
 
 	case "alt+enter":
-		// Alt+Enter - add new line (multiline).
-		currentHeight := m.textarea.Height()
-		if currentHeight < 10 {
-			m.textarea.SetHeight(currentHeight + 1)
-		}
-		// Let textarea handle new line insertion.
+		// Alt+Enter - multiline input (Phoenix TextInput handles internally).
 		var cmd api.Cmd
-		m.textarea, cmd = m.textarea.Update(msg)
+		m.shellInput, cmd = m.shellInput.Update(msg)
 		return m, cmd
 
 	case "up", "down":
@@ -239,7 +234,7 @@ func (m Model) handleKeyPress(msg api.KeyMsg) (Model, api.Cmd) {
 	}
 
 	var cmd api.Cmd
-	m.textarea, cmd = m.textarea.Update(msg)
+	m.shellInput, cmd = m.shellInput.Update(msg)
 	return m, cmd
 }
 
@@ -414,7 +409,7 @@ func (m Model) handleModeCommand(commandLine string) (Model, api.Cmd) {
 
 // handleTabCompletion handles Tab-completion.
 func (m Model) handleTabCompletion() (Model, api.Cmd) {
-	input := m.textarea.Value()
+	input := m.shellInput.Value()
 
 	// First Tab press - generate completions.
 	if !m.completionActive {
@@ -428,7 +423,7 @@ func (m Model) handleTabCompletion() (Model, api.Cmd) {
 
 		m.completionActive = true
 		m.completionIndex = 0
-		m.textarea.SetValue(m.completions[0])
+		m.shellInput.SetValue(m.completions[0])
 		// Sync input state.
 		m.inputText = m.completions[0]
 		m.cursorPos = len([]rune(m.inputText))
@@ -438,7 +433,7 @@ func (m Model) handleTabCompletion() (Model, api.Cmd) {
 	// Repeated Tab presses - cycle through variants.
 	if len(m.completions) > 0 {
 		m.completionIndex = (m.completionIndex + 1) % len(m.completions)
-		m.textarea.SetValue(m.completions[m.completionIndex])
+		m.shellInput.SetValue(m.completions[m.completionIndex])
 		// Sync input state.
 		m.inputText = m.completions[m.completionIndex]
 		m.cursorPos = len([]rune(m.inputText))

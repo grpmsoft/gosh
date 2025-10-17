@@ -191,23 +191,16 @@ func (m Model) renderChatMode() string {
 	return b.String()
 }
 
-// renderInputWithCursor renders input with blinking cursor.
-// IMPORTANT: We use textarea.View() for native blinking cursor.
+// renderInputWithCursor renders input with visible cursor.
 //
-// TODO(v0.2.0): Syntax highlighting temporarily disabled due to Bubbletea/Bubbles limitations.
-// Problem: textarea doesn't expose cursor position API (fields col, row are private).
-// When we apply syntax highlighting to textarea.Value(), cursor disappears because
-// highlighting bypasses textarea.View()'s cursor injection logic.
+// Phase 2: Using Phoenix ShellInput with public ContentParts() API.
+// This enables syntax highlighting + visible cursor (to be implemented in Phase 6).
 //
-// Solution: Migrate to Phoenix TUI framework (see docs/dev/TUI_LIBRARY_REQUIREMENTS.md)
-// Phoenix TUI will provide public Position() API and standalone cursor rendering,
-// enabling syntax highlighting + visible cursor simultaneously.
-//
-// For now: Cursor visibility > Syntax highlighting (basic shell functionality first).
+// Current: Cursor is visible and works correctly.
+// Next (Phase 6): Add syntax highlighting using ContentParts().
 func (m Model) renderInputWithCursor() string {
-	// Use textarea's native blinking cursor (no syntax highlighting).
-	// This ensures cursor is always visible and blinking properly.
-	return m.textarea.View()
+	// Phoenix ShellInput with public cursor API!
+	return m.shellInput.View()
 }
 
 // renderHints renders hints (completion, scroll indicator).

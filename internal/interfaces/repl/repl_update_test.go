@@ -5,7 +5,7 @@ import (
 
 	"github.com/grpmsoft/gosh/internal/domain/config"
 
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/phoenix-tui/phoenix/tea/api"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,8 +18,7 @@ func TestSwitchUIMode(t *testing.T) {
 		m.height = 24
 
 		// Act
-		updatedModel, _ := m.switchUIMode("alt+1")
-		m2 := updatedModel.(Model)
+		m2, _ := m.switchUIMode("alt+1")
 
 		// Assert
 		assert.Equal(t, config.UIModeClassic, m2.config.UI.Mode)
@@ -33,8 +32,7 @@ func TestSwitchUIMode(t *testing.T) {
 		m.height = 24
 
 		// Act
-		updatedModel, _ := m.switchUIMode("alt+2")
-		m2 := updatedModel.(Model)
+		m2, _ := m.switchUIMode("alt+2")
 
 		// Assert
 		assert.Equal(t, config.UIModeWarp, m2.config.UI.Mode)
@@ -48,8 +46,7 @@ func TestSwitchUIMode(t *testing.T) {
 		m.height = 24
 
 		// Act
-		updatedModel, _ := m.switchUIMode("alt+3")
-		m2 := updatedModel.(Model)
+		m2, _ := m.switchUIMode("alt+3")
 
 		// Assert
 		assert.Equal(t, config.UIModeCompact, m2.config.UI.Mode)
@@ -63,8 +60,7 @@ func TestSwitchUIMode(t *testing.T) {
 		m.height = 24
 
 		// Act
-		updatedModel, _ := m.switchUIMode("alt+4")
-		m2 := updatedModel.(Model)
+		m2, _ := m.switchUIMode("alt+4")
 
 		// Assert
 		assert.Equal(t, config.UIModeChat, m2.config.UI.Mode)
@@ -78,8 +74,7 @@ func TestSwitchUIMode(t *testing.T) {
 		m.height = 24
 
 		// Act
-		updatedModel, _ := m.switchUIMode("alt+2") // Already in Warp
-		m2 := updatedModel.(Model)
+		m2, _ := m.switchUIMode("alt+2") // Already in Warp
 
 		// Assert
 		assert.Equal(t, config.UIModeWarp, m2.config.UI.Mode)
@@ -91,8 +86,7 @@ func TestSwitchUIMode(t *testing.T) {
 		initialMode := m.config.UI.Mode
 
 		// Act
-		updatedModel, _ := m.switchUIMode("ctrl+f9")
-		m2 := updatedModel.(Model)
+		m2, _ := m.switchUIMode("ctrl+f9")
 
 		// Assert
 		assert.Equal(t, initialMode, m2.config.UI.Mode)
@@ -106,8 +100,7 @@ func TestHandleModeCommand(t *testing.T) {
 		m.config.UI.Mode = config.UIModeWarp
 
 		// Act
-		updatedModel, _ := m.handleModeCommand(":mode")
-		m2 := updatedModel.(Model)
+		m2, _ := m.handleModeCommand(":mode")
 
 		// Assert
 		// Should have added output about current mode
@@ -122,8 +115,7 @@ func TestHandleModeCommand(t *testing.T) {
 		m.height = 24
 
 		// Act
-		updatedModel, _ := m.handleModeCommand(":mode classic")
-		m2 := updatedModel.(Model)
+		m2, _ := m.handleModeCommand(":mode classic")
 
 		// Assert
 		assert.Equal(t, config.UIModeClassic, m2.config.UI.Mode)
@@ -137,8 +129,7 @@ func TestHandleModeCommand(t *testing.T) {
 		m.height = 24
 
 		// Act
-		updatedModel, _ := m.handleModeCommand(":mode warp")
-		m2 := updatedModel.(Model)
+		m2, _ := m.handleModeCommand(":mode warp")
 
 		// Assert
 		assert.Equal(t, config.UIModeWarp, m2.config.UI.Mode)
@@ -152,8 +143,7 @@ func TestHandleModeCommand(t *testing.T) {
 		m.height = 24
 
 		// Act
-		updatedModel, _ := m.handleModeCommand(":mode compact")
-		m2 := updatedModel.(Model)
+		m2, _ := m.handleModeCommand(":mode compact")
 
 		// Assert
 		assert.Equal(t, config.UIModeCompact, m2.config.UI.Mode)
@@ -167,8 +157,7 @@ func TestHandleModeCommand(t *testing.T) {
 		m.height = 24
 
 		// Act
-		updatedModel, _ := m.handleModeCommand(":mode chat")
-		m2 := updatedModel.(Model)
+		m2, _ := m.handleModeCommand(":mode chat")
 
 		// Assert
 		assert.Equal(t, config.UIModeChat, m2.config.UI.Mode)
@@ -180,8 +169,7 @@ func TestHandleModeCommand(t *testing.T) {
 		initialMode := m.config.UI.Mode
 
 		// Act
-		updatedModel, _ := m.handleModeCommand(":mode invalid")
-		m2 := updatedModel.(Model)
+		m2, _ := m.handleModeCommand(":mode invalid")
 
 		// Assert
 		assert.Equal(t, initialMode, m2.config.UI.Mode)
@@ -195,8 +183,7 @@ func TestHandleModeCommand(t *testing.T) {
 		initialMode := m.config.UI.Mode
 
 		// Act
-		updatedModel, _ := m.handleModeCommand(":mode classic")
-		m2 := updatedModel.(Model)
+		m2, _ := m.handleModeCommand(":mode classic")
 
 		// Assert
 		assert.Equal(t, initialMode, m2.config.UI.Mode)
@@ -210,8 +197,7 @@ func TestHandleModeCommand(t *testing.T) {
 		m.config.UI.Mode = config.UIModeWarp
 
 		// Act
-		updatedModel, _ := m.handleModeCommand(":mode warp")
-		m2 := updatedModel.(Model)
+		m2, _ := m.handleModeCommand(":mode warp")
 
 		// Assert
 		assert.Equal(t, config.UIModeWarp, m2.config.UI.Mode)
@@ -223,44 +209,40 @@ func TestHandleModeCommand(t *testing.T) {
 func TestHandleTabCompletion(t *testing.T) {
 	t.Run("generates completions on first Tab", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.textarea.SetValue("ec")
+		m.shellInput.SetValue("ec")
 
 		// Act
-		updatedModel, _ := m.handleTabCompletion()
-		m2 := updatedModel.(Model)
+		m2, _ := m.handleTabCompletion()
 
 		// Assert
 		assert.True(t, m2.completionActive)
 		assert.Greater(t, len(m2.completions), 0)
 		assert.Equal(t, 0, m2.completionIndex)
 		// Should have completed to "echo"
-		assert.Equal(t, "echo", m2.textarea.Value())
+		assert.Equal(t, "echo", m2.shellInput.Value())
 	})
 
 	t.Run("cycles through completions on repeated Tab", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.textarea.SetValue("e")
+		m.shellInput.SetValue("e")
 		m.completionActive = false
 
 		// First Tab
-		updatedModel, _ := m.handleTabCompletion()
-		m2 := updatedModel.(Model)
+		m2, _ := m.handleTabCompletion()
 
 		// Second Tab
 		if len(m2.completions) > 1 {
-			updatedModel2, _ := m2.handleTabCompletion()
-			m3 := updatedModel2.(Model)
+			m3, _ := m2.handleTabCompletion()
 			assert.Equal(t, 1, m3.completionIndex)
 		}
 	})
 
 	t.Run("returns empty completions for empty input", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.textarea.SetValue("")
+		m.shellInput.SetValue("")
 
 		// Act
-		updatedModel, _ := m.handleTabCompletion()
-		m2 := updatedModel.(Model)
+		m2, _ := m.handleTabCompletion()
 
 		// Assert
 		assert.False(t, m2.completionActive)
@@ -269,11 +251,10 @@ func TestHandleTabCompletion(t *testing.T) {
 
 	t.Run("returns empty completions for no matches", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.textarea.SetValue("zzzzz")
+		m.shellInput.SetValue("zzzzz")
 
 		// Act
-		updatedModel, _ := m.handleTabCompletion()
-		m2 := updatedModel.(Model)
+		m2, _ := m.handleTabCompletion()
 
 		// Assert
 		assert.False(t, m2.completionActive)
@@ -354,9 +335,8 @@ func TestUpdateWindowSize(t *testing.T) {
 		m.ready = false
 
 		// Act
-		msg := tea.WindowSizeMsg{Width: 100, Height: 30}
-		updatedModel, _ := m.Update(msg)
-		m2 := updatedModel.(Model)
+		msg := api.WindowSizeMsg{Width: 100, Height: 30}
+		m2, _ := m.Update(msg)
 
 		// Assert
 		assert.Equal(t, 100, m2.width)
@@ -369,13 +349,12 @@ func TestUpdateWindowSize(t *testing.T) {
 		m.config.UI.Mode = config.UIModeClassic
 
 		// Act
-		msg := tea.WindowSizeMsg{Width: 80, Height: 24}
-		updatedModel, _ := m.Update(msg)
-		m2 := updatedModel.(Model)
+		msg := api.WindowSizeMsg{Width: 80, Height: 24}
+		m2, _ := m.Update(msg)
 
 		// Assert
 		// Classic mode uses full height
-		assert.Equal(t, 24, m2.viewport.Height)
+		assert.Equal(t, 24, m2.viewport.Height())
 	})
 
 	t.Run("adjusts viewport height for Compact mode", func(t *testing.T) {
@@ -383,13 +362,12 @@ func TestUpdateWindowSize(t *testing.T) {
 		m.config.UI.Mode = config.UIModeCompact
 
 		// Act
-		msg := tea.WindowSizeMsg{Width: 80, Height: 24}
-		updatedModel, _ := m.Update(msg)
-		m2 := updatedModel.(Model)
+		msg := api.WindowSizeMsg{Width: 80, Height: 24}
+		m2, _ := m.Update(msg)
 
 		// Assert
 		// Compact mode reserves 1 line
-		assert.Equal(t, 23, m2.viewport.Height)
+		assert.Equal(t, 23, m2.viewport.Height())
 	})
 
 	t.Run("adjusts viewport height for Warp mode", func(t *testing.T) {
@@ -397,13 +375,12 @@ func TestUpdateWindowSize(t *testing.T) {
 		m.config.UI.Mode = config.UIModeWarp
 
 		// Act
-		msg := tea.WindowSizeMsg{Width: 80, Height: 24}
-		updatedModel, _ := m.Update(msg)
-		m2 := updatedModel.(Model)
+		msg := api.WindowSizeMsg{Width: 80, Height: 24}
+		m2, _ := m.Update(msg)
 
 		// Assert
 		// Warp mode reserves 3 lines
-		assert.Equal(t, 21, m2.viewport.Height)
+		assert.Equal(t, 21, m2.viewport.Height())
 	})
 }
 
@@ -412,9 +389,8 @@ func TestHandleKeyPress(t *testing.T) {
 		m := createTestModelForHelpers(t)
 
 		// Act
-		msg := tea.KeyMsg{Type: tea.KeyCtrlC}
-		updatedModel, cmd := m.handleKeyPress(msg)
-		m2 := updatedModel.(Model)
+		msg := api.KeyMsg{Type: api.KeyCtrlC} // Dedicated Ctrl+C type
+		m2, cmd := m.handleKeyPress(msg)
 
 		// Assert
 		assert.True(t, m2.quitting)
@@ -423,12 +399,11 @@ func TestHandleKeyPress(t *testing.T) {
 
 	t.Run("quits on Ctrl+D with empty input", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.textarea.SetValue("")
+		m.shellInput.SetValue("")
 
 		// Act
-		msg := tea.KeyMsg{Type: tea.KeyCtrlD}
-		updatedModel, _ := m.handleKeyPress(msg)
-		m2 := updatedModel.(Model)
+		msg := api.KeyMsg{Type: api.KeyRune, Rune: 'd', Ctrl: true} // Ctrl+D
+		m2, _ := m.handleKeyPress(msg)
 
 		// Assert
 		assert.True(t, m2.quitting)
@@ -436,12 +411,11 @@ func TestHandleKeyPress(t *testing.T) {
 
 	t.Run("does not quit on Ctrl+D with input", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.textarea.SetValue("some text")
+		m.shellInput.SetValue("some text")
 
 		// Act
-		msg := tea.KeyMsg{Type: tea.KeyCtrlD}
-		updatedModel, _ := m.handleKeyPress(msg)
-		m2 := updatedModel.(Model)
+		msg := api.KeyMsg{Type: api.KeyRune, Rune: 'd', Ctrl: true} // Ctrl+D
+		m2, _ := m.handleKeyPress(msg)
 
 		// Assert
 		assert.False(t, m2.quitting)
@@ -452,9 +426,8 @@ func TestHandleKeyPress(t *testing.T) {
 		m.showingHelp = false
 
 		// Act
-		msg := tea.KeyMsg{Type: tea.KeyF1}
-		updatedModel, _ := m.handleKeyPress(msg)
-		m2 := updatedModel.(Model)
+		msg := api.KeyMsg{Type: api.KeyF1}
+		m2, _ := m.handleKeyPress(msg)
 
 		// Assert
 		assert.True(t, m2.showingHelp)
@@ -465,9 +438,8 @@ func TestHandleKeyPress(t *testing.T) {
 		m.showingHelp = true
 
 		// Act
-		msg := tea.KeyMsg{Type: tea.KeyEsc}
-		updatedModel, _ := m.handleKeyPress(msg)
-		m2 := updatedModel.(Model)
+		msg := api.KeyMsg{Type: api.KeyEsc}
+		m2, _ := m.handleKeyPress(msg)
 
 		// Assert
 		assert.False(t, m2.showingHelp)
@@ -480,9 +452,8 @@ func TestHandleKeyPress(t *testing.T) {
 		initialLen := len(m.output)
 
 		// Act
-		msg := tea.KeyMsg{Type: tea.KeyCtrlL}
-		updatedModel, _ := m.handleKeyPress(msg)
-		m2 := updatedModel.(Model)
+		msg := api.KeyMsg{Type: api.KeyRune, Rune: 'l', Ctrl: true} // Ctrl+L
+		m2, _ := m.handleKeyPress(msg)
 
 		// Assert
 		assert.Less(t, len(m2.output), initialLen)
@@ -494,9 +465,8 @@ func TestHandleKeyPress(t *testing.T) {
 		m.autoScroll = true
 
 		// Act
-		msg := tea.KeyMsg{Type: tea.KeyPgUp}
-		updatedModel, _ := m.handleKeyPress(msg)
-		m2 := updatedModel.(Model)
+		msg := api.KeyMsg{Type: api.KeyPgUp}
+		m2, _ := m.handleKeyPress(msg)
 
 		// Assert
 		assert.False(t, m2.autoScroll)
@@ -507,9 +477,8 @@ func TestHandleKeyPress(t *testing.T) {
 		m.autoScroll = false
 
 		// Act
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}}
-		updatedModel, _ := m.handleKeyPress(msg)
-		m2 := updatedModel.(Model)
+		msg := api.KeyMsg{Type: api.KeyRune, Rune: 'a'}
+		m2, _ := m.handleKeyPress(msg)
 
 		// Assert
 		assert.True(t, m2.autoScroll)
@@ -522,9 +491,8 @@ func TestHandleKeyPress(t *testing.T) {
 		m.completionIndex = 0
 
 		// Act
-		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}}
-		updatedModel, _ := m.handleKeyPress(msg)
-		m2 := updatedModel.(Model)
+		msg := api.KeyMsg{Type: api.KeyRune, Rune: 'a'}
+		m2, _ := m.handleKeyPress(msg)
 
 		// Assert
 		assert.False(t, m2.completionActive)
@@ -544,8 +512,7 @@ func TestUpdateCommandExecutedMsg(t *testing.T) {
 			err:      nil,
 			exitCode: 0,
 		}
-		updatedModel, _ := m.Update(msg)
-		m2 := updatedModel.(Model)
+		m2, _ := m.Update(msg)
 
 		// Assert
 		assert.False(t, m2.executing)
@@ -564,8 +531,7 @@ func TestUpdateCommandExecutedMsg(t *testing.T) {
 			err:      nil,
 			exitCode: 0,
 		}
-		updatedModel, _ := m.Update(msg)
-		m2 := updatedModel.(Model)
+		m2, _ := m.Update(msg)
 
 		// Assert
 		assert.Greater(t, len(m2.output), initialLen)
@@ -581,8 +547,7 @@ func TestUpdateCommandExecutedMsg(t *testing.T) {
 			err:      assert.AnError,
 			exitCode: 1,
 		}
-		updatedModel, _ := m.Update(msg)
-		m2 := updatedModel.(Model)
+		m2, _ := m.Update(msg)
 
 		// Assert
 		assert.False(t, m2.executing)
@@ -596,9 +561,8 @@ func TestUpdateMouseMsg(t *testing.T) {
 		m.autoScroll = true
 
 		// Act
-		msg := tea.MouseMsg{Action: tea.MouseActionPress, Button: tea.MouseButtonWheelUp}
-		updatedModel, _ := m.Update(msg)
-		m2 := updatedModel.(Model)
+		msg := api.MouseMsg{Action: api.MouseActionPress, Button: api.MouseButtonWheelUp}
+		m2, _ := m.Update(msg)
 
 		// Assert
 		assert.False(t, m2.autoScroll)

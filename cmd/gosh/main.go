@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/grpmsoft/gosh/internal/application/execute"
+	"github.com/grpmsoft/gosh/internal/interfaces/repl"
 	"github.com/phoenix-tui/phoenix/tea/api"
 )
 
@@ -36,7 +37,8 @@ func main() {
 
 	// Run (without AltScreen - using native terminal scrolling)
 	// Phoenix tea/api requires value type for MVU pattern
-	p := api.New(*model)
+	// Enable mouse support for viewport scrolling
+	p := api.New(*model, api.WithMouseAllMotion[repl.Model]())
 
 	if err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)

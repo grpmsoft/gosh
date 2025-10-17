@@ -23,6 +23,14 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 	)
 
 	switch msg := msg.(type) {
+	case api.TickMsg:
+		// Toggle cursor visibility for blinking effect
+		if m.config.UI.CursorBlinking {
+			m.cursorVisible = !m.cursorVisible
+			return m, tickCmd()
+		}
+		return m, nil
+
 	case api.KeyMsg:
 		return m.handleKeyPress(msg)
 
@@ -245,9 +253,10 @@ func (m Model) handleKeyPress(msg api.KeyMsg) (Model, api.Cmd) {
 		m.beforeCompletion = ""
 	}
 
-	// Return auto-scroll on any input.
+	// Return auto-scroll and show cursor on any input.
 	if msg.Type == api.KeyRune {
 		m.autoScroll = true
+		m.cursorVisible = true // Show cursor immediately when typing
 	}
 
 	var cmd api.Cmd

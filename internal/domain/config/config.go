@@ -73,6 +73,11 @@ type UIConfig struct {
 	// OutputSeparator - separator printed after command output in Classic mode
 	// Default: "\n" (empty line like bash). Can be "" (no separator) or any string.
 	OutputSeparator string `json:"output_separator"`
+
+	// CursorBlinking - enable cursor blinking animation (like PowerShell)
+	// true: cursor blinks every 500ms (default)
+	// false: cursor is always visible (static)
+	CursorBlinking bool `json:"cursor_blinking"`
 }
 
 // ShellConfig shell settings.
@@ -105,8 +110,9 @@ func DefaultConfig() *Config {
 			ShowGitStatus:      true,
 			SyntaxHighlight:    true,
 			CompletionEnabled:  true,
-			AllowModeSwitching: true, // Allow mode switching via F1-F4
-			OutputSeparator:    "\n", // Empty line after command output (bash-style)
+			AllowModeSwitching: true,  // Allow mode switching via F1-F4
+			OutputSeparator:    "\n",  // Empty line after command output (bash-style)
+			CursorBlinking:     true,  // Blinking cursor like PowerShell (configurable)
 		},
 		Shell: ShellConfig{
 			DefaultShell: "sh",

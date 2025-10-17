@@ -1,6 +1,7 @@
 package repl
 
 import (
+	"fmt"
 	"strings"
 
 	input "github.com/phoenix-tui/phoenix/components/input/api"
@@ -15,12 +16,14 @@ import (
 // - History navigation (Up/Down arrows)
 // - Syntax highlighting support (Phase 6)
 // - Emoji/Unicode correct rendering
+// - Cursor blinking animation
 //
 // This wrapper adds shell-specific functionality to the universal Phoenix TextInput component.
 type ShellInput struct {
-	base       *input.Input
-	history    *history.History
-	historyNav *history.Navigator
+	base          *input.Input
+	history       *history.History
+	historyNav    *history.Navigator
+	cursorVisible bool // For blinking animation (controlled by parent Model)
 }
 
 // NewShellInput creates a new shell input component.
@@ -30,9 +33,10 @@ func NewShellInput(width int, hist *history.History) *ShellInput {
 	inp := input.New(width).Focused(true)
 
 	return &ShellInput{
-		base:       inp,
-		history:    hist,
-		historyNav: hist.NewNavigator(),
+		base:          inp,
+		history:       hist,
+		historyNav:    hist.NewNavigator(),
+		cursorVisible: true, // Start with cursor visible
 	}
 }
 
@@ -71,6 +75,11 @@ func (s *ShellInput) Focus() {
 // Blur removes focus from input.
 func (s *ShellInput) Blur() {
 	s.base = s.base.Focused(false)
+}
+
+// SetCursorVisible sets cursor visibility for blinking animation.
+func (s *ShellInput) SetCursorVisible(visible bool) {
+	s.cursorVisible = visible
 }
 
 // Update handles input events.
@@ -112,23 +121,28 @@ func (s *ShellInput) Update(msg api.Msg) (*ShellInput, api.Cmd) {
 	return s, cmd
 }
 
-// View renders the input with syntax highlighting + cursor.
+// View renders the input with syntax highlighting.
 //
-// Phase 6: Syntax highlighting with visible cursor (COMPLETE).
-//
-// The cursor is ALWAYS visible when typing - this is the main goal of Phase 2!
-// Syntax highlighting is applied to text before and after cursor separately.
+// PowerShell approach: Apply syntax highlighting to FULL text (preserves context!),
+// then position system cursor using ANSI escape codes.
+// The terminal automatically inverts the character under cursor.
 func (s *ShellInput) View() string {
 	before, at, after := s.ContentParts()
+	fullText := before + at + after
 
-	// Apply syntax highlighting to parts before and after cursor
-	highlightedBefore := applySyntaxHighlighting(before)
-	highlightedAfter := applySyntaxHighlighting(after)
+	// Apply syntax highlighting to ENTIRE text (preserves command/argument context!)
+	highlighted := applySyntaxHighlighting(fullText)
 
-	// Render cursor with syntax highlighting applied to character under cursor
-	highlightedCursor := renderCursorWithHighlight(at, before)
+	// After rendering highlighted text, move cursor back to correct position
+	// We render the full highlighted text, then move cursor left
+	charsAfterCursor := countVisibleChars(at + after)
+	if charsAfterCursor > 0 {
+		// Move cursor left by number of characters after cursor position
+		// ANSI: \033[{n}D = move left n columns
+		highlighted += fmt.Sprintf("\033[%dD", charsAfterCursor)
+	}
 
-	return highlightedBefore + highlightedCursor + highlightedAfter
+	return highlighted
 }
 
 // renderCursor renders visible blinking cursor character.
@@ -142,19 +156,25 @@ func renderCursor(char string) string {
 	return "\033[7m" + char + "\033[27m"
 }
 
-// renderCursorWithHighlight renders cursor with syntax highlighting context.
-// Determines the color of the character under cursor based on what comes before it.
+// renderCursorWithBlink renders cursor with blinking support.
 //
-// IMPORTANT: Apply reverse video to plain character, NOT colored one!
-// If we apply reverse video to coloredChar, the \033[0m reset code will cancel reverse video.
-func renderCursorWithHighlight(char string, before string) string {
+// Blinking behavior:
+// - cursorVisible = true: render cursor with reverse video (inverted colors)
+// - cursorVisible = false: render plain character (cursor invisible)
+//
+// This creates the blinking effect when combined with ticker that toggles cursorVisible.
+func (s *ShellInput) renderCursorWithBlink(char string) string {
 	if char == "" {
-		// At end of line - render block cursor
+		// At end of line - use space for cursor
 		char = " "
 	}
 
-	// Apply reverse video to PLAIN character for cursor visibility
-	// This ensures cursor is always visible regardless of syntax highlighting
+	// If cursor not visible (blink off state), render plain character
+	if !s.cursorVisible {
+		return char
+	}
+
+	// Cursor visible (blink on state) - apply reverse video (invert colors)
 	// ANSI: \033[7m = reverse video, \033[27m = normal video
 	return "\033[7m" + char + "\033[27m"
 }
@@ -372,4 +392,44 @@ func extractWord(text string) string {
 
 func isAlphaNumeric(ch byte) bool {
 	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')
+}
+
+// countVisibleChars counts visible characters in text, skipping ANSI escape codes.
+//
+// PowerShell approach: When positioning cursor, we need to count only visible characters,
+// ignoring ANSI color codes (\033[...m).
+//
+// Example:
+//
+//	text = "\033[32mecho\033[0m hello"  // "echo hello" with green "echo"
+//	countVisibleChars(text) == 10       // 4 (echo) + 1 (space) + 5 (hello)
+func countVisibleChars(text string) int {
+	count := 0
+	i := 0
+
+	for i < len(text) {
+		// ANSI escape sequence starts with ESC (0x1B or \033)
+		if text[i] == '\033' && i+1 < len(text) && text[i+1] == '[' {
+			// Skip ESC and [
+			i += 2
+
+			// Skip until we find 'm' (end of ANSI sequence)
+			for i < len(text) && text[i] != 'm' {
+				i++
+			}
+
+			// Skip the 'm'
+			if i < len(text) {
+				i++
+			}
+
+			continue
+		}
+
+		// Regular visible character
+		count++
+		i++
+	}
+
+	return count
 }

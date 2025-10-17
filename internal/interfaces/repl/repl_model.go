@@ -81,6 +81,9 @@ type Model struct {
 	// Help overlay
 	showingHelp bool // Help overlay display flag
 
+	// Cursor blinking
+	cursorVisible bool // Cursor blink state (toggles every 500ms)
+
 	// Styles
 	styles Styles
 }
@@ -209,6 +212,7 @@ func NewBubbleteaREPL(
 		cursorPos:        0,
 		autoScroll:       true, // Auto-scroll down by default
 		showingHelp:      false,
+		cursorVisible:    true, // Start with cursor visible
 		width:            80,   // Default width
 		height:           24,   // Default height
 	}
@@ -255,8 +259,16 @@ func NewBubbleteaREPL(
 //
 //nolint:gocritic // hugeParam: Bubbletea MVU requires value receiver
 func (m Model) Init() api.Cmd {
-	// ShellInput handles cursor blinking internally, no need for explicit Blink command
+	// Start cursor blinking ticker if enabled
+	if m.config.UI.CursorBlinking {
+		return tickCmd()
+	}
 	return nil
+}
+
+// tickCmd sends a tick message every 500ms for cursor blinking.
+func tickCmd() api.Cmd {
+	return api.Tick(500 * time.Millisecond)
 }
 
 // getHistoryFilePath returns the path to the history file.

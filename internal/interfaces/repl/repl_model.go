@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/grpmsoft/gosh/internal/application/execute"
@@ -172,8 +173,8 @@ func NewBubbleteaREPL(
 		}
 	}
 
-	// Create ShellInput (Phoenix TextInput with history integration)
-	shellInput := NewShellInput(80, sess.History())
+	// Create ShellInput (Phoenix TextInput with history integration + syntax highlighting)
+	shellInput := NewShellInput(80, sess.History(), applySyntaxHighlightSimple)
 
 	// Create navigator and use case for adding to history
 	historyNavigator := sess.NewHistoryNavigator()
@@ -278,4 +279,51 @@ func getHistoryFilePath() string {
 		return "/tmp/.gosh_history"
 	}
 	return filepath.Join(home, ".gosh_history")
+}
+
+// applySyntaxHighlightSimple applies simple bash syntax highlighting.
+// This is used by ShellInput for real-time highlighting during typing.
+//
+// Highlighting rules:
+// - Command (first word): Bright Yellow
+// - Options (starts with -): Dark Gray
+// - Arguments (other words): Green
+func applySyntaxHighlightSimple(text string) string {
+	if text == "" {
+		return ""
+	}
+
+	// Simple highlighting: split into tokens by spaces.
+	parts := strings.Fields(text)
+	if len(parts) == 0 {
+		return text
+	}
+
+	var result strings.Builder
+
+	for i, part := range parts {
+		if i > 0 {
+			result.WriteString(" ") // Space between tokens.
+		}
+
+		switch {
+		case i == 0:
+			// First word = COMMAND (YELLOW).
+			result.WriteString("\033[1;33m") // Bright Yellow.
+			result.WriteString(part)
+			result.WriteString("\033[0m")
+		case strings.HasPrefix(part, "-"):
+			// Option (GRAY).
+			result.WriteString("\033[90m") // Dark Gray.
+			result.WriteString(part)
+			result.WriteString("\033[0m")
+		default:
+			// Argument (GREEN).
+			result.WriteString("\033[32m") // Green.
+			result.WriteString(part)
+			result.WriteString("\033[0m")
+		}
+	}
+
+	return result.String()
 }

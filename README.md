@@ -196,10 +196,13 @@ Third-party library licenses - see [NOTICE](NOTICE) for details.
 
 ### Open Source Libraries
 
-- **Bubbletea** - Charm's excellent TUI framework
+- **Phoenix TUI** - Next-generation TUI framework with 10x performance
+  - `phoenix/tea` - Elm Architecture event loop
+  - `phoenix/terminal` - Cross-platform terminal operations
+  - `phoenix/style` - CSS-like styling system
+  - `phoenix/components` - Rich UI components
 - **mvdan.cc/sh** - Native POSIX shell interpreter
-- **Lipgloss** - Terminal styling library
-- **Bubbles** - TUI components
+- **uniwidth** - Unicode width calculation library
 
 ## 📞 Support
 

@@ -125,67 +125,52 @@ func (s *ShellInput) Update(msg api.Msg) (*ShellInput, api.Cmd) {
 	return s, cmd
 }
 
-// View renders the input with syntax highlighting and cursor positioning.
+// View renders the input WITHOUT syntax highlighting.
 //
 // ═══════════════════════════════════════════════════════════════════════════
-// IMPORTANT: Syntax Highlighting + Terminal Cursor Positioning
+// CRITICAL FIX: Syntax Highlighting Removed!
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// When using terminal's native cursor (ShowCursor(false)), we need to:
-//   1. Apply syntax highlighting to the full text
-//   2. Position terminal cursor at the correct location (not at the end!)
+// Previously: Applied syntax highlighting in View(), which caused:
+//   - Performance issues (highlighting on every render)
+//   - Cursor positioning errors (ANSI codes changed text length)
+//   - Input lag (especially with arrow keys)
 //
-// Phoenix Input (with ShowCursor(false)) renders plain text without cursor highlighting.
-// We apply syntax highlighting AFTER getting the text, then position terminal cursor.
+// Solution: Use Phoenix Input's View() directly
+//   - No syntax highlighting (can be added later with proper implementation)
+//   - Terminal cursor positioned correctly (ShowCursor(false) + \033[{n}D)
+//   - Fast and responsive!
 //
-// ANSI Escape Codes:
-//   \033[{n}D - Move cursor LEFT n columns (from current position)
+// Terminal cursor positioning:
+//   1. Phoenix renders plain text (ShowCursor(false) = no reverse video)
+//   2. Get text after cursor from ContentParts()
+//   3. Move cursor LEFT by length of "after"
+//   4. Terminal cursor now at correct position!
 //
-// Algorithm:
-//   1. Get text parts: before, at, after (from Phoenix ContentParts)
-//   2. Apply syntax highlighting to FULL text: before + at + after
-//   3. Calculate visual width of "after" text (characters after cursor)
-//   4. Render highlighted text + move cursor LEFT by width of "after"
-//   5. Terminal cursor now at correct position (where "at" character is)
-//
-// Example: "echo hello" with cursor at position 5 (after "echo ")
-//   - before = "echo "
-//   - at = "h"
-//   - after = "ello"
-//   - Full text: "echo hello"
-//   - Highlighted: "\033[1;33mecho\033[0m \033[32mhello\033[0m"
-//   - Terminal cursor at END (position 10)
-//   - Move LEFT 4 positions: \033[4D
-//   - Terminal cursor now at position 5 (correct!) ✓
+// Example: "hello world" with cursor at position 6
+//   - Phoenix renders: "hello world"
+//   - after = "world" (5 chars)
+//   - Move LEFT 5: \033[5D
+//   - Cursor at position 6 ✓
 //
 // ═══════════════════════════════════════════════════════════════════════════
 func (s *ShellInput) View() string {
-	// Get text parts around cursor (Phoenix ContentParts API)
-	before, at, after := s.base.ContentParts()
+	// Get plain text from Phoenix Input
+	view := s.base.View()
 
-	// Assemble full text
-	fullText := before + at + after
+	// Get text after cursor for positioning
+	_, _, after := s.base.ContentParts()
 
-	// Apply syntax highlighting (if callback provided)
-	var highlighted string
-	if s.highlightCallback != nil {
-		highlighted = s.highlightCallback(fullText)
-	} else {
-		highlighted = fullText
-	}
-
-	// Calculate how many columns to move LEFT for cursor positioning
-	// This is the visual width of text AFTER cursor
+	// Calculate how many columns to move LEFT
 	afterLen := len([]rune(after))
 
 	if afterLen > 0 {
-		// Render highlighted text + move cursor left to correct position
-		// \033[{n}D moves cursor left n columns from current position
-		return fmt.Sprintf("%s\033[%dD", highlighted, afterLen)
+		// Render text + move cursor left to correct position
+		return fmt.Sprintf("%s\033[%dD", view, afterLen)
 	}
 
-	// Cursor already at correct position (end of text)
-	return highlighted
+	// Cursor already at end
+	return view
 }
 
 // Note: Syntax highlighting is now handled by Model.applySyntaxHighlight callback.

@@ -8,8 +8,13 @@ import (
 
 	"github.com/grpmsoft/gosh/internal/domain/config"
 
-	"github.com/charmbracelet/lipgloss"
+	"github.com/phoenix-tui/phoenix/style/api"
 )
+
+// All methods in this file use Bubbletea's MVU (Model-View-Update) pattern,.
+// which requires value receivers. The "hugeParam" warnings are false positives.
+//
+//nolint:gocritic // All Model methods: Bubbletea MVU requires value receivers
 
 // View renders UI (Elm Architecture).
 func (m Model) View() string {
@@ -27,7 +32,7 @@ func (m Model) View() string {
 	}
 
 	// Choose rendering based on UI mode
-	switch m.config.UI.Mode {
+	switch m.Config.UI.Mode {
 	case config.UIModeClassic:
 		return m.renderClassicMode()
 	case config.UIModeWarp:
@@ -47,35 +52,75 @@ func (m Model) View() string {
 // IMPORTANT: Classic mode does NOT use viewport for rendering history.
 // Instead, command output is printed directly to stdout via fmt.Println() in Update().
 // This allows:
-//   - Native terminal scrollback to work (PgUp/PgDn, mouse wheel)
-//   - History remains in terminal after shell exit (like bash)
-//   - No artificial viewport limitations
+//   - Native terminal scrollback to work (PgUp/PgDn, mouse wheel).
+//   - History remains in terminal after shell exit (like bash).
+//   - No artificial viewport limitations.
 //
 // We only render the current prompt + input line here (last line of terminal).
 func (m Model) renderClassicMode() string {
+	// While executing, don't render anything (output is being printed directly to stdout)
+	// This prevents View() from overwriting command output with prompt
+	if m.executing {
+		return ""
+	}
+
 	var b strings.Builder
 
-	// CRITICAL: Move cursor to new line before rendering prompt.
-	// This prevents prompt from appearing on the same line as command output.
-	// Only do this when NOT executing (when showing normal prompt).
-	if !m.executing {
-		b.WriteString("\n")
+	// Phoenix writes View() at current cursor position without terminal control.
+	//
+	// PSReadLine approach (inspired by PSReadLine/Render.cs:924-996):
+	// 1. Hide cursor during rendering
+	// 2. Clear current line
+	// 3. Render all content
+	// 4. Show cursor and position it
+	//
+	// We use ANSI cursor save/restore for multiline:
+	// \033[s = Save cursor position
+	// \033[u = Restore cursor position
+	// \033[?25l = Hide cursor
+	// \033[?25h = Show cursor
+	//
+	// Single-line: simple clear and render
+	// Multiline: hide cursor, render all lines, show cursor
+
+	if m.multilineMode {
+		// Hide cursor for multiline rendering (PSReadLine pattern)
+		// Phoenix Terminal API - 10x faster on Windows Console! ⚡
+		_ = m.terminal.HideCursor()
+
+		// CRITICAL: Clear ALL multiline lines before rendering
+		// Phoenix Terminal handles platform-specific optimization:
+		// - Windows Console API: FillConsoleOutputCharacter() - instant!
+		// - Git Bash/Unix: ANSI escape codes - graceful fallback
+		lines := m.shellTextArea.Lines()
+		numLines := len(lines)
+
+		// ClearLines() is 10x faster than manual ANSI on Windows Console!
+		_ = m.terminal.ClearLines(numLines)
+	} else {
+		// Single-line: just clear the line
+		_ = m.terminal.ClearLine()
 	}
 
-	// Render only the current input line (prompt + input).
-	if m.executing {
-		// Show spinner while executing.
-		b.WriteString(m.executingSpinner.View())
-		b.WriteString(" ")
-		b.WriteString(m.styles.Executing.Render("Executing..."))
+	// Check multiline mode
+	if m.multilineMode {
+		// Multiline mode: render with continuation prompts
+		b.WriteString(m.renderMultilineInput())
 	} else {
-		// Normal prompt with input.
+		// Single-line mode: normal prompt + input
 		b.WriteString(m.renderPromptForHistoryANSI())
 		b.WriteString(m.renderInputWithCursor())
-		b.WriteString(m.renderHints())
 	}
 
-	// Return only prompt+input (no viewport, no history rendering).
+	b.WriteString(m.renderHints())
+
+	// Show cursor after multiline rendering (PSReadLine pattern)
+	// Phoenix Terminal API - platform-optimized cursor control
+	if m.multilineMode {
+		_ = m.terminal.ShowCursor()
+	}
+
+	// Return prompt+input (no viewport, no history rendering).
 	// History is already in terminal via fmt.Println() from Update().
 	return b.String()
 }
@@ -83,12 +128,9 @@ func (m Model) renderClassicMode() string {
 // renderWarpMode renders modern Warp-like mode.
 // Prompt on top, output below with separator.
 func (m Model) renderWarpMode() string {
-	// Update viewport content.
-	m.viewport.SetContent(strings.Join(m.output, "\n"))
-
-	if m.autoScroll {
-		m.viewport.GotoBottom()
-	}
+	// Update viewport content (Phoenix fluent API with FollowMode)
+	// FollowMode automatically scrolls to bottom when content changes
+	m.viewport = m.viewport.FollowMode(m.autoScroll).SetContent(strings.Join(m.output, "\n"))
 
 	var b strings.Builder
 
@@ -96,9 +138,8 @@ func (m Model) renderWarpMode() string {
 	if !m.executing {
 		b.WriteString(m.renderPromptForHistoryANSI())
 	} else {
-		b.WriteString(m.executingSpinner.View())
-		b.WriteString(" ")
-		b.WriteString(m.styles.Executing.Render("Executing..."))
+		// Simple text indicator without spinner (Phoenix Progress can be added later)
+		b.WriteString(style.Render(m.styles.Executing, "⟳ Executing..."))
 		b.WriteString(" ")
 	}
 
@@ -123,12 +164,8 @@ func (m Model) renderWarpMode() string {
 // renderCompactMode renders compact mode.
 // Minimalist prompt, maximum space for output.
 func (m Model) renderCompactMode() string {
-	// Update viewport content.
-	m.viewport.SetContent(strings.Join(m.output, "\n"))
-
-	if m.autoScroll {
-		m.viewport.GotoBottom()
-	}
+	// Update viewport content (Phoenix fluent API with FollowMode)
+	m.viewport = m.viewport.FollowMode(m.autoScroll).SetContent(strings.Join(m.output, "\n"))
 
 	var b strings.Builder
 
@@ -136,14 +173,10 @@ func (m Model) renderCompactMode() string {
 	b.WriteString(m.viewport.View())
 	b.WriteString("\n")
 
-	// Executing indicator (compact).
+	// Executing indicator (compact) or prompt.
 	if m.executing {
-		b.WriteString(m.executingSpinner.View())
-		b.WriteString(" ")
-	}
-
-	// Compact prompt.
-	if !m.executing {
+		b.WriteString("⟳ ") // Simple rotating arrow icon
+	} else {
 		b.WriteString("$ ")
 	}
 
@@ -159,12 +192,8 @@ func (m Model) renderCompactMode() string {
 // renderChatMode renders chat mode (Telegram/ChatGPT-like).
 // Input fixed at bottom, history scrolls at top.
 func (m Model) renderChatMode() string {
-	// Update viewport content.
-	m.viewport.SetContent(strings.Join(m.output, "\n"))
-
-	if m.autoScroll {
-		m.viewport.GotoBottom()
-	}
+	// Update viewport content (Phoenix fluent API with FollowMode)
+	m.viewport = m.viewport.FollowMode(m.autoScroll).SetContent(strings.Join(m.output, "\n"))
 
 	var b strings.Builder
 
@@ -176,15 +205,14 @@ func (m Model) renderChatMode() string {
 	b.WriteString(strings.Repeat("─", m.width))
 	b.WriteString("\n")
 
-	// Executing indicator.
+	// Executing indicator or prompt.
 	if m.executing {
-		b.WriteString(m.executingSpinner.View())
-		b.WriteString(" ")
-		b.WriteString(m.styles.Executing.Render("Executing..."))
+		// Simple text indicator without spinner (Phoenix Progress can be added later)
+		b.WriteString(style.Render(m.styles.Executing, "⟳ Executing..."))
 		b.WriteString(" ")
 	} else {
 		// Compact prompt for chat mode.
-		b.WriteString(m.styles.PromptArrow.Render("→ "))
+		b.WriteString(style.Render(m.styles.PromptArrow, "→ "))
 	}
 
 	// Input (fixed at bottom).
@@ -196,20 +224,37 @@ func (m Model) renderChatMode() string {
 	return b.String()
 }
 
-// renderInputWithCursor renders input with syntax highlighting.
-// IMPORTANT: We use textarea.View() which provides the native Bubbletea blinking cursor.
-// Syntax highlighting is applied on top WITHOUT manually inserting cursor ANSI codes.
-func (m Model) renderInputWithCursor() string {
-	currentText := m.textarea.Value()
-	if currentText == "" {
-		// Empty input - use textarea's native blinking cursor.
-		return m.textarea.View()
-	}
+// renderMultilineInput renders multiline input with continuation prompt.
+//
+// Delegates to ShellTextArea.ViewWithPrompts() which handles:
+// - Phoenix TextArea rendering (with cursor!)
+// - Adding prompts to each line
+//
+// First line uses existing renderPromptForHistoryANSI().
+// Subsequent lines use continuation prompt ">>    " (4 spaces for alignment).
+func (m Model) renderMultilineInput() string {
+	const continuationPrompt = ">>    " // 4 spaces for alignment with normal prompt
 
-	// Apply syntax highlighting WITHOUT cursor overlay.
-	// The textarea.View() underneath provides the blinking cursor.
-	highlighted := m.applySyntaxHighlight(currentText)
-	return highlighted
+	// Phoenix TextArea handles all rendering including cursor!
+	// We just provide the prompts
+	return m.shellTextArea.ViewWithPrompts(
+		m.renderPromptForHistoryANSI(),
+		continuationPrompt,
+	)
+}
+
+// renderInputWithCursor renders input with visible cursor and syntax highlighting.
+//
+// Delegates to ShellInput.View() which:
+//   1. Applies syntax highlighting (via highlightCallback)
+//   2. Renders text using Phoenix Input
+//   3. Positions terminal cursor correctly
+func (m Model) renderInputWithCursor() string {
+	// Update cursor visibility for blinking animation
+	m.shellInput.SetCursorVisible(m.cursorVisible)
+
+	// ShellInput handles everything: highlighting + cursor positioning
+	return m.shellInput.View()
 }
 
 // renderHints renders hints (completion, scroll indicator).
@@ -219,12 +264,12 @@ func (m Model) renderHints() string {
 	// Completion hint.
 	if m.completionActive && len(m.completions) > 1 {
 		hint := fmt.Sprintf("[Tab: %d/%d]", m.completionIndex+1, len(m.completions))
-		hints = append(hints, m.styles.CompletionHint.Render(hint))
+		hints = append(hints, style.Render(m.styles.CompletionHint, hint))
 	}
 
-	// Scroll indicator.
-	if !m.autoScroll && m.viewport.ScrollPercent() < 0.99 {
-		hints = append(hints, m.styles.CompletionHint.Render("[↑ scrolled]"))
+	// Scroll indicator (Phoenix Viewport: IsAtBottom instead of ScrollPercent)
+	if !m.autoScroll && !m.viewport.IsAtBottom() {
+		hints = append(hints, style.Render(m.styles.CompletionHint, "[↑ scrolled]"))
 	}
 
 	if len(hints) > 0 {
@@ -235,114 +280,76 @@ func (m Model) renderHints() string {
 }
 
 // applySyntaxHighlight applies simple bash syntax highlighting WITHOUT Chroma.
+// IMPORTANT: Preserves ALL whitespace (spaces, tabs, etc.) to avoid cursor positioning issues!
 func (m Model) applySyntaxHighlight(text string) string {
 	if text == "" {
 		return ""
 	}
 
-	// Simple highlighting: split into tokens by spaces.
-	parts := strings.Fields(text)
-	if len(parts) == 0 {
-		return text
+	var result strings.Builder
+	var currentWord strings.Builder
+	wordIndex := 0
+	inWord := false
+
+	for _, ch := range text {
+		if ch == ' ' || ch == '\t' {
+			// Whitespace - flush current word if any
+			if inWord {
+				// Highlight the word
+				word := currentWord.String()
+				switch {
+				case wordIndex == 0:
+					// First word = COMMAND (YELLOW)
+					result.WriteString("\033[1;33m") // Bright Yellow
+					result.WriteString(word)
+					result.WriteString("\033[0m")
+				case strings.HasPrefix(word, "-"):
+					// Option (GRAY)
+					result.WriteString("\033[90m") // Dark Gray
+					result.WriteString(word)
+					result.WriteString("\033[0m")
+				default:
+					// Argument (GREEN)
+					result.WriteString("\033[32m") // Green
+					result.WriteString(word)
+					result.WriteString("\033[0m")
+				}
+				currentWord.Reset()
+				wordIndex++
+				inWord = false
+			}
+			// Preserve the whitespace character AS-IS
+			result.WriteRune(ch)
+		} else {
+			// Non-whitespace - accumulate word
+			currentWord.WriteRune(ch)
+			inWord = true
+		}
 	}
 
-	var result strings.Builder
-
-	for i, part := range parts {
-		if i > 0 {
-			result.WriteString(" ") // Space between tokens.
-		}
-
-		if i == 0 {
-			// First word = COMMAND (YELLOW).
-			result.WriteString("\033[1;33m") // Bright Yellow.
-			result.WriteString(part)
+	// Flush last word if any
+	if inWord {
+		word := currentWord.String()
+		switch {
+		case wordIndex == 0:
+			// First word = COMMAND (YELLOW)
+			result.WriteString("\033[1;33m")
+			result.WriteString(word)
 			result.WriteString("\033[0m")
-		} else if strings.HasPrefix(part, "-") {
-			// Option (GRAY).
-			result.WriteString("\033[90m") // Dark Gray.
-			result.WriteString(part)
+		case strings.HasPrefix(word, "-"):
+			// Option (GRAY)
+			result.WriteString("\033[90m")
+			result.WriteString(word)
 			result.WriteString("\033[0m")
-		} else {
-			// Argument (GREEN).
-			result.WriteString("\033[32m") // Green.
-			result.WriteString(part)
+		default:
+			// Argument (GREEN)
+			result.WriteString("\033[32m")
+			result.WriteString(word)
 			result.WriteString("\033[0m")
 		}
 	}
 
 	return result.String()
-}
-
-// renderPrompt renders prompt in PowerShell/Git Bash style.
-func (m Model) renderPrompt() string {
-	var parts []string
-
-	// Username@hostname (green).
-	username := os.Getenv("USER")
-	if username == "" {
-		username = os.Getenv("USERNAME")
-	}
-	hostname, _ := os.Hostname()
-
-	userHost := m.styles.PromptUser.Render(fmt.Sprintf("%s@%s", username, hostname))
-	parts = append(parts, userHost)
-
-	// Path (blue).
-	workDir := m.currentSession.WorkingDirectory()
-	displayPath := m.shortenPath(workDir)
-	pathStr := m.styles.PromptPath.Render(displayPath)
-	parts = append(parts, pathStr)
-
-	// Git status (if present).
-	if m.gitBranch != "" {
-		gitStr := ""
-		if m.gitDirty {
-			gitStr = m.styles.PromptGitDirty.Render(fmt.Sprintf("(%s *)", m.gitBranch))
-		} else {
-			gitStr = m.styles.PromptGit.Render(fmt.Sprintf("(%s)", m.gitBranch))
-		}
-		parts = append(parts, gitStr)
-	}
-
-	prompt := strings.Join(parts, " ")
-
-	// Arrow (green or red depending on exitCode).
-	var arrow string
-	if m.lastExitCode == 0 {
-		arrow = m.styles.PromptArrow.Render(" $ ")
-	} else {
-		arrow = m.styles.PromptError.Render(fmt.Sprintf(" [%d] $ ", m.lastExitCode))
-	}
-
-	return prompt + arrow
-}
-
-// renderPromptForHistory renders prompt for history (with lipgloss).
-func (m Model) renderPromptForHistory() string {
-	username := os.Getenv("USER")
-	if username == "" {
-		username = os.Getenv("USERNAME")
-	}
-	hostname, _ := os.Hostname()
-
-	workDir := m.currentSession.WorkingDirectory()
-	displayPath := m.shortenPath(workDir)
-
-	var parts []string
-	parts = append(parts, m.styles.PromptUser.Render(fmt.Sprintf("%s@%s", username, hostname)))
-	parts = append(parts, m.styles.PromptPath.Render(displayPath))
-
-	if m.gitBranch != "" {
-		if m.gitDirty {
-			parts = append(parts, m.styles.PromptGitDirty.Render(fmt.Sprintf("(%s *)", m.gitBranch)))
-		} else {
-			parts = append(parts, m.styles.PromptGit.Render(fmt.Sprintf("(%s)", m.gitBranch)))
-		}
-	}
-
-	arrow := m.styles.PromptArrow.Render(" $ ")
-	return strings.Join(parts, " ") + arrow
 }
 
 // renderPromptForHistoryANSI renders prompt for history (ANSI codes only).
@@ -406,84 +413,129 @@ func (m Model) renderWithHelpOverlay() string {
 	// Create help overlay.
 	helpOverlay := m.renderHelpOverlay()
 
-	// Place overlay at screen center.
-	return lipgloss.Place(
-		m.width, m.height,
-		lipgloss.Center, lipgloss.Center,
-		helpOverlay,
-	)
+	// Calculate centering (simple centering without Phoenix render Place for now)
+	lines := strings.Split(helpOverlay, "\n")
+	maxLen := 0
+	for _, line := range lines {
+		if len(line) > maxLen {
+			maxLen = len(line)
+		}
+	}
+
+	verticalPadding := (m.height - len(lines)) / 2
+	horizontalPadding := (m.width - maxLen) / 2
+
+	var result strings.Builder
+	for i := 0; i < verticalPadding; i++ {
+		result.WriteString("\n")
+	}
+	for _, line := range lines {
+		result.WriteString(strings.Repeat(" ", horizontalPadding))
+		result.WriteString(line)
+		result.WriteString("\n")
+	}
+
+	return result.String()
 }
 
 // renderHelpOverlay creates modal help window.
 func (m Model) renderHelpOverlay() string {
-	// Style for overlay box.
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("12")). // Blue.
-		Padding(1, 2).
+	// Style for overlay box using Phoenix Style
+	boxStyle := style.New().
+		Border(style.RoundedBorder).
+		BorderColor(style.Color256(12)). // Blue.
+		Padding(style.NewPadding(1, 2, 1, 2)).
 		Width(60).
-		Background(lipgloss.Color("0")). // Black background.
-		Foreground(lipgloss.Color("15")) // White text.
+		Background(style.Color256(0)). // Black background.
+		Foreground(style.Color256(15)) // White text.
 
-	titleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("11")). // Yellow.
+	titleStyle := style.New().
+		Foreground(style.Color256(11)). // Yellow.
 		Bold(true)
 
-	sectionStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("10")). // Green.
+	sectionStyle := style.New().
+		Foreground(style.Color256(10)). // Green.
 		Bold(true)
 
-	keyStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("14")) // Cyan.
+	keyStyle := style.New().
+		Foreground(style.Color256(14)) // Cyan.
 
 	var content strings.Builder
 
 	// Title.
-	content.WriteString(titleStyle.Render("GoSh Keyboard Shortcuts"))
+	content.WriteString(style.Render(titleStyle, "GoSh Keyboard Shortcuts"))
 	content.WriteString("\n\n")
 
 	// Navigation.
-	content.WriteString(sectionStyle.Render("Navigation:"))
+	content.WriteString(style.Render(sectionStyle, "Navigation:"))
 	content.WriteString("\n")
-	content.WriteString(keyStyle.Render("  ↑/↓       ") + " - Command history\n")
-	content.WriteString(keyStyle.Render("  Tab       ") + " - Auto-complete\n")
-	content.WriteString(keyStyle.Render("  PgUp/PgDn ") + " - Scroll output\n")
+	content.WriteString(style.Render(keyStyle, "  ↑/↓       ") + " - Command history\n")
+	content.WriteString(style.Render(keyStyle, "  Tab       ") + " - Auto-complete\n")
+	content.WriteString(style.Render(keyStyle, "  PgUp/PgDn ") + " - Scroll output\n")
 	content.WriteString("\n")
 
 	// Input.
-	content.WriteString(sectionStyle.Render("Input:"))
+	content.WriteString(style.Render(sectionStyle, "Input:"))
 	content.WriteString("\n")
-	content.WriteString(keyStyle.Render("  Enter     ") + " - Execute command\n")
-	content.WriteString(keyStyle.Render("  Alt+Enter ") + " - Multi-line input\n")
-	content.WriteString(keyStyle.Render("  Ctrl+L    ") + " - Clear screen\n")
+	content.WriteString(style.Render(keyStyle, "  Enter     ") + " - Execute command\n")
+	content.WriteString(style.Render(keyStyle, "  Alt+Enter ") + " - Multi-line input\n")
+	content.WriteString(style.Render(keyStyle, "  Ctrl+L    ") + " - Clear screen\n")
 	content.WriteString("\n")
 
 	// UI Modes (if mode switching is allowed).
-	if m.config.UI.AllowModeSwitching {
-		content.WriteString(sectionStyle.Render("UI Modes:"))
+	if m.Config.UI.AllowModeSwitching {
+		content.WriteString(style.Render(sectionStyle, "UI Modes:"))
 		content.WriteString("\n")
-		content.WriteString(keyStyle.Render("  Alt+1     ") + " - Classic mode\n")
-		content.WriteString(keyStyle.Render("  Alt+2     ") + " - Warp mode\n")
-		content.WriteString(keyStyle.Render("  Alt+3     ") + " - Compact mode\n")
-		content.WriteString(keyStyle.Render("  Alt+4     ") + " - Chat mode\n")
+		content.WriteString(style.Render(keyStyle, "  Alt+1     ") + " - Classic mode\n")
+		content.WriteString(style.Render(keyStyle, "  Alt+2     ") + " - Warp mode\n")
+		content.WriteString(style.Render(keyStyle, "  Alt+3     ") + " - Compact mode\n")
+		content.WriteString(style.Render(keyStyle, "  Alt+4     ") + " - Chat mode\n")
 		content.WriteString("\n")
 	}
 
 	// Help.
-	content.WriteString(sectionStyle.Render("Help:"))
+	content.WriteString(style.Render(sectionStyle, "Help:"))
 	content.WriteString("\n")
-	content.WriteString(keyStyle.Render("  F1 or ?   ") + " - This help\n")
-	content.WriteString(keyStyle.Render("  help      ") + " - Built-in commands\n")
-	content.WriteString(keyStyle.Render("  ESC       ") + " - Close this help\n")
+	content.WriteString(style.Render(keyStyle, "  F1 or ?   ") + " - This help\n")
+	content.WriteString(style.Render(keyStyle, "  help      ") + " - Built-in commands\n")
+	content.WriteString(style.Render(keyStyle, "  ESC       ") + " - Close this help\n")
 	content.WriteString("\n")
 
 	// Exit.
-	content.WriteString(sectionStyle.Render("Exit:"))
+	content.WriteString(style.Render(sectionStyle, "Exit:"))
 	content.WriteString("\n")
-	content.WriteString(keyStyle.Render("  Ctrl+C/D  ") + " - Exit shell\n")
-	content.WriteString(keyStyle.Render("  exit      ") + " - Exit shell\n")
+	content.WriteString(style.Render(keyStyle, "  Ctrl+C/D  ") + " - Exit shell\n")
+	content.WriteString(style.Render(keyStyle, "  exit      ") + " - Exit shell\n")
 
-	return boxStyle.Render(content.String())
+	return style.Render(boxStyle, content.String())
+}
+
+// countVisibleChars counts visible characters in a string, skipping ANSI escape sequences.
+// This is needed for correct cursor positioning when syntax highlighting is applied.
+func countVisibleChars(s string) int {
+	count := 0
+	inEscape := false
+
+	for _, r := range s {
+		if r == '\033' {
+			// Start of ANSI escape sequence
+			inEscape = true
+			continue
+		}
+
+		if inEscape {
+			// Skip until we find 'm' (end of color code) or other terminator
+			if r == 'm' || r == 'H' || r == 'J' || r == 'K' || r == 'A' || r == 'B' || r == 'C' || r == 'D' {
+				inEscape = false
+			}
+			continue
+		}
+
+		// Visible character
+		count++
+	}
+
+	return count
 }
 
 // shortenPath shortens path for display.
@@ -505,60 +557,61 @@ func (m Model) shortenPath(path string) string {
 }
 
 // makeProfessionalStyles creates professional styles like PowerShell/Git Bash.
+// Uses Phoenix TUI Framework's style library.
 func makeProfessionalStyles() Styles {
 	return Styles{
 		// Prompt - PowerShell/Bash inspired colors.
-		PromptUser: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("10")). // Green.
+		PromptUser: style.New().
+			Foreground(style.Color256(10)). // Green.
 			Bold(true),
 
-		PromptPath: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("12")), // Blue.
+		PromptPath: style.New().
+			Foreground(style.Color256(12)), // Blue.
 
-		PromptGit: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("13")), // Purple.
+		PromptGit: style.New().
+			Foreground(style.Color256(13)), // Purple.
 
-		PromptGitDirty: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("11")). // Yellow.
+		PromptGitDirty: style.New().
+			Foreground(style.Color256(11)). // Yellow.
 			Bold(true),
 
-		PromptArrow: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("10")). // Green.
+		PromptArrow: style.New().
+			Foreground(style.Color256(10)). // Green.
 			Bold(true),
 
-		PromptError: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("9")). // Red.
+		PromptError: style.New().
+			Foreground(style.Color256(9)). // Red.
 			Bold(true),
 
 		// Output.
-		Output: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("15")), // White.
+		Output: style.New().
+			Foreground(style.Color256(15)), // White.
 
-		OutputErr: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("9")), // Red.
+		OutputErr: style.New().
+			Foreground(style.Color256(9)), // Red.
 
 		// Executing.
-		Executing: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("12")). // Blue.
+		Executing: style.New().
+			Foreground(style.Color256(12)). // Blue.
 			Italic(true),
 
 		// Completion hint.
-		CompletionHint: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240")). // Gray.
+		CompletionHint: style.New().
+			Foreground(style.Color256(240)). // Gray.
 			Italic(true),
 
 		// Syntax highlighting (basic ANSI colors for compatibility).
-		SyntaxCommand: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("11")). // Bright yellow (command bright).
+		SyntaxCommand: style.New().
+			Foreground(style.Color256(11)). // Bright yellow (command bright).
 			Bold(true),
 
-		SyntaxOption: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("8")), // Dark gray (options dim).
+		SyntaxOption: style.New().
+			Foreground(style.Color256(8)), // Dark gray (options dim).
 
-		SyntaxArg: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("7")), // Light gray (arguments normal).
+		SyntaxArg: style.New().
+			Foreground(style.Color256(7)), // Light gray (arguments normal).
 
-		SyntaxString: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("14")), // Cyan (strings).
+		SyntaxString: style.New().
+			Foreground(style.Color256(14)), // Cyan (strings).
 	}
 }

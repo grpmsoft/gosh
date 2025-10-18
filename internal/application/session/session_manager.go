@@ -1,30 +1,32 @@
+// Package session provides use cases for shell session management.
 package session
 
 import (
-	"github.com/grpmsoft/gosh/internal/domain/session"
-	"github.com/grpmsoft/gosh/internal/domain/shared"
 	"log/slog"
 	"os"
 	"sync"
+
+	"github.com/grpmsoft/gosh/internal/domain/session"
+	"github.com/grpmsoft/gosh/internal/domain/shared"
 )
 
-// SessionManager manages shell sessions
-type SessionManager struct {
+// Manager manages shell sessions.
+type Manager struct {
 	sessions map[string]*session.Session
 	mu       sync.RWMutex
 	logger   *slog.Logger
 }
 
-// NewSessionManager creates a new session manager
-func NewSessionManager(logger *slog.Logger) *SessionManager {
-	return &SessionManager{
+// NewManager creates a new session manager.
+func NewManager(logger *slog.Logger) *Manager {
+	return &Manager{
 		sessions: make(map[string]*session.Session),
 		logger:   logger,
 	}
 }
 
-// CreateSession creates a new session
-func (sm *SessionManager) CreateSession(id string) (*session.Session, error) {
+// CreateSession creates a new session.
+func (sm *Manager) CreateSession(id string) (*session.Session, error) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 
@@ -62,8 +64,8 @@ func (sm *SessionManager) CreateSession(id string) (*session.Session, error) {
 	return sess, nil
 }
 
-// GetSession gets a session by ID
-func (sm *SessionManager) GetSession(id string) (*session.Session, error) {
+// GetSession gets a session by ID.
+func (sm *Manager) GetSession(id string) (*session.Session, error) {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
 
@@ -79,8 +81,8 @@ func (sm *SessionManager) GetSession(id string) (*session.Session, error) {
 	return sess, nil
 }
 
-// CloseSession closes a session
-func (sm *SessionManager) CloseSession(id string) error {
+// CloseSession closes a session.
+func (sm *Manager) CloseSession(id string) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 
@@ -103,8 +105,8 @@ func (sm *SessionManager) CloseSession(id string) error {
 	return nil
 }
 
-// ActiveSessions returns a list of active sessions
-func (sm *SessionManager) ActiveSessions() []*session.Session {
+// ActiveSessions returns a list of active sessions.
+func (sm *Manager) ActiveSessions() []*session.Session {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
 
@@ -118,8 +120,8 @@ func (sm *SessionManager) ActiveSessions() []*session.Session {
 	return active
 }
 
-// getEnvironment gets environment variables
-func (sm *SessionManager) getEnvironment() shared.Environment {
+// getEnvironment gets environment variables.
+func (sm *Manager) getEnvironment() shared.Environment {
 	env := make(shared.Environment)
 	for _, e := range os.Environ() {
 		// Parse "KEY=VALUE"

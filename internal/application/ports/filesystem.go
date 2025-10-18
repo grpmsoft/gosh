@@ -2,7 +2,7 @@ package ports
 
 import "io/fs"
 
-// FileSystem - port for filesystem operations
+// FileSystem - port for filesystem operations.
 type FileSystem interface {
 	// Exists checks if a file/directory exists
 	Exists(path string) (bool, error)

@@ -2,22 +2,23 @@ package builtins
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/grpmsoft/gosh/internal/domain/session"
 	"github.com/grpmsoft/gosh/internal/domain/shared"
-	"os"
 )
 
-// UnsetCommand represents the unset command
-// Removes environment variables
+// UnsetCommand represents the unset command.
+// Removes environment variables.
 // Supports:
-// - unset VAR        - remove single variable
-// - unset A B C      - remove multiple variables
+// - unset VAR        - remove single variable.
+// - unset A B C      - remove multiple variables.
 type UnsetCommand struct {
 	varNames []string
 	session  *session.Session
 }
 
-// NewUnsetCommand creates a new unset command
+// NewUnsetCommand creates a new unset command.
 func NewUnsetCommand(args []string, sess *session.Session) (*UnsetCommand, error) {
 	if sess == nil {
 		return nil, shared.NewDomainError(
@@ -41,7 +42,7 @@ func NewUnsetCommand(args []string, sess *session.Session) (*UnsetCommand, error
 	}, nil
 }
 
-// Execute executes the unset command
+// Execute executes the unset command.
 func (u *UnsetCommand) Execute() error {
 	for _, varName := range u.varNames {
 		if err := u.unsetVariable(varName); err != nil {
@@ -52,7 +53,7 @@ func (u *UnsetCommand) Execute() error {
 	return nil
 }
 
-// unsetVariable removes a single variable
+// unsetVariable removes a single variable.
 func (u *UnsetCommand) unsetVariable(varName string) error {
 	if varName == "" {
 		return shared.NewDomainError(

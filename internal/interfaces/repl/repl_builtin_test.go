@@ -5,6 +5,8 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/grpmsoft/gosh/internal/application/execute"
@@ -76,11 +78,11 @@ func createTestModelForBuiltin(t *testing.T) *Model {
 	require.NoError(t, err)
 
 	// Create filesystem and executors
-	fs := &mockFileSystem{} // Simple mock
-	builtinExecutor := builtin.NewBuiltinExecutor(fs, logger)
+	mockFS := &mockFileSystem{} // Simple mock
+	builtinExecutor := builtin.NewExecutor(mockFS, logger)
 	commandExecutor := executor.NewOSCommandExecutor(logger)
 	pipelineExecutor := executor.NewOSPipelineExecutor(logger)
-	executeUseCase := execute.NewExecuteCommandUseCase(
+	executeUseCase := execute.NewUseCase(
 		builtinExecutor,
 		commandExecutor,
 		pipelineExecutor,
@@ -93,7 +95,7 @@ func createTestModelForBuiltin(t *testing.T) *Model {
 		executeUseCase: executeUseCase,
 		logger:         logger,
 		ctx:            context.Background(),
-		config:         cfg,
+		Config:         cfg,
 	}
 
 	return model
@@ -146,7 +148,11 @@ func TestExecBuiltinCommand_Pwd(t *testing.T) {
 		require.True(t, ok, "expected commandExecutedMsg")
 		assert.NoError(t, execMsg.err)
 		assert.Equal(t, 0, execMsg.exitCode)
-		assert.Contains(t, execMsg.output, os.TempDir())
+
+		// Normalize paths for cross-platform comparison (removes trailing slashes)
+		expectedPath := filepath.Clean(os.TempDir())
+		actualPath := filepath.Clean(strings.TrimSpace(execMsg.output))
+		assert.Contains(t, actualPath, expectedPath)
 	})
 }
 

@@ -4,12 +4,21 @@ name: Tests
 # - Tests run on Linux, macOS, and Windows (cross-platform shell)
 # - GoSh is a cross-platform shell - must work everywhere
 # - Go 1.25+ required (matches go.mod requirement)
+#
+# Branch Strategy (Git Flow):
+# - release/** branches: Pre-release testing (test here BEFORE merging to main)
+# - main branch: Production-ready code only (protected)
+# - Pull requests: Must pass all tests before merge
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - 'release/**'  # Test release branches before merging to main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+      - 'release/**'
 
 jobs:
   # Unit tests - Cross-platform

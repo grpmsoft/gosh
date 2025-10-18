@@ -11,19 +11,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestNewJobManager creates new job manager
+// TestNewJobManager creates new job manager.
 func TestNewJobManager(t *testing.T) {
-	jm := job.NewJobManager()
+	jm := job.NewManager()
 
 	require.NotNil(t, jm)
 	assert.Equal(t, 0, jm.Count())
 	assert.False(t, jm.HasJobs())
 }
 
-// TestJobManager_AddJob tests adding jobs
+// TestJobManager_AddJob tests adding jobs.
 func TestJobManager_AddJob(t *testing.T) {
 	t.Run("adds job and assigns job number", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 		cmd, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
 		proc, _ := process.NewProcess("proc1", cmd)
 
@@ -37,7 +37,7 @@ func TestJobManager_AddJob(t *testing.T) {
 	})
 
 	t.Run("assigns sequential job numbers", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 
 		cmd1, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
 		proc1, _ := process.NewProcess("proc1", cmd1)
@@ -53,7 +53,7 @@ func TestJobManager_AddJob(t *testing.T) {
 	})
 
 	t.Run("returns error for nil command", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 		cmd, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
 		proc, _ := process.NewProcess("proc1", cmd)
 
@@ -65,7 +65,7 @@ func TestJobManager_AddJob(t *testing.T) {
 	})
 
 	t.Run("returns error for nil process", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 		cmd, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
 
 		j, err := jm.AddJob(cmd, nil)
@@ -76,10 +76,10 @@ func TestJobManager_AddJob(t *testing.T) {
 	})
 }
 
-// TestJobManager_GetJob tests retrieving jobs by number
+// TestJobManager_GetJob tests retrieving jobs by number.
 func TestJobManager_GetJob(t *testing.T) {
 	t.Run("gets job by job number", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 		cmd, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
 		proc, _ := process.NewProcess("proc1", cmd)
 		added, _ := jm.AddJob(cmd, proc)
@@ -92,7 +92,7 @@ func TestJobManager_GetJob(t *testing.T) {
 	})
 
 	t.Run("returns error for non-existent job number", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 
 		j, err := jm.GetJob(999)
 
@@ -102,10 +102,10 @@ func TestJobManager_GetJob(t *testing.T) {
 	})
 }
 
-// TestJobManager_GetJobByID tests retrieving jobs by ID
+// TestJobManager_GetJobByID tests retrieving jobs by ID.
 func TestJobManager_GetJobByID(t *testing.T) {
 	t.Run("gets job by ID", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 		cmd, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
 		proc, _ := process.NewProcess("proc1", cmd)
 		added, _ := jm.AddJob(cmd, proc)
@@ -117,7 +117,7 @@ func TestJobManager_GetJobByID(t *testing.T) {
 	})
 
 	t.Run("returns error for non-existent job ID", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 
 		j, err := jm.GetJobByID("non-existent-id")
 
@@ -127,10 +127,10 @@ func TestJobManager_GetJobByID(t *testing.T) {
 	})
 }
 
-// TestJobManager_ListJobs tests listing all jobs
+// TestJobManager_ListJobs tests listing all jobs.
 func TestJobManager_ListJobs(t *testing.T) {
 	t.Run("lists all jobs sorted by job number", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 
 		cmd1, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
 		proc1, _ := process.NewProcess("proc1", cmd1)
@@ -148,7 +148,7 @@ func TestJobManager_ListJobs(t *testing.T) {
 	})
 
 	t.Run("returns empty list when no jobs", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 
 		jobs := jm.ListJobs()
 
@@ -156,10 +156,10 @@ func TestJobManager_ListJobs(t *testing.T) {
 	})
 }
 
-// TestJobManager_ListActiveJobs tests listing active jobs
+// TestJobManager_ListActiveJobs tests listing active jobs.
 func TestJobManager_ListActiveJobs(t *testing.T) {
 	t.Run("lists only running and stopped jobs", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 
 		// Add running job
 		cmd1, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
@@ -186,10 +186,10 @@ func TestJobManager_ListActiveJobs(t *testing.T) {
 	})
 }
 
-// TestJobManager_RemoveFinishedJobs tests removing finished jobs
+// TestJobManager_RemoveFinishedJobs tests removing finished jobs.
 func TestJobManager_RemoveFinishedJobs(t *testing.T) {
 	t.Run("removes all finished jobs", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 
 		// Add running job
 		cmd1, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
@@ -215,7 +215,7 @@ func TestJobManager_RemoveFinishedJobs(t *testing.T) {
 	})
 
 	t.Run("returns zero when no finished jobs", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 
 		cmd, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
 		proc, _ := process.NewProcess("proc1", cmd)
@@ -228,10 +228,10 @@ func TestJobManager_RemoveFinishedJobs(t *testing.T) {
 	})
 }
 
-// TestJobManager_RemoveJob tests removing specific job
+// TestJobManager_RemoveJob tests removing specific job.
 func TestJobManager_RemoveJob(t *testing.T) {
 	t.Run("removes finished job by number", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 
 		cmd, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
 		proc, _ := process.NewProcess("proc1", cmd)
@@ -245,7 +245,7 @@ func TestJobManager_RemoveJob(t *testing.T) {
 	})
 
 	t.Run("returns error when removing running job", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 
 		cmd, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
 		proc, _ := process.NewProcess("proc1", cmd)
@@ -259,7 +259,7 @@ func TestJobManager_RemoveJob(t *testing.T) {
 	})
 
 	t.Run("returns error for non-existent job number", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 
 		err := jm.RemoveJob(999)
 
@@ -268,10 +268,10 @@ func TestJobManager_RemoveJob(t *testing.T) {
 	})
 }
 
-// TestJobManager_Clear tests clearing all jobs
+// TestJobManager_Clear tests clearing all jobs.
 func TestJobManager_Clear(t *testing.T) {
 	t.Run("clears all jobs", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 
 		cmd, _ := command.NewCommand("sleep", []string{"10"}, command.TypeExternal)
 		proc, _ := process.NewProcess("proc1", cmd)
@@ -284,10 +284,10 @@ func TestJobManager_Clear(t *testing.T) {
 	})
 }
 
-// TestJobManager_ConcurrentAccess tests thread-safety
+// TestJobManager_ConcurrentAccess tests thread-safety.
 func TestJobManager_ConcurrentAccess(t *testing.T) {
 	t.Run("handles concurrent additions", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 		var wg sync.WaitGroup
 
 		// Add 100 jobs concurrently
@@ -307,7 +307,7 @@ func TestJobManager_ConcurrentAccess(t *testing.T) {
 	})
 
 	t.Run("handles concurrent reads and writes", func(t *testing.T) {
-		jm := job.NewJobManager()
+		jm := job.NewManager()
 		var wg sync.WaitGroup
 
 		// Add initial jobs

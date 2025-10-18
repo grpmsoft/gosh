@@ -1,10 +1,11 @@
 package session
 
 import (
-	"github.com/grpmsoft/gosh/internal/domain/shared"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/grpmsoft/gosh/internal/domain/shared"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -182,7 +183,7 @@ func TestSession_OperationsAfterClose(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// Helper function
+// Helper function.
 func createTestSession(t *testing.T) *Session {
 	workingDir, err := os.Getwd()
 	require.NoError(t, err)

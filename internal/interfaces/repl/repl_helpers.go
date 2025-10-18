@@ -5,26 +5,37 @@ import (
 	"path/filepath"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/phoenix-tui/phoenix/tea/api"
+)
+
+// All methods in this file use Bubbletea's MVU (Model-View-Update) pattern,.
+// which requires value receivers. The "hugeParam" warnings are false positives.
+//
+//nolint:gocritic // All Model methods: Bubbletea MVU requires value receivers
+
+const (
+	directionUp   = "up"
+	directionDown = "down"
 )
 
 // navigateHistory navigates command history via History.Navigator.
-func (m Model) navigateHistory(direction string) (tea.Model, tea.Cmd) {
+func (m Model) navigateHistory(direction string) (Model, api.Cmd) {
 	var cmd string
 	var ok bool
 
 	switch direction {
-	case "up":
+	case directionUp:
 		cmd, ok = m.historyNavigator.Backward()
-	case "down":
+	case directionDown:
 		cmd, ok = m.historyNavigator.Forward()
 	}
 
-	// If navigation successful, set value
-	if ok || direction == "down" {
-		m.textarea.SetValue(cmd)
-		if cmd != "" {
-			m.textarea.CursorEnd()
+	// If navigation successful, set value (respect multilineMode)
+	if ok || direction == directionDown {
+		if m.multilineMode {
+			m.shellTextArea.SetValue(cmd)
+		} else {
+			m.shellInput.SetValue(cmd)
 		}
 		// Sync input state
 		m.inputText = cmd
@@ -47,7 +58,63 @@ func (m *Model) addOutputRaw(line string) {
 // updateViewportContent updates viewport content from output.
 func (m *Model) updateViewportContent() {
 	content := strings.Join(m.output, "\n")
-	m.viewport.SetContent(content)
+	// Phoenix Viewport uses fluent API (returns new viewport)
+	m.viewport = m.viewport.SetContent(content)
+}
+
+// isIncomplete checks if command needs more input (unclosed quotes, backslash continuation, etc.).
+func (m Model) isIncomplete(cmd string) bool {
+	if cmd == "" {
+		return false
+	}
+
+	// Check for backslash continuation at end
+	trimmed := strings.TrimRight(cmd, " \t")
+	if strings.HasSuffix(trimmed, "\\") {
+		return true
+	}
+
+	// Count unescaped quotes
+	singleQuotes := 0
+	doubleQuotes := 0
+	escaped := false
+
+	for _, ch := range cmd {
+		if escaped {
+			escaped = false
+			continue
+		}
+
+		switch ch {
+		case '\\':
+			escaped = true
+		case '\'':
+			singleQuotes++
+		case '"':
+			doubleQuotes++
+		}
+	}
+
+	// If odd number of quotes - unclosed
+	if singleQuotes%2 != 0 || doubleQuotes%2 != 0 {
+		return true
+	}
+
+	// Check for pipe at end (incomplete pipeline)
+	if strings.HasSuffix(trimmed, "|") {
+		return true
+	}
+
+	// Check for unclosed braces/brackets (basic heuristic)
+	openBraces := strings.Count(cmd, "{") - strings.Count(cmd, "}")
+	openBrackets := strings.Count(cmd, "[") - strings.Count(cmd, "]")
+	openParens := strings.Count(cmd, "(") - strings.Count(cmd, ")")
+
+	if openBraces > 0 || openBrackets > 0 || openParens > 0 {
+		return true
+	}
+
+	return false
 }
 
 // updateGitInfo updates Git repository information.

@@ -1,7 +1,14 @@
 # 🐚 GoSh - Cross-Platform Go Shell
 
-**Version**: 0.1.0-beta.3
-**Status**: Beta - Gathering Feedback (breaking changes possible)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/grpmsoft/gosh)](https://go.dev/)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/grpmsoft/gosh/test.yml?branch=main)](https://github.com/grpmsoft/gosh/actions/workflows/test.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/grpmsoft/gosh)](https://goreportcard.com/report/github.com/grpmsoft/gosh)
+[![Release](https://img.shields.io/github/v/release/grpmsoft/gosh?include_prereleases)](https://github.com/grpmsoft/gosh/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue)](https://github.com/grpmsoft/gosh)
+
+**Version**: 0.1.0-beta.7
+**Status**: Beta - Git-Flow + Cross-Platform Testing
 **License**: MIT
 
 A modern, cross-platform shell written in Go with beautiful TUI and native script execution.
@@ -14,7 +21,7 @@ A modern, cross-platform shell written in Go with beautiful TUI and native scrip
 - **Compact** - Minimal, space-efficient
 - **Chat** - Telegram-like conversational interface
 
-### 📜 **Command History** (v0.1.0-alpha.2)
+### 📜 **Command History**
 - **Persistent History**: Commands automatically save to `~/.gosh_history`
 - **Auto-Load**: History loads on shell startup
 - **Up/Down Navigation**: Navigate through command history with arrow keys
@@ -42,8 +49,8 @@ A modern, cross-platform shell written in Go with beautiful TUI and native scrip
 - **Multi-line Input**: Alt+Enter for multiline commands
 - **Viewport Scrolling**: PgUp/PgDn, Mouse Wheel support
 - **Auto-scroll**: Automatically scroll to bottom on new output
-- **Visual Help Overlay**: Press F1 or ? for beautiful keyboard shortcuts reference (v0.1.0-beta.3)
-- **UI Mode Switching**: Ctrl+F5-F8 hotkeys or `:mode` command (v0.1.0-beta.3)
+- **Visual Help Overlay**: Press F1 or ? for keyboard shortcuts reference
+- **UI Mode Switching**: Alt+1-4 hotkeys to switch modes on-the-fly
 
 ## 📦 Installation
 
@@ -104,10 +111,10 @@ F1 or ?          # Open visual help overlay (ESC to close)
 help             # Show built-in commands
 
 # Switch UI modes
-Ctrl+F5          # Classic mode (traditional bash-like)
-Ctrl+F6          # Warp mode (modern polished)
-Ctrl+F7          # Compact mode (minimal space)
-Ctrl+F8          # Chat mode (telegram-like)
+Alt+1            # Classic mode (traditional bash-like)
+Alt+2            # Warp mode (modern polished)
+Alt+3            # Compact mode (minimal space)
+Alt+4            # Chat mode (telegram-like)
 
 # Or use :mode command
 :mode            # Show current UI mode
@@ -127,124 +134,52 @@ History is stored in `~/.gosh_history` and automatically managed.
 - Auto-save: Enabled
 - Deduplication: Consecutive duplicates removed
 
-### Customization (Future)
-`.goshrc` configuration file support is planned for v0.1.0-beta.4.
+### .goshrc Configuration
+GoSh supports `.goshrc` configuration file for customization:
+- **Location**: `~/.goshrc` (home directory)
+- **Aliases**: Define custom command aliases
+- **Environment**: Set environment variables
+- **Auto-load**: Loaded automatically on shell startup
 
-## 🏗️ Architecture
-
-GoSh is built using modern software architecture patterns:
-
-- **DDD (Domain-Driven Design)**: Rich domain models with business logic
-- **Hexagonal Architecture**: Clean separation of concerns
-- **Bubbletea TUI Framework**: Elm Architecture (Model-View-Update)
-- **Native POSIX Shell**: mvdan.cc/sh v3.12.0 for cross-platform script execution
-
-### Project Structure
-```
-gosh/
-├── cmd/gosh/                    # Entry point
-├── internal/
-│   ├── domain/                  # Domain models (Session, History, Process)
-│   │   ├── history/            # History aggregate (30+ tests)
-│   │   ├── session/            # Session aggregate
-│   │   └── process/            # Process management
-│   ├── application/             # Use cases (10+ tests)
-│   │   └── history/            # History use cases
-│   ├── infrastructure/          # External adapters (15+ tests)
-│   │   ├── history/            # File persistence
-│   │   └── executor/           # Command execution
-│   └── interfaces/              # UI layer
-│       └── repl/               # Bubbletea REPL
-└── docs/                        # Documentation
-    └── dev/                     # Development docs
-```
-
-## 🧪 Testing
-
-GoSh has comprehensive test coverage:
-
+**Example .goshrc**:
 ```bash
-# Run all tests
-go test ./...
+# Aliases
+alias ll='ls -la'
+alias gs='git status'
 
-# Run with coverage
-go test -cover ./...
-
-# Run specific package
-go test ./internal/domain/history/...
+# Environment variables
+export EDITOR=vim
+export GOPATH=$HOME/go
 ```
 
-**Current Test Coverage**:
-- Domain layer: 95%+
-- Application layer: 90%+
-- Infrastructure layer: 80%+
-- Total: 60+ tests passing
+## 🗺️ Project Status
 
-## 🗺️ Roadmap
+**Current**: v0.1.0-beta.7 (Git-Flow + Cross-Platform Testing)
+**Next**: v0.1.0-rc.1 (Community Feedback)
+**Target**: v0.1.0 Stable (Q2 2025)
 
-### Current Version: v0.1.0-beta.3 ✅
-**Status**: Published - Gathering community feedback (breaking changes possible)
+See [ROADMAP.md](ROADMAP.md) for detailed development plan.
 
-**Implemented Features**:
-- [x] History persistence and navigation (alpha.1-2)
-- [x] Built-in commands: cd, pwd, export, unset, type (alpha.3)
-- [x] Aliases and .goshrc configuration (alpha.4)
-- [x] Unix-style pipelines (|) (alpha.5)
-- [x] File redirections (>, >>, <, 2>) (alpha.6)
-- [x] Background jobs (&, jobs, fg, bg) (beta.1)
-- [x] Glob patterns (*, ?, [], {}) (beta.2)
-- [x] Visual help overlay (F1/?) and :mode command (beta.3)
-- [x] 4 UI modes (Classic, Warp, Compact, Chat)
-- [x] 130+ tests, CI/CD on 3 platforms
+## 📝 Documentation
 
-### Next: v0.1.0-rc.1 (After Feedback)
-- [ ] Address community feedback from beta.3
-- [ ] Fix critical bugs reported by users
-- [ ] Performance optimizations if needed
-- [ ] Final polish and documentation updates
-
-### Future: v0.1.0 (Stable Release)
-- [ ] No critical bugs
-- [ ] Community-validated features
-- [ ] Complete documentation
-- [ ] Production-ready
-
-### Post-Release: v0.2.0
-Based on community feedback:
-- Ctrl+R fuzzy search UI
-- Enhanced scripting support
-- Advanced configuration
-- Features requested by community
-
-See [RELEASE_ROADMAP.md](docs/dev/RELEASE_ROADMAP.md) for detailed roadmap.
-
-## 📝 Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
+- **[ROADMAP.md](ROADMAP.md)** - Development roadmap and future plans
+- **[CHANGELOG.md](CHANGELOG.md)** - Detailed version history
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute
+- **[LICENSE](LICENSE)** - MIT License
 
 ## 🤝 Contributing
 
-Contributions are welcome! This project follows:
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development setup and workflow
+- Testing requirements (TDD)
+- Code style guidelines
+- Pull request process
 
-- **Semantic Versioning 2.0.0**
-- **Conventional Commits** (feat:, fix:, docs:, etc.)
-- **Test-Driven Development** (TDD)
-- **Domain-Driven Design** principles
-
-### Development Workflow
+Quick start:
 ```bash
-# Clone repository
 git clone https://github.com/grpmsoft/gosh.git
 cd gosh
-
-# Run tests
-go test ./...
-
-# Build
-go build -o gosh ./cmd/gosh
-
-# Run
-./gosh
+make test && make build
 ```
 
 ## 📄 License
@@ -261,10 +196,13 @@ Third-party library licenses - see [NOTICE](NOTICE) for details.
 
 ### Open Source Libraries
 
-- **Bubbletea** - Charm's excellent TUI framework
+- **Phoenix TUI** - Next-generation TUI framework with 10x performance
+  - `phoenix/tea` - Elm Architecture event loop
+  - `phoenix/terminal` - Cross-platform terminal operations
+  - `phoenix/style` - CSS-like styling system
+  - `phoenix/components` - Rich UI components
 - **mvdan.cc/sh** - Native POSIX shell interpreter
-- **Lipgloss** - Terminal styling library
-- **Bubbles** - TUI components
+- **uniwidth** - Unicode width calculation library
 
 ## 📞 Support
 

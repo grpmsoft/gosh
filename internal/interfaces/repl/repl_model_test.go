@@ -25,16 +25,16 @@ func TestNewBubbleteaREPL(t *testing.T) {
 
 		// Create dependencies
 		fs := &mockFileSystem{}
-		builtinExecutor := builtin.NewBuiltinExecutor(fs, logger)
+		builtinExecutor := builtin.NewExecutor(fs, logger)
 		commandExecutor := executor.NewOSCommandExecutor(logger)
 		pipelineExecutor := executor.NewOSPipelineExecutor(logger)
-		executeUseCase := execute.NewExecuteCommandUseCase(
+		executeUseCase := execute.NewUseCase(
 			builtinExecutor,
 			commandExecutor,
 			pipelineExecutor,
 			logger,
 		)
-		sessionManager := appsession.NewSessionManager(logger)
+		sessionManager := appsession.NewManager(logger)
 
 		// Act
 		model, err := NewBubbleteaREPL(sessionManager, executeUseCase, logger, ctx, cfg)
@@ -48,7 +48,7 @@ func TestNewBubbleteaREPL(t *testing.T) {
 		assert.NotNil(t, model.executeUseCase)
 		assert.NotNil(t, model.logger)
 		assert.NotNil(t, model.ctx)
-		assert.NotNil(t, model.config)
+		assert.NotNil(t, model.Config)
 		assert.NotNil(t, model.historyNavigator)
 		assert.NotNil(t, model.historyRepo)
 		assert.NotNil(t, model.addToHistoryUC)
@@ -80,16 +80,16 @@ func TestNewBubbleteaREPL(t *testing.T) {
 		ctx := context.Background()
 
 		fs := &mockFileSystem{}
-		builtinExecutor := builtin.NewBuiltinExecutor(fs, logger)
+		builtinExecutor := builtin.NewExecutor(fs, logger)
 		commandExecutor := executor.NewOSCommandExecutor(logger)
 		pipelineExecutor := executor.NewOSPipelineExecutor(logger)
-		executeUseCase := execute.NewExecuteCommandUseCase(
+		executeUseCase := execute.NewUseCase(
 			builtinExecutor,
 			commandExecutor,
 			pipelineExecutor,
 			logger,
 		)
-		sessionManager := appsession.NewSessionManager(logger)
+		sessionManager := appsession.NewManager(logger)
 
 		// Act
 		model, err := NewBubbleteaREPL(sessionManager, executeUseCase, logger, ctx, cfg)
@@ -97,7 +97,7 @@ func TestNewBubbleteaREPL(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.NotNil(t, model)
-		assert.Equal(t, config.UIModeClassic, model.config.UI.Mode)
+		assert.Equal(t, config.UIModeClassic, model.Config.UI.Mode)
 
 		// In Classic mode, welcome messages are printed to stdout, not added to output buffer
 		// So output should be empty or very small
@@ -112,16 +112,16 @@ func TestNewBubbleteaREPL(t *testing.T) {
 		ctx := context.Background()
 
 		fs := &mockFileSystem{}
-		builtinExecutor := builtin.NewBuiltinExecutor(fs, logger)
+		builtinExecutor := builtin.NewExecutor(fs, logger)
 		commandExecutor := executor.NewOSCommandExecutor(logger)
 		pipelineExecutor := executor.NewOSPipelineExecutor(logger)
-		executeUseCase := execute.NewExecuteCommandUseCase(
+		executeUseCase := execute.NewUseCase(
 			builtinExecutor,
 			commandExecutor,
 			pipelineExecutor,
 			logger,
 		)
-		sessionManager := appsession.NewSessionManager(logger)
+		sessionManager := appsession.NewManager(logger)
 
 		// Act
 		model, err := NewBubbleteaREPL(sessionManager, executeUseCase, logger, ctx, cfg)
@@ -129,7 +129,7 @@ func TestNewBubbleteaREPL(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.NotNil(t, model)
-		assert.Equal(t, config.UIModeWarp, model.config.UI.Mode)
+		assert.Equal(t, config.UIModeWarp, model.Config.UI.Mode)
 
 		// In non-Classic modes, welcome messages are added to output buffer
 		assert.Greater(t, len(model.output), 0)
@@ -142,16 +142,16 @@ func TestNewBubbleteaREPL(t *testing.T) {
 		ctx := context.Background()
 
 		fs := &mockFileSystem{}
-		builtinExecutor := builtin.NewBuiltinExecutor(fs, logger)
+		builtinExecutor := builtin.NewExecutor(fs, logger)
 		commandExecutor := executor.NewOSCommandExecutor(logger)
 		pipelineExecutor := executor.NewOSPipelineExecutor(logger)
-		executeUseCase := execute.NewExecuteCommandUseCase(
+		executeUseCase := execute.NewUseCase(
 			builtinExecutor,
 			commandExecutor,
 			pipelineExecutor,
 			logger,
 		)
-		sessionManager := appsession.NewSessionManager(logger)
+		sessionManager := appsession.NewManager(logger)
 
 		// Act
 		model, err := NewBubbleteaREPL(sessionManager, executeUseCase, logger, ctx, cfg)
@@ -166,23 +166,23 @@ func TestNewBubbleteaREPL(t *testing.T) {
 		// Up/Down keys should be disabled (used for history navigation)
 	})
 
-	t.Run("initializes textarea correctly", func(t *testing.T) {
+	t.Run("initializes shell input correctly", func(t *testing.T) {
 		// Arrange
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 		cfg := config.DefaultConfig()
 		ctx := context.Background()
 
 		fs := &mockFileSystem{}
-		builtinExecutor := builtin.NewBuiltinExecutor(fs, logger)
+		builtinExecutor := builtin.NewExecutor(fs, logger)
 		commandExecutor := executor.NewOSCommandExecutor(logger)
 		pipelineExecutor := executor.NewOSPipelineExecutor(logger)
-		executeUseCase := execute.NewExecuteCommandUseCase(
+		executeUseCase := execute.NewUseCase(
 			builtinExecutor,
 			commandExecutor,
 			pipelineExecutor,
 			logger,
 		)
-		sessionManager := appsession.NewSessionManager(logger)
+		sessionManager := appsession.NewManager(logger)
 
 		// Act
 		model, err := NewBubbleteaREPL(sessionManager, executeUseCase, logger, ctx, cfg)
@@ -191,9 +191,9 @@ func TestNewBubbleteaREPL(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, model)
 
-		// Verify textarea is initialized
-		assert.NotNil(t, model.textarea)
-		assert.Empty(t, model.textarea.Value())
+		// Verify shell input is initialized
+		assert.NotNil(t, model.shellInput)
+		assert.Empty(t, model.shellInput.Value())
 	})
 
 	t.Run("loads history from file", func(t *testing.T) {
@@ -203,16 +203,16 @@ func TestNewBubbleteaREPL(t *testing.T) {
 		ctx := context.Background()
 
 		fs := &mockFileSystem{}
-		builtinExecutor := builtin.NewBuiltinExecutor(fs, logger)
+		builtinExecutor := builtin.NewExecutor(fs, logger)
 		commandExecutor := executor.NewOSCommandExecutor(logger)
 		pipelineExecutor := executor.NewOSPipelineExecutor(logger)
-		executeUseCase := execute.NewExecuteCommandUseCase(
+		executeUseCase := execute.NewUseCase(
 			builtinExecutor,
 			commandExecutor,
 			pipelineExecutor,
 			logger,
 		)
-		sessionManager := appsession.NewSessionManager(logger)
+		sessionManager := appsession.NewManager(logger)
 
 		// Act
 		model, err := NewBubbleteaREPL(sessionManager, executeUseCase, logger, ctx, cfg)
@@ -233,23 +233,23 @@ func TestNewBubbleteaREPL(t *testing.T) {
 }
 
 func TestModelInit(t *testing.T) {
-	t.Run("Init returns textarea blink command", func(t *testing.T) {
+	t.Run("Init can be called successfully", func(t *testing.T) {
 		// Arrange
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 		cfg := config.DefaultConfig()
 		ctx := context.Background()
 
 		fs := &mockFileSystem{}
-		builtinExecutor := builtin.NewBuiltinExecutor(fs, logger)
+		builtinExecutor := builtin.NewExecutor(fs, logger)
 		commandExecutor := executor.NewOSCommandExecutor(logger)
 		pipelineExecutor := executor.NewOSPipelineExecutor(logger)
-		executeUseCase := execute.NewExecuteCommandUseCase(
+		executeUseCase := execute.NewUseCase(
 			builtinExecutor,
 			commandExecutor,
 			pipelineExecutor,
 			logger,
 		)
-		sessionManager := appsession.NewSessionManager(logger)
+		sessionManager := appsession.NewManager(logger)
 
 		model, err := NewBubbleteaREPL(sessionManager, executeUseCase, logger, ctx, cfg)
 		require.NoError(t, err)
@@ -258,11 +258,10 @@ func TestModelInit(t *testing.T) {
 		cmd := model.Init()
 
 		// Assert
-		assert.NotNil(t, cmd)
-		// The command should be textarea.Blink
-		// We can't directly compare functions, but we can execute it and check it doesn't panic
-		msg := cmd()
-		_ = msg // Should return a tea.Msg (textarea blink message)
+		// Phoenix ShellInput handles cursor blinking internally, so cmd can be nil
+		// This is different from Bubbles textarea which returned a Blink command
+		// Just verify Init() doesn't panic
+		_ = cmd // cmd may be nil with Phoenix
 	})
 }
 

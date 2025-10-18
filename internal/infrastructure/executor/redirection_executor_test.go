@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"log/slog"
+
 	"github.com/grpmsoft/gosh/internal/domain/command"
 	"github.com/grpmsoft/gosh/internal/domain/process"
 	"github.com/grpmsoft/gosh/internal/domain/session"
@@ -14,10 +16,9 @@ import (
 	"github.com/grpmsoft/gosh/internal/infrastructure/executor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"log/slog"
 )
 
-// TestOSCommandExecutor_RedirectOutput tests output redirection to file (>)
+// TestOSCommandExecutor_RedirectOutput tests output redirection to file (>).
 func TestOSCommandExecutor_RedirectOutput(t *testing.T) {
 	t.Run("echo hello > output.txt", func(t *testing.T) {
 		// Setup
@@ -61,7 +62,7 @@ func TestOSCommandExecutor_RedirectOutput(t *testing.T) {
 	})
 }
 
-// TestOSCommandExecutor_RedirectAppend tests append redirection (>>)
+// TestOSCommandExecutor_RedirectAppend tests append redirection (>>).
 func TestOSCommandExecutor_RedirectAppend(t *testing.T) {
 	// NOTE: This test is skipped on Windows/MSYS due to file descriptor inheritance
 	// limitations with O_APPEND flag. The functionality works in practice but fails
@@ -122,7 +123,7 @@ func TestOSCommandExecutor_RedirectAppend(t *testing.T) {
 	})
 }
 
-// TestOSCommandExecutor_RedirectInput tests input redirection from file (<)
+// TestOSCommandExecutor_RedirectInput tests input redirection from file (<).
 func TestOSCommandExecutor_RedirectInput(t *testing.T) {
 	t.Run("cat < input.txt", func(t *testing.T) {
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
@@ -160,7 +161,7 @@ func TestOSCommandExecutor_RedirectInput(t *testing.T) {
 	})
 }
 
-// TestOSCommandExecutor_RedirectError tests stderr redirection (2>)
+// TestOSCommandExecutor_RedirectError tests stderr redirection (2>).
 func TestOSCommandExecutor_RedirectError(t *testing.T) {
 	t.Run("command 2> error.txt", func(t *testing.T) {
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
@@ -200,7 +201,7 @@ func TestOSCommandExecutor_RedirectError(t *testing.T) {
 	})
 }
 
-// TestOSCommandExecutor_RedirectInputError tests error with nonexistent input file
+// TestOSCommandExecutor_RedirectInputError tests error with nonexistent input file.
 func TestOSCommandExecutor_RedirectInputError(t *testing.T) {
 	t.Run("cat < nonexistent.txt", func(t *testing.T) {
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
@@ -232,7 +233,7 @@ func TestOSCommandExecutor_RedirectInputError(t *testing.T) {
 	})
 }
 
-// TestOSCommandExecutor_MultipleRedirections tests multiple redirections
+// TestOSCommandExecutor_MultipleRedirections tests multiple redirections.
 func TestOSCommandExecutor_MultipleRedirections(t *testing.T) {
 	t.Run("cat < input.txt > output.txt", func(t *testing.T) {
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
@@ -283,7 +284,7 @@ func TestOSCommandExecutor_MultipleRedirections(t *testing.T) {
 	})
 }
 
-// TestOSCommandExecutor_FDDuplication tests FD duplication (2>&1)
+// TestOSCommandExecutor_FDDuplication tests FD duplication (2>&1).
 func TestOSCommandExecutor_FDDuplication(t *testing.T) {
 	t.Run("command 2>&1 - merge stderr to stdout", func(t *testing.T) {
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
@@ -306,7 +307,7 @@ func TestOSCommandExecutor_FDDuplication(t *testing.T) {
 		// Add 2>&1 - redirect stderr to stdout
 		err = cmd.AddRedirection(command.Redirection{
 			Type:     command.RedirectDup,
-			SourceFD: 2, // stderr
+			SourceFD: 2,   // stderr
 			Target:   "1", // to stdout
 		})
 		require.NoError(t, err)

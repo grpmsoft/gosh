@@ -10,14 +10,20 @@ import (
 	"strings"
 
 	"github.com/grpmsoft/gosh/internal/domain/command"
+	"github.com/grpmsoft/gosh/internal/domain/config"
 	"github.com/grpmsoft/gosh/internal/domain/process"
 	"github.com/grpmsoft/gosh/internal/domain/session"
 	"github.com/grpmsoft/gosh/internal/interfaces/parser"
 
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/phoenix-tui/phoenix/tea/api"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/interp"
 	"mvdan.cc/sh/v3/syntax"
+)
+
+const (
+	extBash = ".bash"
+	extSh   = ".sh"
 )
 
 // expandAliases recursively expands aliases in command.
@@ -62,8 +68,10 @@ func (m *Model) expandAliases(commandLine string, depth int) (string, error) {
 }
 
 // executeCommand executes entered command.
-func (m Model) executeCommand() (tea.Model, tea.Cmd) {
-	value := strings.TrimSpace(m.textarea.Value())
+func (m Model) executeCommand() (Model, api.Cmd) {
+	// Get value from m.inputText (already synced with appropriate input component)
+	// This correctly handles both single-line and multiline modes
+	value := strings.TrimSpace(m.inputText)
 
 	// Empty command
 	if value == "" {
@@ -85,11 +93,41 @@ func (m Model) executeCommand() (tea.Model, tea.Cmd) {
 	m.historyNavigator = m.currentSession.NewHistoryNavigator()
 
 	// Show command in output with prompt and syntax highlighting (ANSI codes only)
-	m.addOutputRaw(m.renderPromptForHistoryANSI() + m.applySyntaxHighlight(value))
+	// Classic mode: print directly to stdout (like bash)
+	// Other modes: add to viewport buffer
+	if m.Config.UI.Mode == config.UIModeClassic {
+		// Render final command line WITHOUT cursor before freezing
+		// CRITICAL: In multiline mode, we need to clear ALL lines (not just current line!)
 
-	// Clear textarea and return height to 1
-	m.textarea.SetValue("")
-	m.textarea.SetHeight(1)
+		if m.multilineMode {
+			// Multiline: clear all lines before printing final command
+			// Phoenix Terminal API - 10x faster on Windows Console! ⚡
+			lines := m.shellTextArea.Lines()
+			numLines := len(lines)
+
+			// ClearLines() uses Windows Console API when available!
+			_ = m.terminal.ClearLines(numLines)
+		} else {
+			// Single-line: just clear current line
+			// Phoenix Terminal API - platform-optimized
+			_ = m.terminal.ClearLine()
+		}
+
+		// Render prompt + command (no cursor!)
+		fmt.Print(m.renderPromptForHistoryANSI())                      // Prompt
+		fmt.Print(m.applySyntaxHighlight(value))                       // Command (no cursor!)
+		fmt.Print("\n")                                                // Freeze and move to next line
+	} else {
+		// Add to viewport buffer
+		m.addOutputRaw(m.renderPromptForHistoryANSI() + m.applySyntaxHighlight(value))
+	}
+
+	// Clear both input components
+	m.shellInput.Reset()
+	m.shellTextArea.Reset()
+
+	// Reset to single-line mode
+	m.multilineMode = false
 
 	// Sync input state
 	m.inputText = ""
@@ -98,13 +136,13 @@ func (m Model) executeCommand() (tea.Model, tea.Cmd) {
 	// Built-in exit command
 	if value == "exit" || value == "quit" {
 		m.quitting = true
-		return m, tea.Quit
+		return m, api.Quit()
 	}
 
 	// Built-in clear command
 	if value == "clear" || value == "cls" {
 		m.output = make([]string, 0)
-		return m, tea.ClearScreen
+		return m, nil // Phoenix doesn't have ClearScreen, we handle it in View
 	}
 
 	// Built-in help command
@@ -123,9 +161,7 @@ func (m Model) executeCommand() (tea.Model, tea.Cmd) {
 	if err != nil {
 		m.addOutputRaw("\033[31mError: " + err.Error() + "\033[0m")
 		m.updateViewportContent()
-		if m.autoScroll {
-			m.viewport.GotoBottom()
-		}
+		// FollowMode handles auto-scroll in render functions
 		return m, nil
 	}
 
@@ -142,29 +178,28 @@ func (m Model) executeCommand() (tea.Model, tea.Cmd) {
 		// Shell script (.sh/.bash)
 		if m.isInteractiveCommand(cmdName) {
 			// Interactive script (with read, clear, menu) - via bash + tea.ExecProcess
-			return m, m.execInteractiveCommand(value)
-		} else {
-			// Regular script - execute NATIVELY via mvdan.cc/sh
-			m.executing = true
-			return m, m.executeShellScriptNative(scriptPath, cmdArgs)
+			return m, m.execInteractiveCommand(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 		}
+		// Regular script - execute NATIVELY via mvdan.cc/sh
+		m.executing = true
+		return m, m.executeShellScriptNative(scriptPath, cmdArgs) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 	}
 
 	// Interactive command (vim, ssh, etc.) - via tea.ExecProcess
 	if m.isInteractiveCommand(cmdName) {
-		return m, m.execInteractiveCommand(value)
+		return m, m.execInteractiveCommand(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 	}
 
 	// Check if this is a builtin command (cd, export, unset)
 	// They must execute synchronously in shell process
 	if m.isBuiltinCommand(cmdName) {
 		m.executing = true
-		return m, m.execBuiltinCommand(value)
+		return m, m.execBuiltinCommand(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 	}
 
 	// Regular command - execute asynchronously with output capture
 	m.executing = true
-	return m, m.execCommandAsync(value)
+	return m, m.execCommandAsync(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 }
 
 // showHelp shows help (text version for help command).
@@ -187,7 +222,7 @@ func (m *Model) showHelp() {
 	m.addOutputRaw("")
 
 	// UI modes (if switching allowed)
-	if m.config.UI.AllowModeSwitching {
+	if m.Config.UI.AllowModeSwitching {
 		m.addOutputRaw("\033[1;33mUI Mode Switching:\033[0m")
 		m.addOutputRaw("  :mode        - Show current UI mode")
 		m.addOutputRaw("  :mode <name> - Switch UI mode (classic/warp/compact/chat)")
@@ -199,8 +234,8 @@ func (m *Model) showHelp() {
 }
 
 // execCommandAsync executes command in background.
-func (m *Model) execCommandAsync(commandLine string) tea.Cmd {
-	return func() tea.Msg {
+func (m *Model) execCommandAsync(commandLine string) api.Cmd {
+	return func() api.Msg {
 		// Parse command
 		cmd, pipe, err := parser.ParseCommandLine(commandLine)
 		if err != nil {
@@ -318,7 +353,7 @@ func (m *Model) execCommandAsync(commandLine string) tea.Cmd {
 
 // prepareCommand prepares command for execution.
 // Detects scripts and adds necessary interpreter (sh, bash, cmd, powershell).
-func (m *Model) prepareCommand(cmdName string, cmdArgs []string) (string, []string) {
+func (m *Model) prepareCommand(cmdName string, cmdArgs []string) (finalCmd string, finalArgs []string) {
 	// Check if command is a script file
 	var scriptPath string
 
@@ -341,7 +376,7 @@ func (m *Model) prepareCommand(cmdName string, cmdArgs []string) (string, []stri
 		ext := strings.ToLower(filepath.Ext(scriptPath))
 
 		switch ext {
-		case ".sh", ".bash":
+		case extSh, extBash:
 			// Shell script - run via sh or bash
 			// Check bash availability, otherwise use sh
 			interpreter := "sh"
@@ -394,7 +429,7 @@ func (m *Model) isShellScript(cmdName string) (string, bool) {
 
 	// Check extension
 	ext := strings.ToLower(filepath.Ext(scriptPath))
-	if ext == ".sh" || ext == ".bash" {
+	if ext == extSh || ext == extBash {
 		return scriptPath, true
 	}
 
@@ -402,7 +437,7 @@ func (m *Model) isShellScript(cmdName string) (string, bool) {
 }
 
 // extractCommandName extracts command name from string.
-func (m *Model) extractCommandName(commandLine string) (string, []string) {
+func (m *Model) extractCommandName(commandLine string) (cmdName string, cmdArgs []string) {
 	// Parse command
 	cmd, _, err := parser.ParseCommandLine(commandLine)
 	if err != nil || cmd == nil {
@@ -431,7 +466,7 @@ func (m *Model) isInteractiveCommand(cmdName string) bool {
 		// Check file extension
 		ext := strings.ToLower(filepath.Ext(scriptPath))
 		switch ext {
-		case ".sh", ".bash", ".bat", ".cmd", ".ps1":
+		case extSh, extBash, ".bat", ".cmd", ".ps1":
 			// Scripts may require interactive mode (read, input, etc.)
 			return true
 		}
@@ -468,10 +503,10 @@ func (m *Model) isInteractiveCommand(cmdName string) bool {
 }
 
 // executeShellScriptNative executes .sh/.bash script natively via mvdan.cc/sh.
-func (m *Model) executeShellScriptNative(scriptPath string, args []string) tea.Cmd {
-	return func() tea.Msg {
+func (m *Model) executeShellScriptNative(scriptPath string, args []string) api.Cmd {
+	return func() api.Msg {
 		// Open script file
-		file, err := os.Open(scriptPath)
+		file, err := os.Open(scriptPath) //nolint:gosec // G304: This is a shell - dynamic script execution is expected
 		if err != nil {
 			return commandExecutedMsg{
 				err:      fmt.Errorf("failed to open script: %w", err),
@@ -481,8 +516,8 @@ func (m *Model) executeShellScriptNative(scriptPath string, args []string) tea.C
 		defer func() { _ = file.Close() }()
 
 		// Parse script
-		parser := syntax.NewParser()
-		prog, err := parser.Parse(file, scriptPath)
+		scriptParser := syntax.NewParser()
+		prog, err := scriptParser.Parse(file, scriptPath)
 		if err != nil {
 			return commandExecutedMsg{
 				err:      fmt.Errorf("failed to parse script: %w", err),
@@ -584,13 +619,13 @@ func expandEnv(sess *session.Session) expand.Environ {
 	return &sessionEnviron{sess: sess}
 }
 
-// execInteractiveCommand executes interactive command via tea.ExecProcess.
+// execInteractiveCommand executes interactive command via api.ExecProcess.
 // Used for scripts requiring full TTY (clear, read, menu).
-func (m *Model) execInteractiveCommand(commandLine string) tea.Cmd {
+func (m *Model) execInteractiveCommand(commandLine string) api.Cmd {
 	// Parse command
 	cmd, pipe, err := parser.ParseCommandLine(commandLine)
 	if err != nil {
-		return func() tea.Msg {
+		return func() api.Msg {
 			return commandExecutedMsg{
 				err:      err,
 				exitCode: 1,
@@ -600,7 +635,7 @@ func (m *Model) execInteractiveCommand(commandLine string) tea.Cmd {
 
 	// Pipes not yet supported in interactive mode
 	if pipe != nil {
-		return func() tea.Msg {
+		return func() api.Msg {
 			return commandExecutedMsg{
 				output:   "[Interactive pipes not yet supported]",
 				exitCode: 1,
@@ -609,7 +644,7 @@ func (m *Model) execInteractiveCommand(commandLine string) tea.Cmd {
 	}
 
 	if cmd == nil {
-		return func() tea.Msg {
+		return func() api.Msg {
 			return commandExecutedMsg{
 				output:   "",
 				exitCode: 0,
@@ -621,28 +656,17 @@ func (m *Model) execInteractiveCommand(commandLine string) tea.Cmd {
 	cmdName, cmdArgs := m.prepareCommand(cmd.Name(), cmd.Args())
 
 	// Create exec.Cmd with proper settings
-	osCmd := exec.Command(cmdName, cmdArgs...)
+	osCmd := exec.Command(cmdName, cmdArgs...) //nolint:gosec // G204: This is a shell - command execution with user input is expected
 	osCmd.Dir = m.currentSession.WorkingDirectory()
 	osCmd.Env = m.currentSession.Environment().ToSlice()
 
-	// Create exec.Cmd for interactive execution
-	return tea.ExecProcess(osCmd, func(err error) tea.Msg {
-		exitCode := 0
-		if err != nil {
-			var exitErr *exec.ExitError
-			if errors.As(err, &exitErr) {
-				exitCode = exitErr.ExitCode()
-			} else {
-				exitCode = 1
-			}
-		}
-
-		// Return completion message
-		// Output was already shown directly to terminal
+	// TODO: Phoenix doesn't have ExecProcess yet - need to add it to Phoenix tea/api
+	// For now, return error
+	return func() api.Msg {
 		return commandExecutedMsg{
-			output:   "", // Empty - output was interactive
-			err:      err,
-			exitCode: exitCode,
+			output:   "[Interactive commands not yet supported - Phoenix migration in progress]",
+			err:      fmt.Errorf("ExecProcess not available in Phoenix yet"),
+			exitCode: 1,
 		}
-	})
+	}
 }

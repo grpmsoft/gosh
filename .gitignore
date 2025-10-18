@@ -4,7 +4,7 @@
 *.dll
 *.so
 *.dylib
-gosh
+/gosh
 gosh-*
 !gosh.go
 
@@ -57,3 +57,5 @@ docs/dev
 
 # Temporary test files
 tmp/
+export_output.txt
+test_cursor.go

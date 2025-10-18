@@ -1,3 +1,4 @@
+// Package parser provides lexical analysis and parsing for shell command syntax.
 package parser
 
 import (
@@ -5,25 +6,37 @@ import (
 	"unicode"
 )
 
-// TokenType represents the type of token
+// TokenType represents the type of token.
 type TokenType int
 
 const (
-	TokenWord           TokenType = iota
-	TokenPipe                     // |
-	TokenRedirectIn               // N< (file descriptor input)
-	TokenRedirectOut              // N> (file descriptor output)
-	TokenRedirectAppend           // N>> (file descriptor append)
-	TokenRedirectDup              // N>&M (file descriptor duplication)
-	TokenBackground               // &
-	TokenSemicolon                // ;
-	TokenAnd                      // &&
-	TokenOr                       // ||
+	// TokenWord represents a command word or argument.
+	TokenWord TokenType = iota
+	// TokenPipe represents the pipe operator (|).
+	TokenPipe
+	// TokenRedirectIn represents input redirection (N<).
+	TokenRedirectIn
+	// TokenRedirectOut represents output redirection (N>).
+	TokenRedirectOut
+	// TokenRedirectAppend represents append redirection (N>>).
+	TokenRedirectAppend
+	// TokenRedirectDup represents file descriptor duplication (N>&M).
+	TokenRedirectDup
+	// TokenBackground represents background execution (&).
+	TokenBackground
+	// TokenSemicolon represents command separator (;).
+	TokenSemicolon
+	// TokenAnd represents logical AND operator (&&).
+	TokenAnd
+	// TokenOr represents logical OR operator (||).
+	TokenOr
+	// TokenEOF represents end of input.
 	TokenEOF
+	// TokenError represents a lexer error.
 	TokenError
 )
 
-// Token represents a lexical token
+// Token represents a lexical token.
 type Token struct {
 	Type  TokenType
 	Value string // For redirections: filename or "&N" for FD duplication
@@ -31,14 +44,14 @@ type Token struct {
 	Pos   int
 }
 
-// Lexer performs lexical analysis of command line
+// Lexer performs lexical analysis of command line.
 type Lexer struct {
 	input  string
 	pos    int
 	tokens []Token
 }
 
-// NewLexer creates a new lexer
+// NewLexer creates a new lexer.
 func NewLexer(input string) *Lexer {
 	return &Lexer{
 		input:  input,
@@ -47,7 +60,7 @@ func NewLexer(input string) *Lexer {
 	}
 }
 
-// Tokenize splits input string into tokens
+// Tokenize splits input string into tokens.
 func (l *Lexer) Tokenize() ([]Token, error) {
 	for l.pos < len(l.input) {
 		// Skip whitespace
@@ -86,7 +99,7 @@ func (l *Lexer) Tokenize() ([]Token, error) {
 	return l.tokens, nil
 }
 
-// match checks and consumes a substring
+// match checks and consumes a substring.
 func (l *Lexer) match(s string) bool {
 	if l.pos+len(s) > len(l.input) {
 		return false
@@ -100,7 +113,7 @@ func (l *Lexer) match(s string) bool {
 	return false
 }
 
-// readWord reads a word (until whitespace or special character)
+// readWord reads a word (until whitespace or special character).
 func (l *Lexer) readWord() string {
 	start := l.pos
 	inQuotes := false
@@ -157,9 +170,9 @@ func (l *Lexer) readWord() string {
 	return word
 }
 
-// tryParseRedirection tries to parse file descriptor redirections
-// Supports: N<, N>, N>>, N>&M where N and M are digits
-// Defaults: < = 0<, > = 1>, >> = 1>>
+// tryParseRedirection tries to parse file descriptor redirections.
+// Supports: N<, N>, N>>, N>&M where N and M are digits.
+// Defaults: < = 0<, > = 1>, >> = 1>>.
 func (l *Lexer) tryParseRedirection() bool {
 	start := l.pos
 	fd := -1
@@ -211,7 +224,7 @@ func (l *Lexer) tryParseRedirection() bool {
 	return false
 }
 
-// addToken adds a token to the list
+// addToken adds a token to the list.
 func (l *Lexer) addToken(tokenType TokenType, value string, fd int) {
 	l.tokens = append(l.tokens, Token{
 		Type:  tokenType,
@@ -221,7 +234,7 @@ func (l *Lexer) addToken(tokenType TokenType, value string, fd int) {
 	})
 }
 
-// Tokens returns the list of tokens
+// Tokens returns the list of tokens.
 func (l *Lexer) Tokens() []Token {
 	return l.tokens
 }

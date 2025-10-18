@@ -2,33 +2,34 @@ package builtins
 
 import (
 	"fmt"
-	"github.com/grpmsoft/gosh/internal/domain/session"
-	"github.com/grpmsoft/gosh/internal/domain/shared"
 	"io"
 	"os"
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/grpmsoft/gosh/internal/domain/session"
+	"github.com/grpmsoft/gosh/internal/domain/shared"
 )
 
-// ExportCommand represents the export command
-// Exports environment variables
+// ExportCommand represents the export command.
+// Exports environment variables.
 // Supports:
-// - export             - print all variables (like env)
-// - export VAR=value   - set variable
-// - export VAR="value" - set with quotes
-// - export A=1 B=2     - multiple variable assignment
+// - export             - print all variables (like env).
+// - export VAR=value   - set variable.
+// - export VAR="value" - set with quotes.
+// - export A=1 B=2     - multiple variable assignment.
 type ExportCommand struct {
 	args    []string
 	session *session.Session
 	stdout  io.Writer
 }
 
-// validVarNameRegex validates variable name
-// Name can contain: letters, digits, underscore, but CANNOT start with digit
+// validVarNameRegex validates variable name.
+// Name can contain: letters, digits, underscore, but CANNOT start with digit.
 var validVarNameRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 
-// NewExportCommand creates a new export command
+// NewExportCommand creates a new export command.
 func NewExportCommand(args []string, sess *session.Session, stdout io.Writer) (*ExportCommand, error) {
 	if sess == nil {
 		return nil, shared.NewDomainError(
@@ -52,7 +53,7 @@ func NewExportCommand(args []string, sess *session.Session, stdout io.Writer) (*
 	}, nil
 }
 
-// Execute executes the export command
+// Execute executes the export command.
 func (e *ExportCommand) Execute() error {
 	// If no arguments - print all environment variables
 	if len(e.args) == 0 {
@@ -69,7 +70,7 @@ func (e *ExportCommand) Execute() error {
 	return nil
 }
 
-// exportVariable exports a single variable
+// exportVariable exports a single variable.
 func (e *ExportCommand) exportVariable(arg string) error {
 	// Split into KEY=VALUE
 	parts := strings.SplitN(arg, "=", 2)
@@ -109,7 +110,7 @@ func (e *ExportCommand) exportVariable(arg string) error {
 	return nil
 }
 
-// validateVariableName validates variable name
+// validateVariableName validates variable name.
 func (e *ExportCommand) validateVariableName(name string) error {
 	if name == "" {
 		return shared.NewDomainError(
@@ -130,7 +131,7 @@ func (e *ExportCommand) validateVariableName(name string) error {
 	return nil
 }
 
-// unquoteValue removes quotes from value
+// unquoteValue removes quotes from value.
 func (e *ExportCommand) unquoteValue(value string) string {
 	value = strings.TrimSpace(value)
 
@@ -147,7 +148,7 @@ func (e *ExportCommand) unquoteValue(value string) string {
 	return value
 }
 
-// printAllVariables prints all environment variables
+// printAllVariables prints all environment variables.
 func (e *ExportCommand) printAllVariables() error {
 	env := e.session.Environment()
 
@@ -169,7 +170,7 @@ func (e *ExportCommand) printAllVariables() error {
 	return nil
 }
 
-// escapeValue escapes special characters to prevent ANSI code interpretation
+// escapeValue escapes special characters to prevent ANSI code interpretation.
 func escapeValue(value string) string {
 	// Replace backslash with double backslash
 	value = strings.ReplaceAll(value, "\\", "\\\\")

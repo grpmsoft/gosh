@@ -1,10 +1,10 @@
+// Package repl provides the Read-Eval-Print-Loop interface using Bubbletea TUI framework.
 package repl
 
 import (
 	"github.com/grpmsoft/gosh/internal/application/execute"
 	"github.com/grpmsoft/gosh/internal/interfaces/parser"
-
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/phoenix-tui/phoenix/tea/api"
 )
 
 // isBuiltinCommand checks if command is builtin (cd, export, unset).
@@ -29,8 +29,8 @@ func (m *Model) isBuiltinCommand(cmdName string) bool {
 }
 
 // execBuiltinCommand executes builtin command synchronously via executeUseCase.
-func (m *Model) execBuiltinCommand(commandLine string) tea.Cmd {
-	return func() tea.Msg {
+func (m *Model) execBuiltinCommand(commandLine string) api.Cmd {
+	return func() api.Msg {
 		// Parse command
 		cmd, _, err := parser.ParseCommandLine(commandLine)
 		if err != nil {
@@ -50,7 +50,7 @@ func (m *Model) execBuiltinCommand(commandLine string) tea.Cmd {
 		// Execute via executeUseCase which correctly delegates to BuiltinExecutor
 		resp, err := m.executeUseCase.Execute(
 			m.ctx,
-			execute.ExecuteCommandRequest{
+			execute.CommandRequest{
 				CommandLine: commandLine,
 				SessionID:   m.currentSession.ID(),
 			},

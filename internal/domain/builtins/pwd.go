@@ -2,19 +2,20 @@ package builtins
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/grpmsoft/gosh/internal/domain/session"
 	"github.com/grpmsoft/gosh/internal/domain/shared"
-	"io"
 )
 
-// PwdCommand represents the pwd (print working directory) command
-// Prints the current working directory
+// PwdCommand represents the pwd (print working directory) command.
+// Prints the current working directory.
 type PwdCommand struct {
 	session *session.Session
 	stdout  io.Writer
 }
 
-// NewPwdCommand creates a new pwd command
+// NewPwdCommand creates a new pwd command.
 func NewPwdCommand(sess *session.Session, stdout io.Writer) (*PwdCommand, error) {
 	if sess == nil {
 		return nil, shared.NewDomainError(
@@ -37,7 +38,7 @@ func NewPwdCommand(sess *session.Session, stdout io.Writer) (*PwdCommand, error)
 	}, nil
 }
 
-// Execute executes the pwd command
+// Execute executes the pwd command.
 func (p *PwdCommand) Execute() error {
 	currentDir := p.session.WorkingDirectory()
 	_, _ = fmt.Fprintln(p.stdout, currentDir)

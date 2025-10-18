@@ -4,6 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"log/slog"
+	"os"
+	"strings"
+
 	"github.com/grpmsoft/gosh/internal/domain/command"
 	"github.com/grpmsoft/gosh/internal/domain/process"
 	"github.com/grpmsoft/gosh/internal/domain/session"
@@ -11,17 +15,14 @@ import (
 	"github.com/grpmsoft/gosh/internal/infrastructure/executor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"log/slog"
-	"os"
-	"strings"
 )
 
-// TestOSPipelineExecutor_Simple tests a simple pipeline of two commands
+// TestOSPipelineExecutor_Simple tests a simple pipeline of two commands.
 func TestOSPipelineExecutor_Simple(t *testing.T) {
 	t.Run("echo hello | wc -l", func(t *testing.T) {
 		// Setup
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-		executor := executor.NewOSPipelineExecutor(logger)
+		pipelineExec := executor.NewOSPipelineExecutor(logger)
 
 		env := make(shared.Environment)
 		sess, err := session.NewSession("test", os.TempDir(), env)
@@ -35,7 +36,7 @@ func TestOSPipelineExecutor_Simple(t *testing.T) {
 		require.NoError(t, err)
 
 		// Execute pipeline
-		processes, err := executor.Execute(context.Background(), []*command.Command{cmd1, cmd2}, sess)
+		processes, err := pipelineExec.Execute(context.Background(), []*command.Command{cmd1, cmd2}, sess)
 		require.NoError(t, err)
 		require.Len(t, processes, 2)
 
@@ -50,12 +51,12 @@ func TestOSPipelineExecutor_Simple(t *testing.T) {
 	})
 }
 
-// TestOSPipelineExecutor_MultiStage tests a pipeline of three commands
+// TestOSPipelineExecutor_MultiStage tests a pipeline of three commands.
 func TestOSPipelineExecutor_MultiStage(t *testing.T) {
 	t.Run("echo -e 'a\\nb\\nc' | grep b | wc -l", func(t *testing.T) {
 		// Setup
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-		executor := executor.NewOSPipelineExecutor(logger)
+		pipelineExec := executor.NewOSPipelineExecutor(logger)
 
 		env := make(shared.Environment)
 		sess, err := session.NewSession("test", os.TempDir(), env)
@@ -72,7 +73,7 @@ func TestOSPipelineExecutor_MultiStage(t *testing.T) {
 		require.NoError(t, err)
 
 		// Execute pipeline
-		processes, err := executor.Execute(context.Background(), []*command.Command{cmd1, cmd2, cmd3}, sess)
+		processes, err := pipelineExec.Execute(context.Background(), []*command.Command{cmd1, cmd2, cmd3}, sess)
 		require.NoError(t, err)
 		require.Len(t, processes, 3)
 
@@ -86,12 +87,12 @@ func TestOSPipelineExecutor_MultiStage(t *testing.T) {
 	})
 }
 
-// TestOSPipelineExecutor_ErrorPropagation tests that errors propagate correctly
+// TestOSPipelineExecutor_ErrorPropagation tests that errors propagate correctly.
 func TestOSPipelineExecutor_ErrorPropagation(t *testing.T) {
 	t.Run("failing command in pipeline", func(t *testing.T) {
 		// Setup
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-		executor := executor.NewOSPipelineExecutor(logger)
+		pipelineExec := executor.NewOSPipelineExecutor(logger)
 
 		env := make(shared.Environment)
 		sess, err := session.NewSession("test", os.TempDir(), env)
@@ -105,7 +106,7 @@ func TestOSPipelineExecutor_ErrorPropagation(t *testing.T) {
 		require.NoError(t, err)
 
 		// Execute pipeline
-		processes, err := executor.Execute(context.Background(), []*command.Command{cmd1, cmd2}, sess)
+		processes, err := pipelineExec.Execute(context.Background(), []*command.Command{cmd1, cmd2}, sess)
 		require.NoError(t, err) // Execute itself does not return error
 		require.Len(t, processes, 2)
 
@@ -120,28 +121,28 @@ func TestOSPipelineExecutor_ErrorPropagation(t *testing.T) {
 	})
 }
 
-// TestOSPipelineExecutor_EmptyCommands tests handling of empty command list
+// TestOSPipelineExecutor_EmptyCommands tests handling of empty command list.
 func TestOSPipelineExecutor_EmptyCommands(t *testing.T) {
 	t.Run("empty commands list returns error", func(t *testing.T) {
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-		executor := executor.NewOSPipelineExecutor(logger)
+		pipelineExec := executor.NewOSPipelineExecutor(logger)
 
 		env := make(shared.Environment)
 		sess, err := session.NewSession("test", os.TempDir(), env)
 		require.NoError(t, err)
 
 		// Execute with empty list
-		processes, err := executor.Execute(context.Background(), []*command.Command{}, sess)
+		processes, err := pipelineExec.Execute(context.Background(), []*command.Command{}, sess)
 		assert.Error(t, err)
 		assert.Nil(t, processes)
 	})
 }
 
-// TestOSPipelineExecutor_SingleCommand tests a pipeline with a single command
+// TestOSPipelineExecutor_SingleCommand tests a pipeline with a single command.
 func TestOSPipelineExecutor_SingleCommand(t *testing.T) {
 	t.Run("single command in pipeline", func(t *testing.T) {
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-		executor := executor.NewOSPipelineExecutor(logger)
+		pipelineExec := executor.NewOSPipelineExecutor(logger)
 
 		env := make(shared.Environment)
 		sess, err := session.NewSession("test", os.TempDir(), env)
@@ -151,7 +152,7 @@ func TestOSPipelineExecutor_SingleCommand(t *testing.T) {
 		cmd, err := command.NewCommand("echo", []string{"test"}, command.TypeExternal)
 		require.NoError(t, err)
 
-		processes, err := executor.Execute(context.Background(), []*command.Command{cmd}, sess)
+		processes, err := pipelineExec.Execute(context.Background(), []*command.Command{cmd}, sess)
 		require.NoError(t, err)
 		require.Len(t, processes, 1)
 
@@ -162,11 +163,11 @@ func TestOSPipelineExecutor_SingleCommand(t *testing.T) {
 	})
 }
 
-// TestOSPipelineExecutor_LargeOutput tests handling large output
+// TestOSPipelineExecutor_LargeOutput tests handling large output.
 func TestOSPipelineExecutor_LargeOutput(t *testing.T) {
 	t.Run("handles large output through pipe", func(t *testing.T) {
 		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-		executor := executor.NewOSPipelineExecutor(logger)
+		pipelineExec := executor.NewOSPipelineExecutor(logger)
 
 		env := make(shared.Environment)
 		sess, err := session.NewSession("test", os.TempDir(), env)
@@ -179,7 +180,7 @@ func TestOSPipelineExecutor_LargeOutput(t *testing.T) {
 		cmd2, err := command.NewCommand("wc", []string{"-l"}, command.TypeExternal)
 		require.NoError(t, err)
 
-		processes, err := executor.Execute(context.Background(), []*command.Command{cmd1, cmd2}, sess)
+		processes, err := pipelineExec.Execute(context.Background(), []*command.Command{cmd1, cmd2}, sess)
 		require.NoError(t, err)
 		require.Len(t, processes, 2)
 

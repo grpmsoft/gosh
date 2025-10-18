@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/grpmsoft/gosh/internal/application/execute"
@@ -17,27 +18,41 @@ import (
 	"github.com/grpmsoft/gosh/internal/infrastructure/executor"
 	historyInfra "github.com/grpmsoft/gosh/internal/infrastructure/history"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
+	viewport "github.com/phoenix-tui/phoenix/components/viewport/api"
+	"github.com/phoenix-tui/phoenix/style/api"
+	tea "github.com/phoenix-tui/phoenix/tea/api"
+	terminal "github.com/phoenix-tui/phoenix/terminal/api"
+	terminalinfra "github.com/phoenix-tui/phoenix/terminal/infrastructure"
 )
 
 // Model represents REPL state (Elm Architecture).
+//
+// IMPORTANT: Bubbletea's MVU (Model-View-Update) pattern requires value receivers.
+// for Init(), Update(), and View() methods. This means Model is passed by value (copy).
+// on every update, which is the core immutability principle of the Elm architecture.
+//
+// Linter warnings about "hugeParam" (Model is 21KB) are expected and cannot be "fixed".
+// without breaking the Bubbletea architecture. This is NOT a performance issue:
+// - Bubbletea's design is optimized for this pattern.
+// - Go's compiler efficiently handles struct copies.
+// - The immutability benefits outweigh the copy cost.
+//
+//nolint:gocritic // hugeParam: Bubbletea MVU architecture requires value receivers
 type Model struct {
 	// Core components
-	textarea         textarea.Model
-	viewport         viewport.Model
-	sessionManager   *appsession.SessionManager
-	executeUseCase   *execute.ExecuteCommandUseCase
+	shellInput       *ShellInput         // Phoenix-based input with history navigation (single-line)
+	shellTextArea    *ShellTextArea      // Phoenix-based textarea for multiline editing
+	viewport         *viewport.Viewport  // Phoenix-based viewport for scrolling
+	terminal         terminal.Terminal   // Phoenix Terminal (10x faster on Windows!) ⭐
+	sessionManager   *appsession.Manager
+	executeUseCase   *execute.UseCase
 	pipelineExecutor *executor.OSPipelineExecutor
 	commandExecutor  *executor.OSCommandExecutor
 	currentSession   *session.Session
 	logger           *slog.Logger
 	ctx              context.Context
-	config           *config.Config // Configuration
+	Config           *config.Config // Configuration (exported for access in main.go)
 
 	// State
 	output           []string                            // Command output (scrolls up like in terminal)
@@ -55,9 +70,6 @@ type Model struct {
 	gitBranch        string
 	gitDirty         bool
 
-	// Spinner for execution
-	executingSpinner spinner.Model
-
 	// Tab completion
 	completions      []string
 	completionIndex  int
@@ -68,41 +80,48 @@ type Model struct {
 	inputText string
 	cursorPos int
 
+	// Multiline mode
+	multilineMode bool // Toggle between single-line and multiline input
+
 	// Scrolling
 	autoScroll bool // Auto-scroll down on new messages
 
 	// Help overlay
 	showingHelp bool // Help overlay display flag
 
+	// Cursor blinking
+	cursorVisible bool // Cursor blink state (toggles every 500ms)
+
 	// Styles
 	styles Styles
 }
 
 // Styles contains all UI styles (PowerShell/Git Bash inspired).
+// Uses Phoenix TUI Framework's style library.
 type Styles struct {
 	// Prompt styles
-	PromptUser     lipgloss.Style
-	PromptPath     lipgloss.Style
-	PromptGit      lipgloss.Style
-	PromptGitDirty lipgloss.Style
-	PromptArrow    lipgloss.Style
-	PromptError    lipgloss.Style
+	PromptUser     style.Style
+	PromptPath     style.Style
+	PromptGit      style.Style
+	PromptGitDirty style.Style
+	PromptArrow    style.Style
+	PromptError    style.Style
 
 	// Output styles
-	Output    lipgloss.Style
-	OutputErr lipgloss.Style
+	Output    style.Style
+	OutputErr style.Style
 
 	// Executing spinner
-	Executing lipgloss.Style
+	Executing style.Style
 
 	// Completion hint
-	CompletionHint lipgloss.Style
+	CompletionHint style.Style
 
 	// Syntax highlighting (inline in textarea)
-	SyntaxCommand lipgloss.Style // First word - command
-	SyntaxOption  lipgloss.Style // --option or -o
-	SyntaxArg     lipgloss.Style // Regular arguments
-	SyntaxString  lipgloss.Style // "quoted strings"
+	SyntaxCommand style.Style // First word - command
+	SyntaxOption  style.Style // --option or -o
+	SyntaxArg     style.Style // Regular arguments
+	SyntaxString  style.Style // "quoted strings"
 }
 
 // commandExecutedMsg message about executed command.
@@ -114,8 +133,8 @@ type commandExecutedMsg struct {
 
 // NewBubbleteaREPL creates new bubbletea REPL.
 func NewBubbleteaREPL(
-	sessionManager *appsession.SessionManager,
-	executeUseCase *execute.ExecuteCommandUseCase,
+	sessionManager *appsession.Manager,
+	executeUseCase *execute.UseCase,
 	logger *slog.Logger,
 	ctx context.Context,
 	cfg *config.Config,
@@ -126,35 +145,13 @@ func NewBubbleteaREPL(
 		return nil, err
 	}
 
-	// Create textarea (for multiline with Alt+Enter)
-	ta := textarea.New()
-	ta.Placeholder = ""
-	ta.Focus()
-	ta.CharLimit = 0
-	ta.SetWidth(80)
-	ta.SetHeight(1) // Start with one line
-	ta.Prompt = ""  // We'll render our own prompt
-	ta.ShowLineNumbers = false
-
-	// Styles for textarea
-	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
-	ta.FocusedStyle.Base = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
-
 	// Create styles
 	styles := makeProfessionalStyles()
 
-	// Create spinner
-	execSpinner := spinner.New()
-	execSpinner.Spinner = spinner.Dot
-	execSpinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("12")) // Blue
-
-	// Create viewport for scrolling
-	vp := viewport.New(80, 24)
-	vp.MouseWheelEnabled = true
-	// Disable default up/down keys (needed for command history)
-	vp.KeyMap.Up.SetEnabled(false)
-	vp.KeyMap.Down.SetEnabled(false)
-	// Keep PageUp/PageDown enabled
+	// Create viewport for scrolling (Phoenix Viewport)
+	vp := viewport.New(80, 24).MouseEnabled(true)
+	// Phoenix Viewport's Update() doesn't interfere with parent Model.Update(),
+	// so Up/Down keys work for command history without explicit disabling
 
 	// Create history repository and use cases
 	historyFilePath := getHistoryFilePath()
@@ -184,6 +181,12 @@ func NewBubbleteaREPL(
 		}
 	}
 
+	// Create ShellInput (Phoenix TextInput with history integration + syntax highlighting)
+	shellInput := NewShellInput(80, sess.History(), applySyntaxHighlightSimple)
+
+	// Create ShellTextArea (Phoenix TextArea with multiline support)
+	shellTextArea := NewShellTextArea(80, 5, sess.History(), applySyntaxHighlightSimple)
+
 	// Create navigator and use case for adding to history
 	historyNavigator := sess.NewHistoryNavigator()
 	addToHistoryUC := apphistory.NewAddToHistoryUseCase(sess.History(), historyRepo)
@@ -192,9 +195,15 @@ func NewBubbleteaREPL(
 	pipelineExecutor := executor.NewOSPipelineExecutor(logger)
 	commandExecutor := executor.NewOSCommandExecutor(logger)
 
+	// Create Phoenix Terminal with auto-detection (Windows Console API or ANSI fallback)
+	// Week 16: This gives GoSh PowerShell-level performance on Windows! ⚡
+	term := terminalinfra.NewTerminal()
+
 	m := &Model{
-		textarea:         ta,
+		shellInput:       shellInput,
+		shellTextArea:    shellTextArea,
 		viewport:         vp,
+		terminal:         term,
 		sessionManager:   sessionManager,
 		executeUseCase:   executeUseCase,
 		pipelineExecutor: pipelineExecutor,
@@ -202,26 +211,29 @@ func NewBubbleteaREPL(
 		currentSession:   sess,
 		logger:           logger,
 		ctx:              ctx,
-		config:           cfg,
+		Config:           cfg,
 		output:           make([]string, 0),
 		historyNavigator: historyNavigator,
 		historyRepo:      historyRepo,
 		addToHistoryUC:   addToHistoryUC,
 		maxOutputLines:   10000,
-		ready:            false,
+		ready:            true, // Start ready (Phoenix doesn't auto-send WindowSizeMsg yet)
 		quitting:         false,
 		executing:        false,
 		startTime:        time.Now(),
 		styles:           styles,
-		executingSpinner: execSpinner,
 		completions:      []string{},
 		completionIndex:  -1,
 		completionActive: false,
 		beforeCompletion: "",
 		inputText:        "",
 		cursorPos:        0,
-		autoScroll:       true, // Auto-scroll down by default
+		multilineMode:    false, // Start in single-line mode (default)
+		autoScroll:       true,  // Auto-scroll down by default
 		showingHelp:      false,
+		cursorVisible:    true, // Start with cursor visible
+		width:            80,   // Default width
+		height:           24,   // Default height
 	}
 
 	// Determine Git status
@@ -263,8 +275,22 @@ func NewBubbleteaREPL(
 }
 
 // Init initializes the model (Elm Architecture).
+//
+//nolint:gocritic // hugeParam: Bubbletea MVU requires value receiver
 func (m Model) Init() tea.Cmd {
-	return textarea.Blink
+	// No tick needed - terminal cursor blinks automatically!
+	// Terminal cursor is shown and set to blinking bar style in main.go:
+	//   \033[?25h - Show cursor
+	//   \033[5 q  - Blinking bar style (PowerShell standard)
+	//
+	// Phoenix-rendered cursor is disabled via ShowCursor(false)
+	// No need for manual tick/toggle - terminal handles it!
+	return nil
+}
+
+// tickCmd sends a tick message every 500ms for cursor blinking.
+func tickCmd() tea.Cmd {
+	return tea.Tick(500 * time.Millisecond)
 }
 
 // getHistoryFilePath returns the path to the history file.
@@ -274,4 +300,97 @@ func getHistoryFilePath() string {
 		return "/tmp/.gosh_history"
 	}
 	return filepath.Join(home, ".gosh_history")
+}
+
+// applySyntaxHighlightSimple applies simple bash syntax highlighting.
+// This is used by ShellInput for real-time highlighting during typing.
+//
+// Highlighting rules:
+// - Command (first word): Bright Yellow
+// - Options (starts with -): Dark Gray
+// - Arguments (other words): Green
+//
+// ═══════════════════════════════════════════════════════════════════════════
+// CRITICAL: Whitespace Preservation (Space Key Fix!)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// DO NOT use strings.Fields() - it REMOVES all whitespace!
+// User types "echo " → Fields returns ["echo"] → spaces lost!
+//
+// CORRECT APPROACH: Character-by-character parsing
+// - Preserve EVERY whitespace character (spaces, tabs) AS-IS
+// - Only highlight words, keep whitespace unchanged
+//
+// This is why space key works correctly now!
+// ═══════════════════════════════════════════════════════════════════════════
+func applySyntaxHighlightSimple(text string) string {
+	if text == "" {
+		return ""
+	}
+
+	var result strings.Builder
+	var currentWord strings.Builder
+	wordIndex := 0
+	inWord := false
+
+	for _, ch := range text {
+		if ch == ' ' || ch == '\t' {
+			// Whitespace - flush current word if any
+			if inWord {
+				// Highlight the word
+				word := currentWord.String()
+				switch {
+				case wordIndex == 0:
+					// First word = COMMAND (YELLOW)
+					result.WriteString("\033[1;33m") // Bright Yellow
+					result.WriteString(word)
+					result.WriteString("\033[0m")
+				case strings.HasPrefix(word, "-"):
+					// Option (GRAY)
+					result.WriteString("\033[90m") // Dark Gray
+					result.WriteString(word)
+					result.WriteString("\033[0m")
+				default:
+					// Argument (GREEN)
+					result.WriteString("\033[32m") // Green
+					result.WriteString(word)
+					result.WriteString("\033[0m")
+				}
+				currentWord.Reset()
+				wordIndex++
+				inWord = false
+			}
+			// CRITICAL: Preserve the whitespace character AS-IS!
+			// This is why space key works - we don't lose the space!
+			result.WriteRune(ch)
+		} else {
+			// Non-whitespace - accumulate word
+			currentWord.WriteRune(ch)
+			inWord = true
+		}
+	}
+
+	// Flush last word if any
+	if inWord {
+		word := currentWord.String()
+		switch {
+		case wordIndex == 0:
+			// First word = COMMAND (YELLOW)
+			result.WriteString("\033[1;33m")
+			result.WriteString(word)
+			result.WriteString("\033[0m")
+		case strings.HasPrefix(word, "-"):
+			// Option (GRAY)
+			result.WriteString("\033[90m")
+			result.WriteString(word)
+			result.WriteString("\033[0m")
+		default:
+			// Argument (GREEN)
+			result.WriteString("\033[32m")
+			result.WriteString(word)
+			result.WriteString("\033[0m")
+		}
+	}
+
+	return result.String()
 }

@@ -1,15 +1,59 @@
-# Contributing to GoSh
+# 🤝 Contributing to GoSh
 
-Thank you for contributing to GoSh! This document provides guidelines for contributing to the project.
+Thank you for your interest in contributing to GoSh! This document provides guidelines and information for contributors.
 
 ---
 
 ## 📋 Table of Contents
-- [Code Formatting](#code-formatting)
-- [Development Workflow](#development-workflow)
-- [Testing Requirements](#testing-requirements)
-- [Commit Guidelines](#commit-guidelines)
-- [Pull Request Process](#pull-request-process)
+- [Development Philosophy](#-development-philosophy)
+- [Quick Start](#-quick-start)
+- [Code Formatting](#-code-formatting)
+- [Testing Requirements](#-testing-requirements)
+- [Project Structure](#-project-structure)
+- [Code Style](#-code-style)
+- [Git Workflow](#-git-workflow)
+- [Pull Request Process](#-pull-request-process)
+
+---
+
+## 🎯 Development Philosophy
+
+GoSh follows modern software engineering practices:
+
+- **Test-Driven Development (TDD)**: Write tests before implementation
+- **Domain-Driven Design (DDD)**: Rich domain models with business logic
+- **Hexagonal Architecture**: Clean separation of concerns
+- **Semantic Versioning 2.0.0**: Clear version semantics
+- **Conventional Commits**: Structured commit messages
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- **Go**: 1.25 or higher
+- **Git**: For version control
+- **Make**: For automation tasks
+
+### Setup Development Environment
+
+```bash
+# Clone repository
+git clone https://github.com/grpmsoft/gosh.git
+cd gosh
+
+# Install dependencies
+go mod download
+
+# Run tests (ensure everything works)
+make test
+
+# Build binary
+make build
+
+# Run GoSh
+./gosh
+```
 
 ---
 
@@ -58,65 +102,179 @@ If your code is not properly formatted:
 
 ---
 
-## 🔄 Development Workflow
+---
 
-### 1. Setup
+## 📁 Project Structure
 
-```bash
-# Clone repository
-git clone https://github.com/grpmsoft/gosh.git
-cd gosh
-
-# Install dependencies
-go mod download
+```
+gosh/
+├── cmd/gosh/              # Application entry point
+├── internal/
+│   ├── domain/            # Domain layer (business logic)
+│   │   ├── history/       # History aggregate
+│   │   ├── session/       # Session aggregate
+│   │   └── process/       # Process entity
+│   ├── application/       # Application layer (use cases)
+│   ├── infrastructure/    # Infrastructure layer (adapters)
+│   └── interfaces/        # Interface layer (UI/CLI)
+├── docs/                  # Documentation
+├── ROADMAP.md            # Development roadmap
+├── CHANGELOG.md          # Version history
+└── README.md             # Project overview
 ```
 
-### 2. Create Feature Branch
+### Where to Put New Code
 
-```bash
-git checkout -b feature/your-feature-name
+| What | Where | Why |
+|------|-------|-----|
+| Business logic | `internal/domain/` | Pure logic, no I/O |
+| Orchestration | `internal/application/` | Coordinate domain + infra |
+| File/DB/Network | `internal/infrastructure/` | External dependencies |
+| UI/CLI | `internal/interfaces/` | User interaction |
+
+---
+
+## 🎨 Code Style
+
+### Naming Conventions
+- **Exported** (public): `PascalCase`
+- **Unexported** (private): `camelCase`
+- **Constants**: `UPPER_SNAKE_CASE` or `PascalCase`
+- **Test functions**: `TestTypeName_MethodName`
+
+### Comments
+- Document all exported functions, types, and methods
+- Use godoc conventions
+- Explain "why" not "what" in complex logic
+
+---
+
+## 🔀 Git Workflow (Git Flow - Best Practice 2025)
+
+### Branch Strategy
+
+**IMPORTANT**: We follow strict git-flow to protect `main` branch quality!
+
+```
+┌──────────────┐
+│  feature/xxx │  ← Development work
+└──────┬───────┘
+       │
+       ↓ (PR after local tests)
+┌──────────────┐
+│release/vX.Y.Z│  ← CI tests on 3 platforms (Linux/macOS/Windows)
+└──────┬───────┘
+       │ (merge only after CI passes)
+       ↓
+┌──────────────┐
+│     main     │  ← Production-ready code ONLY
+└──────────────┘
 ```
 
-### 3. Make Changes
+**Branch Types**:
+- `main` - **Production-ready code only** (protected)
+- `release/vX.Y.Z` - Pre-release testing (CI runs here)
+- `feature/xxx` - Feature development
+- `fix/xxx` - Bug fixes
 
-- Write your code
-- Add tests (minimum 70% coverage)
-- **Format your code**: `make fmt`
+### Commit Messages
 
-### 4. Pre-Commit Checks
+Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-**MANDATORY before committing:**
+```
+<type>: <description>
 
-```bash
-# Full development workflow
-make dev
+[optional body]
 
-# This runs: fmt, lint, test, build
+[optional footer]
 ```
 
-Or individually:
+**Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`
+
+**Examples**:
 ```bash
-make fmt        # Format code
-make fmt-check  # Verify formatting
-make test       # Run tests
-make lint       # Run linter
-make build      # Build binary
+feat: add history search with fuzzy matching
+fix: correct viewport height in Classic mode
+docs: update roadmap with v0.2.0 tasks
 ```
 
-### 5. Commit Changes
+### Development Workflow
 
 ```bash
+# 1. Create feature branch
+git checkout -b feature/your-feature
+
+# 2. Make changes with tests
+# - Write tests first (TDD)
+# - Implement feature
+# - Ensure all tests pass
+
+# 3. Format and test locally
+make fmt
+make test
+make lint
+
+# 4. Commit
 git add .
 git commit -m "feat: your feature description"
 
-# Generated with Claude Code
-# Co-Authored-By: Claude <noreply@anthropic.com>
+# 5. Push feature branch
+git push origin feature/your-feature
+
+# 6. Create Pull Request to 'release/vX.Y.Z' branch
+# (NOT to main!)
+
+# 7. Wait for code review and CI to pass
+
+# 8. After merge to release branch:
+# - Maintainers will merge release → main
+# - Tag will be created
+# - Release will be published automatically
 ```
 
-### 6. Push and Create PR
+### For Maintainers: Release Branch Workflow
 
 ```bash
-git push origin feature/your-feature-name
+# 1. Create release branch from main
+git checkout main
+git pull origin main
+git checkout -b release/v0.1.0-beta.X
+
+# 2. Update version in docs
+# - README.md
+# - ROADMAP.md
+# - CHANGELOG.md
+
+# 3. Commit documentation
+git add CHANGELOG.md README.md ROADMAP.md
+git commit -m "docs: prepare v0.1.0-beta.X release"
+
+# 4. Push release branch (triggers CI on 3 platforms)
+git push origin release/v0.1.0-beta.X
+
+# 5. WAIT for CI to pass (all green checkmarks)
+# Check: https://github.com/grpmsoft/gosh/actions
+
+# 6. ONLY if CI passes: Merge to main
+git checkout main
+git pull origin main
+git merge --no-ff release/v0.1.0-beta.X -m "Merge release/v0.1.0-beta.X into main
+
+Release v0.1.0-beta.X:
+- [Brief summary]
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+git push origin main
+
+# 7. Create and push tag (triggers release)
+git tag -a v0.1.0-beta.X -m "Release v0.1.0-beta.X: [Title]
+
+[Detailed release notes]"
+git push origin v0.1.0-beta.X
+
+# 8. Cleanup (delete release branch)
+git branch -d release/v0.1.0-beta.X
+git push origin --delete release/v0.1.0-beta.X
 ```
 
 ---
@@ -182,10 +340,6 @@ func TestHistory_Add_EdgeCases(t *testing.T) {
 <type>: <subject>
 
 <body>
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 ### Types
@@ -318,42 +472,75 @@ make --version
 
 ---
 
+---
+
+## 🐛 Reporting Bugs
+
+### Bug Report Template
+```markdown
+**GoSh Version**: v0.1.0-beta.4
+**Platform**: Windows 11 / Linux Ubuntu / macOS 14
+**Go Version**: 1.25
+
+**Description**: Clear description of the bug
+
+**Steps to Reproduce**:
+1. Run `gosh`
+2. Execute `command xyz`
+3. Observe error
+
+**Expected**: What should happen
+**Actual**: What actually happens
+**Logs**: If applicable
+```
+
+---
+
+## 💡 Feature Requests
+
+### Feature Request Template
+```markdown
+**Feature**: Clear feature name
+**Problem**: What problem does this solve?
+**Solution**: How should it work?
+**Use Case**: Real-world scenario
+```
+
+---
+
 ## 📚 Resources
 
 - [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)
 - [Effective Go](https://golang.org/doc/effective_go)
 - [Project README](README.md)
-- [Release Roadmap](docs/dev/RELEASE_ROADMAP.md)
-- [Testing Strategy](docs/dev/TESTING_STRATEGY.md)
+- [Development Roadmap](ROADMAP.md)
+- [Changelog](CHANGELOG.md)
 
 ---
 
 ## 🆘 Getting Help
 
-### Issues
+- **Issues**: [GitHub Issues](https://github.com/grpmsoft/gosh/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/grpmsoft/gosh/discussions)
+- **Documentation**: Check `docs/` directory
 
-If you encounter problems:
-1. Check existing issues: https://github.com/grpmsoft/gosh/issues
-2. Create new issue with:
-   - Clear description
-   - Steps to reproduce
-   - Expected vs actual behavior
-   - Environment details (OS, Go version, etc.)
+---
 
-### Questions
+## 🎉 Recognition
 
-For questions:
-- Open a GitHub Discussion
-- Check project documentation
-- Review existing PRs for examples
+Contributors will be recognized in:
+- CHANGELOG.md for significant contributions
+- GitHub contributors page
+- Release notes
 
 ---
 
 ## 📄 License
 
-By contributing, you agree that your contributions will be licensed under the same license as the project (MIT).
+By contributing, you agree that your contributions will be licensed under the MIT License.
 
 ---
 
-*This document is mandatory reading for all contributors.*
-*Last updated: 2025-01-12*
+**Thank you for contributing to GoSh!** 🚀
+
+*Last updated: 2025-10-14*

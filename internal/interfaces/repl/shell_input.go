@@ -15,15 +15,15 @@ import (
 // - History navigation (Up/Down arrows)
 // - Syntax highlighting support (via callback)
 // - Emoji/Unicode correct rendering
-// - Cursor blinking animation
+// - Cursor blinking state (delegated to Phoenix TextInput)
 //
 // This wrapper adds shell-specific functionality to the universal Phoenix TextInput component.
 type ShellInput struct {
 	base              *input.Input
 	history           *history.History
 	historyNav        *history.Navigator
-	cursorVisible     bool // For blinking animation (controlled by parent Model)
-	highlightCallback func(string) string // Callback for syntax highlighting
+	cursorVisible     bool                 // Cursor blink state (controlled by parent Model tick)
+	highlightCallback func(string) string  // Callback for syntax highlighting
 }
 
 // NewShellInput creates a new shell input component.
@@ -37,7 +37,7 @@ func NewShellInput(width int, hist *history.History, highlight func(string) stri
 		base:              inp,
 		history:           hist,
 		historyNav:        hist.NewNavigator(),
-		cursorVisible:     true, // Start with cursor visible
+		cursorVisible:     true,  // Start with cursor visible
 		highlightCallback: highlight,
 	}
 }
@@ -126,44 +126,18 @@ func (s *ShellInput) Update(msg api.Msg) (*ShellInput, api.Cmd) {
 // View renders the input with syntax highlighting.
 //
 // ═══════════════════════════════════════════════════════════════════════════
-// CRITICAL UNDERSTANDING: PowerShell vs ANSI Terminal Cursor Blinking
+// IMPORTANT: Cursor Blinking
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// PowerShell (PSReadLine/Render.cs:924-1109) approach:
-//   1. _console.CursorVisible = false  (hide cursor)
-//   2. _console.Write(text)             (render text)
-//   3. _console.SetCursorPosition(...)  (position cursor)
-//   4. _console.CursorVisible = true   (show cursor - AUTOMATICALLY BLINKS)
+// Cursor blinking should be implemented in Phoenix TextInput component,
+// not in the application layer (GoSh). This keeps the separation of concerns:
 //
-// PowerShell uses Windows Console API where CursorVisible=true triggers
-// HARDWARE CURSOR BLINKING by the console subsystem. No additional setup needed.
+// - Phoenix TextInput: Handles cursor rendering and blinking (UI concern)
+// - GoSh ShellInput: Handles syntax highlighting and history (app concern)
 //
-// ANSI Terminal (bash/zsh/Windows Terminal) in RAW MODE:
-//   - Raw mode DISABLES automatic cursor blinking!
-//   - \033[?25h (show cursor) alone → cursor visible but STEADY (no blink)
-//   - \033[5 q (DECSCUSR) → Set blinking bar cursor style
-//   - Combination of both → Cursor visible AND blinking
+// Currently: Cursor is visible but does NOT blink (Phoenix TextInput limitation)
+// TODO: Add blinking support to Phoenix TextInput (tick command + cursorVisible flag)
 //
-// DECSCUSR (DEC Set Cursor Style) - \033[{n} q:
-//   0 or blank - Restore terminal default (usually blinking block)
-//   1 - Blinking block █
-//   2 - Steady block █
-//   3 - Blinking underline _
-//   4 - Steady underline _
-//   5 - Blinking bar | (STANDARD for shells: bash, zsh, PowerShell)
-//   6 - Steady bar |
-//
-// Our implementation (see cmd/gosh/main.go):
-//   1. Application startup:
-//      - fmt.Print("\033[?25h")  // Show cursor
-//      - fmt.Print("\033[5 q")   // Set blinking bar style
-//   2. Every View() call:
-//      - Render syntax-highlighted text
-//      - Position cursor using ANSI codes (\033[{n}D)
-//   3. Terminal automatically blinks cursor (no manual toggling!)
-//
-// Cursor style is set ONCE at startup in main.go, NOT in every View() call!
-// View() only positions the cursor, blinking is handled by the terminal.
 // ═══════════════════════════════════════════════════════════════════════════
 func (s *ShellInput) View() string {
 	before, at, after := s.ContentParts()

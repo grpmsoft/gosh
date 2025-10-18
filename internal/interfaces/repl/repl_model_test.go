@@ -97,7 +97,7 @@ func TestNewBubbleteaREPL(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.NotNil(t, model)
-		assert.Equal(t, config.UIModeClassic, model.config.UI.Mode)
+		assert.Equal(t, config.UIModeClassic, model.Config.UI.Mode)
 
 		// In Classic mode, welcome messages are printed to stdout, not added to output buffer
 		// So output should be empty or very small
@@ -129,7 +129,7 @@ func TestNewBubbleteaREPL(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.NotNil(t, model)
-		assert.Equal(t, config.UIModeWarp, model.config.UI.Mode)
+		assert.Equal(t, config.UIModeWarp, model.Config.UI.Mode)
 
 		// In non-Classic modes, welcome messages are added to output buffer
 		assert.Greater(t, len(model.output), 0)

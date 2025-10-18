@@ -32,7 +32,7 @@ func (m Model) View() string {
 	}
 
 	// Choose rendering based on UI mode
-	switch m.config.UI.Mode {
+	switch m.Config.UI.Mode {
 	case config.UIModeClassic:
 		return m.renderClassicMode()
 	case config.UIModeWarp:
@@ -189,9 +189,12 @@ func (m Model) renderChatMode() string {
 // Phase 2: Using Phoenix ShellInput with public ContentParts() API.
 // This enables syntax highlighting + visible cursor (to be implemented in Phase 6).
 //
-// Current: Cursor is visible and works correctly.
+// Current: Cursor is visible and works correctly with blinking support.
 // Next (Phase 6): Add syntax highlighting using ContentParts().
 func (m Model) renderInputWithCursor() string {
+	// Update cursor visibility for blinking animation
+	m.shellInput.SetCursorVisible(m.cursorVisible)
+
 	// Phoenix ShellInput with public cursor API!
 	return m.shellInput.View()
 }
@@ -373,7 +376,7 @@ func (m Model) renderHelpOverlay() string {
 	content.WriteString("\n")
 
 	// UI Modes (if mode switching is allowed).
-	if m.config.UI.AllowModeSwitching {
+	if m.Config.UI.AllowModeSwitching {
 		content.WriteString(sectionStyle.Render("UI Modes:"))
 		content.WriteString("\n")
 		content.WriteString(keyStyle.Render("  Alt+1     ") + " - Classic mode\n")

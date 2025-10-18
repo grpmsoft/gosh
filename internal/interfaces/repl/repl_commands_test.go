@@ -486,7 +486,7 @@ func TestShowHelp(t *testing.T) {
 
 	t.Run("help shows UI mode switching when enabled", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = true
+		m.Config.UI.AllowModeSwitching = true
 
 		// Act
 		m.showHelp()
@@ -553,7 +553,7 @@ func TestExecuteCommand(t *testing.T) {
 
 	t.Run("handles mode command", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = true
+		m.Config.UI.AllowModeSwitching = true
 		m.shellInput.SetValue(":mode")
 
 		// Act

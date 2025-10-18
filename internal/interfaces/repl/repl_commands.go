@@ -93,7 +93,7 @@ func (m Model) executeCommand() (Model, api.Cmd) {
 	// Show command in output with prompt and syntax highlighting (ANSI codes only)
 	// Classic mode: print directly to stdout (like bash)
 	// Other modes: add to viewport buffer
-	if m.config.UI.Mode == config.UIModeClassic {
+	if m.Config.UI.Mode == config.UIModeClassic {
 		// Render final command line WITHOUT cursor before freezing
 		// 1. Clear current line (which has cursor)
 		// 2. Render prompt + command (no cursor)
@@ -203,7 +203,7 @@ func (m *Model) showHelp() {
 	m.addOutputRaw("")
 
 	// UI modes (if switching allowed)
-	if m.config.UI.AllowModeSwitching {
+	if m.Config.UI.AllowModeSwitching {
 		m.addOutputRaw("\033[1;33mUI Mode Switching:\033[0m")
 		m.addOutputRaw("  :mode        - Show current UI mode")
 		m.addOutputRaw("  :mode <name> - Switch UI mode (classic/warp/compact/chat)")

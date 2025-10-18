@@ -12,8 +12,8 @@ import (
 func TestSwitchUIMode(t *testing.T) {
 	t.Run("switches to Classic mode with Alt+1", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = true
-		m.config.UI.Mode = config.UIModeWarp
+		m.Config.UI.AllowModeSwitching = true
+		m.Config.UI.Mode = config.UIModeWarp
 		m.width = 80
 		m.height = 24
 
@@ -21,13 +21,13 @@ func TestSwitchUIMode(t *testing.T) {
 		m2, _ := m.switchUIMode("alt+1")
 
 		// Assert
-		assert.Equal(t, config.UIModeClassic, m2.config.UI.Mode)
+		assert.Equal(t, config.UIModeClassic, m2.Config.UI.Mode)
 	})
 
 	t.Run("switches to Warp mode with Alt+2", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = true
-		m.config.UI.Mode = config.UIModeClassic
+		m.Config.UI.AllowModeSwitching = true
+		m.Config.UI.Mode = config.UIModeClassic
 		m.width = 80
 		m.height = 24
 
@@ -35,13 +35,13 @@ func TestSwitchUIMode(t *testing.T) {
 		m2, _ := m.switchUIMode("alt+2")
 
 		// Assert
-		assert.Equal(t, config.UIModeWarp, m2.config.UI.Mode)
+		assert.Equal(t, config.UIModeWarp, m2.Config.UI.Mode)
 	})
 
 	t.Run("switches to Compact mode with Alt+3", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = true
-		m.config.UI.Mode = config.UIModeWarp
+		m.Config.UI.AllowModeSwitching = true
+		m.Config.UI.Mode = config.UIModeWarp
 		m.width = 80
 		m.height = 24
 
@@ -49,13 +49,13 @@ func TestSwitchUIMode(t *testing.T) {
 		m2, _ := m.switchUIMode("alt+3")
 
 		// Assert
-		assert.Equal(t, config.UIModeCompact, m2.config.UI.Mode)
+		assert.Equal(t, config.UIModeCompact, m2.Config.UI.Mode)
 	})
 
 	t.Run("switches to Chat mode with Alt+4", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = true
-		m.config.UI.Mode = config.UIModeWarp
+		m.Config.UI.AllowModeSwitching = true
+		m.Config.UI.Mode = config.UIModeWarp
 		m.width = 80
 		m.height = 24
 
@@ -63,13 +63,13 @@ func TestSwitchUIMode(t *testing.T) {
 		m2, _ := m.switchUIMode("alt+4")
 
 		// Assert
-		assert.Equal(t, config.UIModeChat, m2.config.UI.Mode)
+		assert.Equal(t, config.UIModeChat, m2.Config.UI.Mode)
 	})
 
 	t.Run("does nothing when already in target mode", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = true
-		m.config.UI.Mode = config.UIModeWarp
+		m.Config.UI.AllowModeSwitching = true
+		m.Config.UI.Mode = config.UIModeWarp
 		m.width = 80
 		m.height = 24
 
@@ -77,27 +77,27 @@ func TestSwitchUIMode(t *testing.T) {
 		m2, _ := m.switchUIMode("alt+2") // Already in Warp
 
 		// Assert
-		assert.Equal(t, config.UIModeWarp, m2.config.UI.Mode)
+		assert.Equal(t, config.UIModeWarp, m2.Config.UI.Mode)
 	})
 
 	t.Run("ignores unknown key", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = true
-		initialMode := m.config.UI.Mode
+		m.Config.UI.AllowModeSwitching = true
+		initialMode := m.Config.UI.Mode
 
 		// Act
 		m2, _ := m.switchUIMode("ctrl+f9")
 
 		// Assert
-		assert.Equal(t, initialMode, m2.config.UI.Mode)
+		assert.Equal(t, initialMode, m2.Config.UI.Mode)
 	})
 }
 
 func TestHandleModeCommand(t *testing.T) {
 	t.Run("shows current mode when no arguments", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = true
-		m.config.UI.Mode = config.UIModeWarp
+		m.Config.UI.AllowModeSwitching = true
+		m.Config.UI.Mode = config.UIModeWarp
 
 		// Act
 		m2, _ := m.handleModeCommand(":mode")
@@ -109,8 +109,8 @@ func TestHandleModeCommand(t *testing.T) {
 
 	t.Run("switches to classic mode", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = true
-		m.config.UI.Mode = config.UIModeWarp
+		m.Config.UI.AllowModeSwitching = true
+		m.Config.UI.Mode = config.UIModeWarp
 		m.width = 80
 		m.height = 24
 
@@ -118,13 +118,13 @@ func TestHandleModeCommand(t *testing.T) {
 		m2, _ := m.handleModeCommand(":mode classic")
 
 		// Assert
-		assert.Equal(t, config.UIModeClassic, m2.config.UI.Mode)
+		assert.Equal(t, config.UIModeClassic, m2.Config.UI.Mode)
 	})
 
 	t.Run("switches to warp mode", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = true
-		m.config.UI.Mode = config.UIModeClassic
+		m.Config.UI.AllowModeSwitching = true
+		m.Config.UI.Mode = config.UIModeClassic
 		m.width = 80
 		m.height = 24
 
@@ -132,13 +132,13 @@ func TestHandleModeCommand(t *testing.T) {
 		m2, _ := m.handleModeCommand(":mode warp")
 
 		// Assert
-		assert.Equal(t, config.UIModeWarp, m2.config.UI.Mode)
+		assert.Equal(t, config.UIModeWarp, m2.Config.UI.Mode)
 	})
 
 	t.Run("switches to compact mode", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = true
-		m.config.UI.Mode = config.UIModeWarp
+		m.Config.UI.AllowModeSwitching = true
+		m.Config.UI.Mode = config.UIModeWarp
 		m.width = 80
 		m.height = 24
 
@@ -146,13 +146,13 @@ func TestHandleModeCommand(t *testing.T) {
 		m2, _ := m.handleModeCommand(":mode compact")
 
 		// Assert
-		assert.Equal(t, config.UIModeCompact, m2.config.UI.Mode)
+		assert.Equal(t, config.UIModeCompact, m2.Config.UI.Mode)
 	})
 
 	t.Run("switches to chat mode", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = true
-		m.config.UI.Mode = config.UIModeWarp
+		m.Config.UI.AllowModeSwitching = true
+		m.Config.UI.Mode = config.UIModeWarp
 		m.width = 80
 		m.height = 24
 
@@ -160,47 +160,47 @@ func TestHandleModeCommand(t *testing.T) {
 		m2, _ := m.handleModeCommand(":mode chat")
 
 		// Assert
-		assert.Equal(t, config.UIModeChat, m2.config.UI.Mode)
+		assert.Equal(t, config.UIModeChat, m2.Config.UI.Mode)
 	})
 
 	t.Run("handles unknown mode", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = true
-		initialMode := m.config.UI.Mode
+		m.Config.UI.AllowModeSwitching = true
+		initialMode := m.Config.UI.Mode
 
 		// Act
 		m2, _ := m.handleModeCommand(":mode invalid")
 
 		// Assert
-		assert.Equal(t, initialMode, m2.config.UI.Mode)
+		assert.Equal(t, initialMode, m2.Config.UI.Mode)
 		// Should have added error message
 		assert.Greater(t, len(m2.output), len(m.output))
 	})
 
 	t.Run("fails when mode switching disabled", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = false
-		initialMode := m.config.UI.Mode
+		m.Config.UI.AllowModeSwitching = false
+		initialMode := m.Config.UI.Mode
 
 		// Act
 		m2, _ := m.handleModeCommand(":mode classic")
 
 		// Assert
-		assert.Equal(t, initialMode, m2.config.UI.Mode)
+		assert.Equal(t, initialMode, m2.Config.UI.Mode)
 		// Should have added error message
 		assert.Greater(t, len(m2.output), len(m.output))
 	})
 
 	t.Run("notifies when already in target mode", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = true
-		m.config.UI.Mode = config.UIModeWarp
+		m.Config.UI.AllowModeSwitching = true
+		m.Config.UI.Mode = config.UIModeWarp
 
 		// Act
 		m2, _ := m.handleModeCommand(":mode warp")
 
 		// Assert
-		assert.Equal(t, config.UIModeWarp, m2.config.UI.Mode)
+		assert.Equal(t, config.UIModeWarp, m2.Config.UI.Mode)
 		// Should have added notification
 		assert.Greater(t, len(m2.output), len(m.output))
 	})
@@ -346,7 +346,7 @@ func TestUpdateWindowSize(t *testing.T) {
 
 	t.Run("adjusts viewport height for Classic mode", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.Mode = config.UIModeClassic
+		m.Config.UI.Mode = config.UIModeClassic
 
 		// Act
 		msg := api.WindowSizeMsg{Width: 80, Height: 24}
@@ -359,7 +359,7 @@ func TestUpdateWindowSize(t *testing.T) {
 
 	t.Run("adjusts viewport height for Compact mode", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.Mode = config.UIModeCompact
+		m.Config.UI.Mode = config.UIModeCompact
 
 		// Act
 		msg := api.WindowSizeMsg{Width: 80, Height: 24}
@@ -372,7 +372,7 @@ func TestUpdateWindowSize(t *testing.T) {
 
 	t.Run("adjusts viewport height for Warp mode", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.Mode = config.UIModeWarp
+		m.Config.UI.Mode = config.UIModeWarp
 
 		// Act
 		msg := api.WindowSizeMsg{Width: 80, Height: 24}
@@ -521,7 +521,7 @@ func TestUpdateCommandExecutedMsg(t *testing.T) {
 
 	t.Run("adds output to viewport in non-Classic mode", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.Mode = config.UIModeWarp
+		m.Config.UI.Mode = config.UIModeWarp
 		m.executing = true
 		initialLen := len(m.output)
 

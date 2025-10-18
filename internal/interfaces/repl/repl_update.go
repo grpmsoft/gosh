@@ -25,7 +25,7 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 	switch msg := msg.(type) {
 	case api.TickMsg:
 		// Toggle cursor visibility for blinking effect
-		if m.config.UI.CursorBlinking {
+		if m.Config.UI.CursorBlinking {
 			m.cursorVisible = !m.cursorVisible
 			return m, tickCmd()
 		}
@@ -53,7 +53,7 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 		// Classic mode: prompt inside viewport, use full height (we preserve scroll via YOffset)
 		// Other modes: prompt outside viewport, reserve space
 		var viewportHeight int
-		switch m.config.UI.Mode {
+		switch m.Config.UI.Mode {
 		case config.UIModeClassic:
 			// Classic mode - prompt inside viewport, full screen height
 			viewportHeight = msg.Height
@@ -81,7 +81,7 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 
 		// Handle output differently based on UI mode
 		if msg.output != "" {
-			if m.config.UI.Mode == config.UIModeClassic {
+			if m.Config.UI.Mode == config.UIModeClassic {
 				// Classic mode: Print directly to stdout (native terminal scrolling)
 				// Output sequence (bash-style):
 				// 1. User types command: "user@host $ ls█"
@@ -97,8 +97,8 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 				}
 
 				// Print separator after output (configurable)
-				if m.config.UI.OutputSeparator != "" {
-					fmt.Print(m.config.UI.OutputSeparator)
+				if m.Config.UI.OutputSeparator != "" {
+					fmt.Print(m.Config.UI.OutputSeparator)
 				}
 			} else {
 				// Other modes (Warp/Compact/Chat): Use viewport for scrolling
@@ -116,7 +116,7 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 		// Show additional error if present (e.g. "exit status 1")
 		// Usually msg.err contains only exit status, real stderr is already in msg.output
 		if msg.err != nil && msg.output == "" {
-			if m.config.UI.Mode == config.UIModeClassic {
+			if m.Config.UI.Mode == config.UIModeClassic {
 				// Classic mode: print error directly to stdout
 				fmt.Println("\033[31mError: " + msg.err.Error() + "\033[0m")
 			} else {
@@ -130,7 +130,7 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 
 		// Update viewport content (only for non-Classic modes)
 		// FollowMode in render functions handles auto-scroll automatically
-		if m.config.UI.Mode != config.UIModeClassic {
+		if m.Config.UI.Mode != config.UIModeClassic {
 			m.updateViewportContent()
 		}
 
@@ -240,7 +240,7 @@ func (m Model) handleKeyPress(msg api.KeyMsg) (Model, api.Cmd) {
 
 	// Hotkeys for switching UI modes (Alt+1-4).
 	case "alt+1", "alt+2", "alt+3", "alt+4":
-		if m.config.UI.AllowModeSwitching {
+		if m.Config.UI.AllowModeSwitching {
 			return m.switchUIMode(msg.String())
 		}
 	}
@@ -288,13 +288,13 @@ func (m Model) switchUIMode(key string) (Model, api.Cmd) {
 	}
 
 	// If already in this mode - do nothing.
-	if m.config.UI.Mode == newMode {
+	if m.Config.UI.Mode == newMode {
 		return m, nil
 	}
 
 	// Switch mode.
-	oldMode := m.config.UI.Mode
-	m.config.UI.Mode = newMode
+	oldMode := m.Config.UI.Mode
+	m.Config.UI.Mode = newMode
 
 	// Recalculate viewport height for new mode.
 	// Classic: prompt inside, full height; Others: prompt outside, reserve space.
@@ -335,7 +335,7 @@ func (m Model) switchUIMode(key string) (Model, api.Cmd) {
 // handleModeCommand handles :mode command for switching UI modes.
 func (m Model) handleModeCommand(commandLine string) (Model, api.Cmd) {
 	// Check if mode switching is enabled.
-	if !m.config.UI.AllowModeSwitching {
+	if !m.Config.UI.AllowModeSwitching {
 		m.addOutputRaw("\033[31mError: UI mode switching is disabled in config\033[0m")
 		m.updateViewportContent()
 		// FollowMode handles auto-scroll in render functions
@@ -347,7 +347,7 @@ func (m Model) handleModeCommand(commandLine string) (Model, api.Cmd) {
 
 	// If only ":mode" without arguments - show current mode.
 	if len(parts) == 1 {
-		m.addOutputRaw(fmt.Sprintf("\033[90mCurrent UI mode: \033[1;32m%s\033[0m", m.config.UI.Mode))
+		m.addOutputRaw(fmt.Sprintf("\033[90mCurrent UI mode: \033[1;32m%s\033[0m", m.Config.UI.Mode))
 		m.addOutputRaw("\033[90mAvailable modes: classic, warp, compact, chat\033[0m")
 		m.addOutputRaw("\033[90mUsage: :mode <name>\033[0m")
 		m.updateViewportContent()
@@ -378,7 +378,7 @@ func (m Model) handleModeCommand(commandLine string) (Model, api.Cmd) {
 	}
 
 	// If already in this mode - just notify.
-	if m.config.UI.Mode == newMode {
+	if m.Config.UI.Mode == newMode {
 		m.addOutputRaw(fmt.Sprintf("\033[90mAlready in %s mode\033[0m", newMode))
 		m.updateViewportContent()
 		// FollowMode handles auto-scroll in render functions
@@ -386,8 +386,8 @@ func (m Model) handleModeCommand(commandLine string) (Model, api.Cmd) {
 	}
 
 	// Switch mode.
-	oldMode := m.config.UI.Mode
-	m.config.UI.Mode = newMode
+	oldMode := m.Config.UI.Mode
+	m.Config.UI.Mode = newMode
 
 	// Recalculate viewport height for new mode.
 	// Classic: prompt inside, full height; Others: prompt outside, reserve space.

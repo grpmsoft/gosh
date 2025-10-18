@@ -70,9 +70,49 @@ func main() {
 			os.Exit(1)
 		}
 
+		// ═══════════════════════════════════════════════════════════════════════════
+		// CRITICAL: Cursor Blinking in Raw Mode
+		// ═══════════════════════════════════════════════════════════════════════════
+		//
+		// Raw mode disables automatic cursor blinking. We must explicitly enable it.
+		//
+		// ANSI Escape Sequences:
+		//   \033[?25h         - Show cursor (DECTCEM: DEC Text Cursor Enable Mode)
+		//   \033[{n} q        - DECSCUSR: Set cursor style (n = 0-6, from config)
+		//
+		// Cursor styles (DECSCUSR):
+		//   \033[0 q or \033[ q  - Restore terminal default (usually blinking block)
+		//   \033[1 q             - Blinking block █
+		//   \033[2 q             - Steady block █
+		//   \033[3 q             - Blinking underline _
+		//   \033[4 q             - Steady underline _
+		//   \033[5 q             - Blinking bar | (DEFAULT - bash/zsh/PowerShell standard)
+		//   \033[6 q             - Steady bar |
+		//
+		// Cursor style is configurable via Config.UI.CursorStyle (default: 5 - blinking bar).
+		// Users can change this in config to suit their terminal and preferences.
+		//
+		// PowerShell equivalent (PSReadLine/Render.cs:924-1109):
+		//   _console.CursorVisible = true  (Windows Console API - blinks automatically)
+		//
+		// Our approach (ANSI terminals):
+		//   1. Show cursor: \033[?25h
+		//   2. Set cursor style from config: \033[{CursorStyle} q
+		//   3. Terminal handles blinking automatically (no manual toggling needed!)
+		//
+		// This is executed ONCE at startup, NOT in every View() render!
+		//
+		// NOTE: Some terminals (MSYS/Git Bash) may not support all cursor styles.
+		// If cursor doesn't blink, try different values (0, 1, or 3).
+		// ═══════════════════════════════════════════════════════════════════════════
+		fmt.Print("\033[?25h")                              // Show cursor
+		fmt.Printf("\033[%d q", model.Config.UI.CursorStyle) // Set cursor style from config
+
 		defer func() {
 			// Always restore terminal state on exit
 			if oldState != nil {
+				// Reset cursor to terminal default before restoring terminal state
+				fmt.Print("\033[0 q")  // Restore default cursor style
 				_ = term.Restore(int(os.Stdin.Fd()), oldState)
 			}
 		}()

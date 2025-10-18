@@ -18,10 +18,10 @@ import (
 	"github.com/grpmsoft/gosh/internal/infrastructure/executor"
 	historyInfra "github.com/grpmsoft/gosh/internal/infrastructure/history"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 	viewport "github.com/phoenix-tui/phoenix/components/viewport/api"
-	"github.com/phoenix-tui/phoenix/tea/api"
+	"github.com/phoenix-tui/phoenix/style/api"
+	tea "github.com/phoenix-tui/phoenix/tea/api"
 )
 
 // Model represents REPL state (Elm Architecture).
@@ -90,30 +90,31 @@ type Model struct {
 }
 
 // Styles contains all UI styles (PowerShell/Git Bash inspired).
+// Uses Phoenix TUI Framework's style library.
 type Styles struct {
 	// Prompt styles
-	PromptUser     lipgloss.Style
-	PromptPath     lipgloss.Style
-	PromptGit      lipgloss.Style
-	PromptGitDirty lipgloss.Style
-	PromptArrow    lipgloss.Style
-	PromptError    lipgloss.Style
+	PromptUser     style.Style
+	PromptPath     style.Style
+	PromptGit      style.Style
+	PromptGitDirty style.Style
+	PromptArrow    style.Style
+	PromptError    style.Style
 
 	// Output styles
-	Output    lipgloss.Style
-	OutputErr lipgloss.Style
+	Output    style.Style
+	OutputErr style.Style
 
 	// Executing spinner
-	Executing lipgloss.Style
+	Executing style.Style
 
 	// Completion hint
-	CompletionHint lipgloss.Style
+	CompletionHint style.Style
 
 	// Syntax highlighting (inline in textarea)
-	SyntaxCommand lipgloss.Style // First word - command
-	SyntaxOption  lipgloss.Style // --option or -o
-	SyntaxArg     lipgloss.Style // Regular arguments
-	SyntaxString  lipgloss.Style // "quoted strings"
+	SyntaxCommand style.Style // First word - command
+	SyntaxOption  style.Style // --option or -o
+	SyntaxArg     style.Style // Regular arguments
+	SyntaxString  style.Style // "quoted strings"
 }
 
 // commandExecutedMsg message about executed command.
@@ -259,7 +260,7 @@ func NewBubbleteaREPL(
 // Init initializes the model (Elm Architecture).
 //
 //nolint:gocritic // hugeParam: Bubbletea MVU requires value receiver
-func (m Model) Init() api.Cmd {
+func (m Model) Init() tea.Cmd {
 	// Start cursor blinking ticker if enabled
 	if m.Config.UI.CursorBlinking {
 		return tickCmd()
@@ -268,8 +269,8 @@ func (m Model) Init() api.Cmd {
 }
 
 // tickCmd sends a tick message every 500ms for cursor blinking.
-func tickCmd() api.Cmd {
-	return api.Tick(500 * time.Millisecond)
+func tickCmd() tea.Cmd {
+	return tea.Tick(500 * time.Millisecond)
 }
 
 // getHistoryFilePath returns the path to the history file.

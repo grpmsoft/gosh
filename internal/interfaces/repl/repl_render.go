@@ -8,7 +8,7 @@ import (
 
 	"github.com/grpmsoft/gosh/internal/domain/config"
 
-	"github.com/charmbracelet/lipgloss"
+	"github.com/phoenix-tui/phoenix/style/api"
 )
 
 // All methods in this file use Bubbletea's MVU (Model-View-Update) pattern,.
@@ -99,7 +99,7 @@ func (m Model) renderWarpMode() string {
 		b.WriteString(m.renderPromptForHistoryANSI())
 	} else {
 		// Simple text indicator without spinner (Phoenix Progress can be added later)
-		b.WriteString(m.styles.Executing.Render("⟳ Executing..."))
+		b.WriteString(style.Render(m.styles.Executing, "⟳ Executing..."))
 		b.WriteString(" ")
 	}
 
@@ -168,11 +168,11 @@ func (m Model) renderChatMode() string {
 	// Executing indicator or prompt.
 	if m.executing {
 		// Simple text indicator without spinner (Phoenix Progress can be added later)
-		b.WriteString(m.styles.Executing.Render("⟳ Executing..."))
+		b.WriteString(style.Render(m.styles.Executing, "⟳ Executing..."))
 		b.WriteString(" ")
 	} else {
 		// Compact prompt for chat mode.
-		b.WriteString(m.styles.PromptArrow.Render("→ "))
+		b.WriteString(style.Render(m.styles.PromptArrow, "→ "))
 	}
 
 	// Input (fixed at bottom).
@@ -206,12 +206,12 @@ func (m Model) renderHints() string {
 	// Completion hint.
 	if m.completionActive && len(m.completions) > 1 {
 		hint := fmt.Sprintf("[Tab: %d/%d]", m.completionIndex+1, len(m.completions))
-		hints = append(hints, m.styles.CompletionHint.Render(hint))
+		hints = append(hints, style.Render(m.styles.CompletionHint, hint))
 	}
 
 	// Scroll indicator (Phoenix Viewport: IsAtBottom instead of ScrollPercent)
 	if !m.autoScroll && !m.viewport.IsAtBottom() {
-		hints = append(hints, m.styles.CompletionHint.Render("[↑ scrolled]"))
+		hints = append(hints, style.Render(m.styles.CompletionHint, "[↑ scrolled]"))
 	}
 
 	if len(hints) > 0 {
@@ -323,84 +323,101 @@ func (m Model) renderWithHelpOverlay() string {
 	// Create help overlay.
 	helpOverlay := m.renderHelpOverlay()
 
-	// Place overlay at screen center.
-	return lipgloss.Place(
-		m.width, m.height,
-		lipgloss.Center, lipgloss.Center,
-		helpOverlay,
-	)
+	// Calculate centering (simple centering without Phoenix render Place for now)
+	lines := strings.Split(helpOverlay, "\n")
+	maxLen := 0
+	for _, line := range lines {
+		if len(line) > maxLen {
+			maxLen = len(line)
+		}
+	}
+
+	verticalPadding := (m.height - len(lines)) / 2
+	horizontalPadding := (m.width - maxLen) / 2
+
+	var result strings.Builder
+	for i := 0; i < verticalPadding; i++ {
+		result.WriteString("\n")
+	}
+	for _, line := range lines {
+		result.WriteString(strings.Repeat(" ", horizontalPadding))
+		result.WriteString(line)
+		result.WriteString("\n")
+	}
+
+	return result.String()
 }
 
 // renderHelpOverlay creates modal help window.
 func (m Model) renderHelpOverlay() string {
-	// Style for overlay box.
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("12")). // Blue.
-		Padding(1, 2).
+	// Style for overlay box using Phoenix Style
+	boxStyle := style.New().
+		Border(style.RoundedBorder).
+		BorderColor(style.Color256(12)). // Blue.
+		Padding(style.NewPadding(1, 2, 1, 2)).
 		Width(60).
-		Background(lipgloss.Color("0")). // Black background.
-		Foreground(lipgloss.Color("15")) // White text.
+		Background(style.Color256(0)). // Black background.
+		Foreground(style.Color256(15)) // White text.
 
-	titleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("11")). // Yellow.
+	titleStyle := style.New().
+		Foreground(style.Color256(11)). // Yellow.
 		Bold(true)
 
-	sectionStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("10")). // Green.
+	sectionStyle := style.New().
+		Foreground(style.Color256(10)). // Green.
 		Bold(true)
 
-	keyStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("14")) // Cyan.
+	keyStyle := style.New().
+		Foreground(style.Color256(14)) // Cyan.
 
 	var content strings.Builder
 
 	// Title.
-	content.WriteString(titleStyle.Render("GoSh Keyboard Shortcuts"))
+	content.WriteString(style.Render(titleStyle, "GoSh Keyboard Shortcuts"))
 	content.WriteString("\n\n")
 
 	// Navigation.
-	content.WriteString(sectionStyle.Render("Navigation:"))
+	content.WriteString(style.Render(sectionStyle, "Navigation:"))
 	content.WriteString("\n")
-	content.WriteString(keyStyle.Render("  ↑/↓       ") + " - Command history\n")
-	content.WriteString(keyStyle.Render("  Tab       ") + " - Auto-complete\n")
-	content.WriteString(keyStyle.Render("  PgUp/PgDn ") + " - Scroll output\n")
+	content.WriteString(style.Render(keyStyle, "  ↑/↓       ") + " - Command history\n")
+	content.WriteString(style.Render(keyStyle, "  Tab       ") + " - Auto-complete\n")
+	content.WriteString(style.Render(keyStyle, "  PgUp/PgDn ") + " - Scroll output\n")
 	content.WriteString("\n")
 
 	// Input.
-	content.WriteString(sectionStyle.Render("Input:"))
+	content.WriteString(style.Render(sectionStyle, "Input:"))
 	content.WriteString("\n")
-	content.WriteString(keyStyle.Render("  Enter     ") + " - Execute command\n")
-	content.WriteString(keyStyle.Render("  Alt+Enter ") + " - Multi-line input\n")
-	content.WriteString(keyStyle.Render("  Ctrl+L    ") + " - Clear screen\n")
+	content.WriteString(style.Render(keyStyle, "  Enter     ") + " - Execute command\n")
+	content.WriteString(style.Render(keyStyle, "  Alt+Enter ") + " - Multi-line input\n")
+	content.WriteString(style.Render(keyStyle, "  Ctrl+L    ") + " - Clear screen\n")
 	content.WriteString("\n")
 
 	// UI Modes (if mode switching is allowed).
 	if m.Config.UI.AllowModeSwitching {
-		content.WriteString(sectionStyle.Render("UI Modes:"))
+		content.WriteString(style.Render(sectionStyle, "UI Modes:"))
 		content.WriteString("\n")
-		content.WriteString(keyStyle.Render("  Alt+1     ") + " - Classic mode\n")
-		content.WriteString(keyStyle.Render("  Alt+2     ") + " - Warp mode\n")
-		content.WriteString(keyStyle.Render("  Alt+3     ") + " - Compact mode\n")
-		content.WriteString(keyStyle.Render("  Alt+4     ") + " - Chat mode\n")
+		content.WriteString(style.Render(keyStyle, "  Alt+1     ") + " - Classic mode\n")
+		content.WriteString(style.Render(keyStyle, "  Alt+2     ") + " - Warp mode\n")
+		content.WriteString(style.Render(keyStyle, "  Alt+3     ") + " - Compact mode\n")
+		content.WriteString(style.Render(keyStyle, "  Alt+4     ") + " - Chat mode\n")
 		content.WriteString("\n")
 	}
 
 	// Help.
-	content.WriteString(sectionStyle.Render("Help:"))
+	content.WriteString(style.Render(sectionStyle, "Help:"))
 	content.WriteString("\n")
-	content.WriteString(keyStyle.Render("  F1 or ?   ") + " - This help\n")
-	content.WriteString(keyStyle.Render("  help      ") + " - Built-in commands\n")
-	content.WriteString(keyStyle.Render("  ESC       ") + " - Close this help\n")
+	content.WriteString(style.Render(keyStyle, "  F1 or ?   ") + " - This help\n")
+	content.WriteString(style.Render(keyStyle, "  help      ") + " - Built-in commands\n")
+	content.WriteString(style.Render(keyStyle, "  ESC       ") + " - Close this help\n")
 	content.WriteString("\n")
 
 	// Exit.
-	content.WriteString(sectionStyle.Render("Exit:"))
+	content.WriteString(style.Render(sectionStyle, "Exit:"))
 	content.WriteString("\n")
-	content.WriteString(keyStyle.Render("  Ctrl+C/D  ") + " - Exit shell\n")
-	content.WriteString(keyStyle.Render("  exit      ") + " - Exit shell\n")
+	content.WriteString(style.Render(keyStyle, "  Ctrl+C/D  ") + " - Exit shell\n")
+	content.WriteString(style.Render(keyStyle, "  exit      ") + " - Exit shell\n")
 
-	return boxStyle.Render(content.String())
+	return style.Render(boxStyle, content.String())
 }
 
 // shortenPath shortens path for display.
@@ -422,60 +439,61 @@ func (m Model) shortenPath(path string) string {
 }
 
 // makeProfessionalStyles creates professional styles like PowerShell/Git Bash.
+// Uses Phoenix TUI Framework's style library.
 func makeProfessionalStyles() Styles {
 	return Styles{
 		// Prompt - PowerShell/Bash inspired colors.
-		PromptUser: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("10")). // Green.
+		PromptUser: style.New().
+			Foreground(style.Color256(10)). // Green.
 			Bold(true),
 
-		PromptPath: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("12")), // Blue.
+		PromptPath: style.New().
+			Foreground(style.Color256(12)), // Blue.
 
-		PromptGit: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("13")), // Purple.
+		PromptGit: style.New().
+			Foreground(style.Color256(13)), // Purple.
 
-		PromptGitDirty: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("11")). // Yellow.
+		PromptGitDirty: style.New().
+			Foreground(style.Color256(11)). // Yellow.
 			Bold(true),
 
-		PromptArrow: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("10")). // Green.
+		PromptArrow: style.New().
+			Foreground(style.Color256(10)). // Green.
 			Bold(true),
 
-		PromptError: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("9")). // Red.
+		PromptError: style.New().
+			Foreground(style.Color256(9)). // Red.
 			Bold(true),
 
 		// Output.
-		Output: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("15")), // White.
+		Output: style.New().
+			Foreground(style.Color256(15)), // White.
 
-		OutputErr: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("9")), // Red.
+		OutputErr: style.New().
+			Foreground(style.Color256(9)), // Red.
 
 		// Executing.
-		Executing: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("12")). // Blue.
+		Executing: style.New().
+			Foreground(style.Color256(12)). // Blue.
 			Italic(true),
 
 		// Completion hint.
-		CompletionHint: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240")). // Gray.
+		CompletionHint: style.New().
+			Foreground(style.Color256(240)). // Gray.
 			Italic(true),
 
 		// Syntax highlighting (basic ANSI colors for compatibility).
-		SyntaxCommand: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("11")). // Bright yellow (command bright).
+		SyntaxCommand: style.New().
+			Foreground(style.Color256(11)). // Bright yellow (command bright).
 			Bold(true),
 
-		SyntaxOption: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("8")), // Dark gray (options dim).
+		SyntaxOption: style.New().
+			Foreground(style.Color256(8)), // Dark gray (options dim).
 
-		SyntaxArg: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("7")), // Light gray (arguments normal).
+		SyntaxArg: style.New().
+			Foreground(style.Color256(7)), // Light gray (arguments normal).
 
-		SyntaxString: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("14")), // Cyan (strings).
+		SyntaxString: style.New().
+			Foreground(style.Color256(14)), // Cyan (strings).
 	}
 }

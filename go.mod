@@ -8,8 +8,10 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/google/uuid v1.6.0
 	github.com/phoenix-tui/phoenix/components v0.0.0-00010101000000-000000000000
+	github.com/phoenix-tui/phoenix/core v0.0.0-00010101000000-000000000000
 	github.com/phoenix-tui/phoenix/tea v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.11.1
+	github.com/unilibs/uniwidth v0.0.0-00010101000000-000000000000
 	mvdan.cc/sh/v3 v3.12.0
 )
 
@@ -43,6 +45,11 @@ replace github.com/phoenix-tui/phoenix/tea => ../tui/tea
 
 replace github.com/phoenix-tui/phoenix/components => ../tui/components
 
+replace github.com/phoenix-tui/phoenix/core => ../tui/core
+
 replace github.com/phoenix-tui/phoenix/mouse => ../tui/mouse
 
 replace github.com/phoenix-tui/phoenix/clipboard => ../tui/clipboard
+
+// Uniwidth local development
+replace github.com/unilibs/uniwidth => ../uniwidth

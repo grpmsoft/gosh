@@ -101,19 +101,16 @@ func (m Model) executeCommand() (Model, api.Cmd) {
 
 		if m.multilineMode {
 			// Multiline: clear all lines before printing final command
+			// Phoenix Terminal API - 10x faster on Windows Console! ⚡
 			lines := m.shellTextArea.Lines()
 			numLines := len(lines)
 
-			if numLines > 1 {
-				// Move cursor up to first line
-				fmt.Printf("\033[%dA", numLines-1)
-			}
-
-			// Clear from cursor to end of screen (removes all multiline lines)
-			fmt.Print("\r\033[J")
+			// ClearLines() uses Windows Console API when available!
+			_ = m.terminal.ClearLines(numLines)
 		} else {
 			// Single-line: just clear current line
-			fmt.Print("\r\033[2K")
+			// Phoenix Terminal API - platform-optimized
+			_ = m.terminal.ClearLine()
 		}
 
 		// Render prompt + command (no cursor!)

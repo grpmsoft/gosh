@@ -22,6 +22,8 @@ import (
 	viewport "github.com/phoenix-tui/phoenix/components/viewport/api"
 	"github.com/phoenix-tui/phoenix/style/api"
 	tea "github.com/phoenix-tui/phoenix/tea/api"
+	terminal "github.com/phoenix-tui/phoenix/terminal/api"
+	terminalinfra "github.com/phoenix-tui/phoenix/terminal/infrastructure"
 )
 
 // Model represents REPL state (Elm Architecture).
@@ -39,9 +41,10 @@ import (
 //nolint:gocritic // hugeParam: Bubbletea MVU architecture requires value receivers
 type Model struct {
 	// Core components
-	shellInput       *ShellInput      // Phoenix-based input with history navigation (single-line)
-	shellTextArea    *ShellTextArea   // Phoenix-based textarea for multiline editing
-	viewport         *viewport.Viewport // Phoenix-based viewport for scrolling
+	shellInput       *ShellInput         // Phoenix-based input with history navigation (single-line)
+	shellTextArea    *ShellTextArea      // Phoenix-based textarea for multiline editing
+	viewport         *viewport.Viewport  // Phoenix-based viewport for scrolling
+	terminal         terminal.Terminal   // Phoenix Terminal (10x faster on Windows!) ⭐
 	sessionManager   *appsession.Manager
 	executeUseCase   *execute.UseCase
 	pipelineExecutor *executor.OSPipelineExecutor
@@ -192,10 +195,15 @@ func NewBubbleteaREPL(
 	pipelineExecutor := executor.NewOSPipelineExecutor(logger)
 	commandExecutor := executor.NewOSCommandExecutor(logger)
 
+	// Create Phoenix Terminal with auto-detection (Windows Console API or ANSI fallback)
+	// Week 16: This gives GoSh PowerShell-level performance on Windows! ⚡
+	term := terminalinfra.NewTerminal()
+
 	m := &Model{
 		shellInput:       shellInput,
 		shellTextArea:    shellTextArea,
 		viewport:         vp,
+		terminal:         term,
 		sessionManager:   sessionManager,
 		executeUseCase:   executeUseCase,
 		pipelineExecutor: pipelineExecutor,

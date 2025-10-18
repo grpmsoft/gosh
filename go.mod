@@ -8,6 +8,7 @@ require (
 	github.com/phoenix-tui/phoenix/components v0.0.0-00010101000000-000000000000
 	github.com/phoenix-tui/phoenix/style v0.0.0-00010101000000-000000000000
 	github.com/phoenix-tui/phoenix/tea v0.1.0-alpha.0
+	github.com/phoenix-tui/phoenix/terminal v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.11.1
 	github.com/unilibs/uniwidth v0.0.0-00010101000000-000000000000
 	golang.org/x/term v0.36.0
@@ -36,6 +37,8 @@ replace github.com/phoenix-tui/phoenix/style => ../tui/style
 replace github.com/phoenix-tui/phoenix/mouse => ../tui/mouse
 
 replace github.com/phoenix-tui/phoenix/clipboard => ../tui/clipboard
+
+replace github.com/phoenix-tui/phoenix/terminal => ../tui/terminal
 
 // Uniwidth local development
 replace github.com/unilibs/uniwidth => ../uniwidth

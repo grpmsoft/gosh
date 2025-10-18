@@ -106,8 +106,22 @@ func main() {
 		// We use ShowCursor(false) and rely on the terminal's native cursor instead.
 		// This gives us a real blinking cursor like PowerShell.
 		// ═══════════════════════════════════════════════════════════════════════════
-		fmt.Print("\033[?25h") // Show terminal cursor (Phoenix is configured not to render cursor)
-		fmt.Print("\033[5 q")  // Set blinking bar cursor (PowerShell style)
+
+		// Show terminal cursor (Phoenix is configured not to render its own cursor via ShowCursor(false))
+		fmt.Print("\033[?25h")
+
+		// Set cursor style from config
+		cursorStyle := model.Config.UI.CursorStyle
+
+		// If blinking is disabled in config, convert to steady style
+		// DECSCUSR: odd numbers = blinking, even numbers = steady
+		// Example: 5 (blinking bar) → 6 (steady bar)
+		if !model.Config.UI.CursorBlinking && cursorStyle%2 == 1 {
+			cursorStyle++ // Convert blinking to steady
+		}
+
+		// Apply cursor style from config (default: 5 - blinking bar, PowerShell style)
+		fmt.Printf("\033[%d q", cursorStyle)
 
 		defer func() {
 			// Always restore terminal state on exit

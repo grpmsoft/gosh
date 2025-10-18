@@ -127,7 +127,7 @@ func DefaultConfig() *Config {
 			AllowModeSwitching: true, // Allow mode switching via F1-F4
 			OutputSeparator:    "\n", // Empty line after command output (bash-style)
 			CursorBlinking:     true, // Blinking cursor like PowerShell (configurable)
-			CursorStyle:        1,    // Blinking block cursor (DECSCUSR code 1 - fallback for terminals that don't support bar)
+			CursorStyle:        5,    // Blinking bar cursor (DECSCUSR code 5 - PowerShell/bash standard)
 		},
 		Shell: ShellConfig{
 			DefaultShell: "sh",

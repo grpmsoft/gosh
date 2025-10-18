@@ -2,6 +2,7 @@ package repl
 
 import (
 	"fmt"
+	"strings"
 
 	input "github.com/phoenix-tui/phoenix/components/input/api"
 	"github.com/phoenix-tui/phoenix/tea/api"
@@ -13,17 +14,24 @@ import (
 // Key Features:
 // - Public cursor position API (ContentParts method) ⭐ KEY DIFFERENTIATOR
 // - History navigation (Up/Down arrows)
-// - Syntax highlighting support (via callback)
+// - Syntax highlighting with SMART CACHING (only when text changes!)
 // - Emoji/Unicode correct rendering
 // - Cursor blinking state (delegated to Phoenix TextInput)
 //
-// This wrapper adds shell-specific functionality to the universal Phoenix TextInput component.
+// Performance Optimization:
+// - Highlighting applied in Update() (when text changes)
+// - View() uses cached result (fast!)
+// - No highlighting on cursor movement (arrows) - text unchanged!
 type ShellInput struct {
 	base              *input.Input
 	history           *history.History
 	historyNav        *history.Navigator
 	cursorVisible     bool                 // Cursor blink state (controlled by parent Model tick)
 	highlightCallback func(string) string  // Callback for syntax highlighting
+
+	// Highlighting cache (PERFORMANCE CRITICAL!)
+	lastPlainText     string // Last plain text we highlighted
+	cachedHighlighted string // Cached highlighted version (with ANSI codes)
 }
 
 // NewShellInput creates a new shell input component.
@@ -41,6 +49,8 @@ func NewShellInput(width int, hist *history.History, highlight func(string) stri
 		historyNav:        hist.NewNavigator(),
 		cursorVisible:     true,  // Start with cursor visible
 		highlightCallback: highlight,
+		lastPlainText:     "",    // Empty initially
+		cachedHighlighted: "",    // No cached highlighting yet
 	}
 }
 
@@ -93,8 +103,16 @@ func (s *ShellInput) SetCursorVisible(visible bool) {
 // - Down arrow: History navigation (next command)
 // - All other keys: Delegate to base TextInput
 //
+// Performance Optimization (CRITICAL!):
+// - Check if text content changed after update
+// - If changed: re-apply syntax highlighting and cache result
+// - If unchanged (cursor movement): use cached highlighting
+//
 // Returns updated ShellInput and any commands to execute.
 func (s *ShellInput) Update(msg api.Msg) (*ShellInput, api.Cmd) {
+	// Save old text for comparison
+	oldText := s.base.Value()
+
 	switch msg := msg.(type) {
 	case api.KeyMsg:
 		switch msg.Type {
@@ -102,6 +120,8 @@ func (s *ShellInput) Update(msg api.Msg) (*ShellInput, api.Cmd) {
 			// History navigation (Up arrow - older commands)
 			if cmd, ok := s.historyNav.Backward(); ok {
 				s.SetValue(cmd)
+				// Text changed - update highlight cache!
+				s.updateHighlightCache()
 				return s, nil
 			}
 			// If no history or already at oldest, ignore
@@ -111,10 +131,14 @@ func (s *ShellInput) Update(msg api.Msg) (*ShellInput, api.Cmd) {
 			// History navigation (Down arrow - newer commands)
 			if cmd, ok := s.historyNav.Forward(); ok {
 				s.SetValue(cmd)
+				// Text changed - update highlight cache!
+				s.updateHighlightCache()
 				return s, nil
 			}
 			// End of history - clear input (standard shell behavior)
 			s.Reset()
+			// Text changed - update highlight cache!
+			s.updateHighlightCache()
 			return s, nil
 		}
 	}
@@ -122,57 +146,118 @@ func (s *ShellInput) Update(msg api.Msg) (*ShellInput, api.Cmd) {
 	// Delegate all other events to base TextInput
 	var cmd api.Cmd
 	s.base, cmd = s.base.Update(msg)
+
+	// CRITICAL: Check if text content changed
+	newText := s.base.Value()
+	if newText != oldText {
+		// Text changed - re-apply syntax highlighting!
+		s.updateHighlightCache()
+	}
+	// If text unchanged (e.g., arrow keys) - cache still valid, no re-highlighting!
+
 	return s, cmd
 }
 
-// View renders the input WITHOUT syntax highlighting.
+// updateHighlightCache applies syntax highlighting and caches the result.
+// Only called when text content actually changes!
+func (s *ShellInput) updateHighlightCache() {
+	currentText := s.base.Value()
+
+	// Apply syntax highlighting (if callback provided)
+	if s.highlightCallback != nil {
+		s.cachedHighlighted = s.highlightCallback(currentText)
+	} else {
+		s.cachedHighlighted = currentText
+	}
+
+	// Update cache key
+	s.lastPlainText = currentText
+}
+
+// View renders the input with CACHED syntax highlighting.
 //
 // ═══════════════════════════════════════════════════════════════════════════
-// CRITICAL FIX: Syntax Highlighting Removed!
+// PERFORMANCE ARCHITECTURE (Senior Developer Pattern!)
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// Previously: Applied syntax highlighting in View(), which caused:
-//   - Performance issues (highlighting on every render)
-//   - Cursor positioning errors (ANSI codes changed text length)
-//   - Input lag (especially with arrow keys)
+// Problem:
+//   - View() called frequently (every frame)
+//   - Applying syntax highlighting here = SLOW (CPU-intensive)
+//   - Result: Input lag, especially with arrow keys
 //
-// Solution: Use Phoenix Input's View() directly
-//   - No syntax highlighting (can be added later with proper implementation)
-//   - Terminal cursor positioned correctly (ShowCursor(false) + \033[{n}D)
-//   - Fast and responsive!
+// Solution (MVC Separation):
+//   - Update() = Data changes → Apply highlighting, cache result
+//   - View() = Rendering only → Use cached highlighted text
 //
-// Terminal cursor positioning:
-//   1. Phoenix renders plain text (ShowCursor(false) = no reverse video)
-//   2. Get text after cursor from ContentParts()
-//   3. Move cursor LEFT by length of "after"
+// Performance Benefits:
+//   ✅ Highlighting ONLY when text changes (Insert, Delete, Backspace)
+//   ✅ NO highlighting on cursor movement (Arrow keys) - cache reused!
+//   ✅ Fast and responsive like native shells
+//
+// Algorithm:
+//   1. Use cachedHighlighted (pre-computed in Update())
+//   2. Get text after cursor for terminal cursor positioning
+//   3. Render highlighted text + move cursor LEFT by len(after)
 //   4. Terminal cursor now at correct position!
 //
-// Example: "hello world" with cursor at position 6
-//   - Phoenix renders: "hello world"
-//   - after = "world" (5 chars)
-//   - Move LEFT 5: \033[5D
-//   - Cursor at position 6 ✓
+// Example: "echo hello" with cursor at position 5
+//   - cachedHighlighted = "\033[1;33mecho\033[0m \033[32mhello\033[0m"
+//   - after = "hello" (5 chars)
+//   - Render highlighted + \033[5D (move left 5)
+//   - Terminal cursor at position 5 ✓
 //
 // ═══════════════════════════════════════════════════════════════════════════
 func (s *ShellInput) View() string {
-	// Get plain text from Phoenix Input
-	view := s.base.View()
+	// Use CACHED highlighted text (computed in Update() only when text changed!)
+	highlighted := s.cachedHighlighted
 
-	// Get text after cursor for positioning
-	_, _, after := s.base.ContentParts()
-
-	// Calculate how many columns to move LEFT
-	afterLen := len([]rune(after))
-
-	if afterLen > 0 {
-		// Render text + move cursor left to correct position
-		return fmt.Sprintf("%s\033[%dD", view, afterLen)
+	// If cache empty (initial state), use plain text
+	if highlighted == "" {
+		highlighted = s.base.Value()
 	}
 
-	// Cursor already at end
-	return view
+	// Get cursor position in PLAIN text
+	cursorPos := s.base.CursorPosition()
+
+	// Calculate VISUAL length of highlighted text (ignoring ANSI codes!)
+	// This is CRITICAL - terminal counts only visible chars, not ANSI bytes
+	// PSReadLine does the same: LengthInBufferCells() skips ESC sequences
+	visualLen := countVisibleChars(highlighted)
+
+	// Move left from end of visual text to cursor position
+	// cursorPos is grapheme offset in PLAIN text (without ANSI codes)
+	// visualLen is visible character count in HIGHLIGHTED text (ANSI codes ignored)
+	moveLeft := visualLen - cursorPos
+
+	// Clamp to prevent moving left past beginning
+	if moveLeft < 0 {
+		moveLeft = 0
+	}
+
+	// ATOMIC RENDERING (PowerShell/PSReadLine approach):
+	// 1. Hide cursor - prevents visual artifacts during rendering
+	// 2. Render text
+	// 3. Position cursor
+	// 4. Show cursor - cursor appears in correct position instantly!
+	var result strings.Builder
+	result.WriteString("\033[?25l") // Hide cursor
+
+	result.WriteString(highlighted) // Render highlighted text
+
+	if moveLeft > 0 {
+		// Move cursor left to correct position
+		// PSReadLine uses SetCursorPosition, we use ANSI \033[{n}D
+		fmt.Fprintf(&result, "\033[%dD", moveLeft)
+	}
+
+	result.WriteString("\033[?25h") // Show cursor at correct position
+
+	return result.String()
 }
 
 // Note: Syntax highlighting is now handled by Model.applySyntaxHighlight callback.
 // The old complex character-by-character highlighting has been removed in favor of
 // simple word-based highlighting that works correctly during typing.
+//
+// countVisibleChars() is defined in repl_render.go and counts visible characters,
+// skipping ANSI escape sequences (same logic as PSReadLine's LengthInBufferCells()).

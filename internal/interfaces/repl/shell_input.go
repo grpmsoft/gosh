@@ -2,7 +2,6 @@ package repl
 
 import (
 	"fmt"
-	"strings"
 
 	input "github.com/phoenix-tui/phoenix/components/input/api"
 	"github.com/phoenix-tui/phoenix/tea/api"
@@ -234,25 +233,17 @@ func (s *ShellInput) View() string {
 		moveLeft = 0
 	}
 
-	// ATOMIC RENDERING (PowerShell/PSReadLine approach):
-	// 1. Hide cursor - prevents visual artifacts during rendering
-	// 2. Render text
-	// 3. Position cursor
-	// 4. Show cursor - cursor appears in correct position instantly!
-	var result strings.Builder
-	result.WriteString("\033[?25l") // Hide cursor
-
-	result.WriteString(highlighted) // Render highlighted text
-
+	// Render highlighted text and position cursor
+	// NOTE: Cursor is already shown and blinking (set in main.go with \033[?25h and \033[5 q)
+	// We ONLY position it here, no hide/show (prevents cursor flickering!)
 	if moveLeft > 0 {
 		// Move cursor left to correct position
 		// PSReadLine uses SetCursorPosition, we use ANSI \033[{n}D
-		fmt.Fprintf(&result, "\033[%dD", moveLeft)
+		return fmt.Sprintf("%s\033[%dD", highlighted, moveLeft)
 	}
 
-	result.WriteString("\033[?25h") // Show cursor at correct position
-
-	return result.String()
+	// Cursor already at end
+	return highlighted
 }
 
 // Note: Syntax highlighting is now handled by Model.applySyntaxHighlight callback.

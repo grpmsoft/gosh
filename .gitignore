@@ -58,3 +58,4 @@ docs/dev
 # Temporary test files
 tmp/
 export_output.txt
+test_cursor.go

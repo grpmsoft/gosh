@@ -13,7 +13,7 @@ import (
 // BenchmarkShellInputUpdate measures ShellInput Update performance
 func BenchmarkShellInputUpdate(b *testing.B) {
 	hist := history.NewHistory(history.DefaultConfig())
-	input := NewShellInput(80, hist)
+	input := NewShellInput(80, hist, applySyntaxHighlightSimple)
 
 	msg := api.KeyMsg{Type: api.KeyRune, Rune: 'a'}
 
@@ -26,7 +26,7 @@ func BenchmarkShellInputUpdate(b *testing.B) {
 // BenchmarkShellInputView measures ShellInput View rendering (with syntax highlighting)
 func BenchmarkShellInputView(b *testing.B) {
 	hist := history.NewHistory(history.DefaultConfig())
-	input := NewShellInput(80, hist)
+	input := NewShellInput(80, hist, applySyntaxHighlightSimple)
 	input.SetValue("ls -la | grep test")
 
 	b.ResetTimer()
@@ -52,7 +52,7 @@ func BenchmarkSyntaxHighlighting(b *testing.B) {
 		b.Run(tc.name, func(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				applySyntaxHighlighting(tc.input)
+				applySyntaxHighlightSimple(tc.input)
 			}
 		})
 	}
@@ -67,7 +67,7 @@ func BenchmarkHistoryNavigation(b *testing.B) {
 		hist.Add("command" + string(rune('0'+i%10)))
 	}
 
-	input := NewShellInput(80, hist)
+	input := NewShellInput(80, hist, applySyntaxHighlightSimple)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

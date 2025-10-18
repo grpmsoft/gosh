@@ -30,9 +30,13 @@ func (m Model) navigateHistory(direction string) (Model, api.Cmd) {
 		cmd, ok = m.historyNavigator.Forward()
 	}
 
-	// If navigation successful, set value
+	// If navigation successful, set value (respect multilineMode)
 	if ok || direction == directionDown {
-		m.shellInput.SetValue(cmd)
+		if m.multilineMode {
+			m.shellTextArea.SetValue(cmd)
+		} else {
+			m.shellInput.SetValue(cmd)
+		}
 		// Sync input state
 		m.inputText = cmd
 		m.cursorPos = len([]rune(m.inputText))
@@ -56,6 +60,61 @@ func (m *Model) updateViewportContent() {
 	content := strings.Join(m.output, "\n")
 	// Phoenix Viewport uses fluent API (returns new viewport)
 	m.viewport = m.viewport.SetContent(content)
+}
+
+// isIncomplete checks if command needs more input (unclosed quotes, backslash continuation, etc.).
+func (m Model) isIncomplete(cmd string) bool {
+	if cmd == "" {
+		return false
+	}
+
+	// Check for backslash continuation at end
+	trimmed := strings.TrimRight(cmd, " \t")
+	if strings.HasSuffix(trimmed, "\\") {
+		return true
+	}
+
+	// Count unescaped quotes
+	singleQuotes := 0
+	doubleQuotes := 0
+	escaped := false
+
+	for _, ch := range cmd {
+		if escaped {
+			escaped = false
+			continue
+		}
+
+		switch ch {
+		case '\\':
+			escaped = true
+		case '\'':
+			singleQuotes++
+		case '"':
+			doubleQuotes++
+		}
+	}
+
+	// If odd number of quotes - unclosed
+	if singleQuotes%2 != 0 || doubleQuotes%2 != 0 {
+		return true
+	}
+
+	// Check for pipe at end (incomplete pipeline)
+	if strings.HasSuffix(trimmed, "|") {
+		return true
+	}
+
+	// Check for unclosed braces/brackets (basic heuristic)
+	openBraces := strings.Count(cmd, "{") - strings.Count(cmd, "}")
+	openBrackets := strings.Count(cmd, "[") - strings.Count(cmd, "]")
+	openParens := strings.Count(cmd, "(") - strings.Count(cmd, ")")
+
+	if openBraces > 0 || openBrackets > 0 || openParens > 0 {
+		return true
+	}
+
+	return false
 }
 
 // updateGitInfo updates Git repository information.

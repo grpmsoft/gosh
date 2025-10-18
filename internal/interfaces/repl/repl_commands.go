@@ -107,8 +107,12 @@ func (m Model) executeCommand() (Model, api.Cmd) {
 		m.addOutputRaw(m.renderPromptForHistoryANSI() + m.applySyntaxHighlight(value))
 	}
 
-	// Clear shell input
+	// Clear both input components
 	m.shellInput.Reset()
+	m.shellTextArea.Reset()
+
+	// Reset to single-line mode
+	m.multilineMode = false
 
 	// Sync input state
 	m.inputText = ""

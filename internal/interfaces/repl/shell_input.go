@@ -31,7 +31,9 @@ type ShellInput struct {
 // hist: command history for Up/Down navigation
 // highlight: callback for syntax highlighting (use Model.applySyntaxHighlight)
 func NewShellInput(width int, hist *history.History, highlight func(string) string) *ShellInput {
-	inp := input.New(width).Focused(true)
+	// Disable Phoenix cursor rendering - we'll use the terminal's native cursor instead
+	// This gives us a real blinking cursor like PowerShell, instead of reverse video
+	inp := input.New(width).Focused(true).ShowCursor(false)
 
 	return &ShellInput{
 		base:              inp,
@@ -66,7 +68,7 @@ func (s *ShellInput) Reset() {
 
 // SetWidth updates input width.
 func (s *ShellInput) SetWidth(width int) {
-	s.base = s.base.Width(width)
+	s.base = s.base.Width(width).ShowCursor(false)
 }
 
 // Focus gives focus to input.
@@ -123,38 +125,66 @@ func (s *ShellInput) Update(msg api.Msg) (*ShellInput, api.Cmd) {
 	return s, cmd
 }
 
-// View renders the input with syntax highlighting.
+// View renders the input with syntax highlighting and cursor positioning.
 //
 // ═══════════════════════════════════════════════════════════════════════════
-// IMPORTANT: Cursor Blinking
+// IMPORTANT: Syntax Highlighting + Terminal Cursor Positioning
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// Cursor blinking should be implemented in Phoenix TextInput component,
-// not in the application layer (GoSh). This keeps the separation of concerns:
+// When using terminal's native cursor (ShowCursor(false)), we need to:
+//   1. Apply syntax highlighting to the full text
+//   2. Position terminal cursor at the correct location (not at the end!)
 //
-// - Phoenix TextInput: Handles cursor rendering and blinking (UI concern)
-// - GoSh ShellInput: Handles syntax highlighting and history (app concern)
+// Phoenix Input (with ShowCursor(false)) renders plain text without cursor highlighting.
+// We apply syntax highlighting AFTER getting the text, then position terminal cursor.
 //
-// Currently: Cursor is visible but does NOT blink (Phoenix TextInput limitation)
-// TODO: Add blinking support to Phoenix TextInput (tick command + cursorVisible flag)
+// ANSI Escape Codes:
+//   \033[{n}D - Move cursor LEFT n columns (from current position)
+//
+// Algorithm:
+//   1. Get text parts: before, at, after (from Phoenix ContentParts)
+//   2. Apply syntax highlighting to FULL text: before + at + after
+//   3. Calculate visual width of "after" text (characters after cursor)
+//   4. Render highlighted text + move cursor LEFT by width of "after"
+//   5. Terminal cursor now at correct position (where "at" character is)
+//
+// Example: "echo hello" with cursor at position 5 (after "echo ")
+//   - before = "echo "
+//   - at = "h"
+//   - after = "ello"
+//   - Full text: "echo hello"
+//   - Highlighted: "\033[1;33mecho\033[0m \033[32mhello\033[0m"
+//   - Terminal cursor at END (position 10)
+//   - Move LEFT 4 positions: \033[4D
+//   - Terminal cursor now at position 5 (correct!) ✓
 //
 // ═══════════════════════════════════════════════════════════════════════════
 func (s *ShellInput) View() string {
-	before, at, after := s.ContentParts()
+	// Get text parts around cursor (Phoenix ContentParts API)
+	before, at, after := s.base.ContentParts()
+
+	// Assemble full text
 	fullText := before + at + after
 
-	// Apply syntax highlighting via callback (from Model.applySyntaxHighlight)
-	// This uses simple word-based highlighting that works correctly during typing
-	highlighted := s.highlightCallback(fullText)
-
-	// Position cursor: move left from end of highlighted text
-	// CRITICAL: Use rune count, not byte count (fixes Russian/Chinese positioning!)
-	runesAfterCursor := len([]rune(at + after))
-	if runesAfterCursor > 0 {
-		// ANSI: \033[{n}D = move cursor left n columns
-		highlighted += fmt.Sprintf("\033[%dD", runesAfterCursor)
+	// Apply syntax highlighting (if callback provided)
+	var highlighted string
+	if s.highlightCallback != nil {
+		highlighted = s.highlightCallback(fullText)
+	} else {
+		highlighted = fullText
 	}
 
+	// Calculate how many columns to move LEFT for cursor positioning
+	// This is the visual width of text AFTER cursor
+	afterLen := len([]rune(after))
+
+	if afterLen > 0 {
+		// Render highlighted text + move cursor left to correct position
+		// \033[{n}D moves cursor left n columns from current position
+		return fmt.Sprintf("%s\033[%dD", highlighted, afterLen)
+	}
+
+	// Cursor already at correct position (end of text)
 	return highlighted
 }
 

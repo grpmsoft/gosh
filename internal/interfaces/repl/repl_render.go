@@ -75,9 +75,16 @@ func (m Model) renderClassicMode() string {
 	// This ensures prompt is always visible and properly positioned.
 	b.WriteString("\r\033[2K") // CR + clear entire line
 
-	// Render prompt + input
-	b.WriteString(m.renderPromptForHistoryANSI())
-	b.WriteString(m.renderInputWithCursor())
+	// Check multiline mode
+	if m.multilineMode {
+		// Multiline mode: render with continuation prompts
+		b.WriteString(m.renderMultilineInput())
+	} else {
+		// Single-line mode: normal prompt + input
+		b.WriteString(m.renderPromptForHistoryANSI())
+		b.WriteString(m.renderInputWithCursor())
+	}
+
 	b.WriteString(m.renderHints())
 
 	// Return prompt+input (no viewport, no history rendering).
@@ -184,18 +191,36 @@ func (m Model) renderChatMode() string {
 	return b.String()
 }
 
-// renderInputWithCursor renders input with visible cursor.
+// renderMultilineInput renders multiline input with continuation prompt.
 //
-// Phase 2: Using Phoenix ShellInput with public ContentParts() API.
-// This enables syntax highlighting + visible cursor (to be implemented in Phase 6).
+// Delegates to ShellTextArea.ViewWithPrompts() which handles:
+// - Phoenix TextArea rendering (with cursor!)
+// - Adding prompts to each line
 //
-// Current: Cursor is visible and works correctly with blinking support.
-// Next (Phase 6): Add syntax highlighting using ContentParts().
+// First line uses existing renderPromptForHistoryANSI().
+// Subsequent lines use continuation prompt ">>    " (4 spaces for alignment).
+func (m Model) renderMultilineInput() string {
+	const continuationPrompt = ">>    " // 4 spaces for alignment with normal prompt
+
+	// Phoenix TextArea handles all rendering including cursor!
+	// We just provide the prompts
+	return m.shellTextArea.ViewWithPrompts(
+		m.renderPromptForHistoryANSI(),
+		continuationPrompt,
+	)
+}
+
+// renderInputWithCursor renders input with visible cursor and syntax highlighting.
+//
+// Delegates to ShellInput.View() which:
+//   1. Applies syntax highlighting (via highlightCallback)
+//   2. Renders text using Phoenix Input
+//   3. Positions terminal cursor correctly
 func (m Model) renderInputWithCursor() string {
 	// Update cursor visibility for blinking animation
 	m.shellInput.SetCursorVisible(m.cursorVisible)
 
-	// Phoenix ShellInput with public cursor API!
+	// ShellInput handles everything: highlighting + cursor positioning
 	return m.shellInput.View()
 }
 
@@ -222,39 +247,71 @@ func (m Model) renderHints() string {
 }
 
 // applySyntaxHighlight applies simple bash syntax highlighting WITHOUT Chroma.
+// IMPORTANT: Preserves ALL whitespace (spaces, tabs, etc.) to avoid cursor positioning issues!
 func (m Model) applySyntaxHighlight(text string) string {
 	if text == "" {
 		return ""
 	}
 
-	// Simple highlighting: split into tokens by spaces.
-	parts := strings.Fields(text)
-	if len(parts) == 0 {
-		return text
+	var result strings.Builder
+	var currentWord strings.Builder
+	wordIndex := 0
+	inWord := false
+
+	for _, ch := range text {
+		if ch == ' ' || ch == '\t' {
+			// Whitespace - flush current word if any
+			if inWord {
+				// Highlight the word
+				word := currentWord.String()
+				switch {
+				case wordIndex == 0:
+					// First word = COMMAND (YELLOW)
+					result.WriteString("\033[1;33m") // Bright Yellow
+					result.WriteString(word)
+					result.WriteString("\033[0m")
+				case strings.HasPrefix(word, "-"):
+					// Option (GRAY)
+					result.WriteString("\033[90m") // Dark Gray
+					result.WriteString(word)
+					result.WriteString("\033[0m")
+				default:
+					// Argument (GREEN)
+					result.WriteString("\033[32m") // Green
+					result.WriteString(word)
+					result.WriteString("\033[0m")
+				}
+				currentWord.Reset()
+				wordIndex++
+				inWord = false
+			}
+			// Preserve the whitespace character AS-IS
+			result.WriteRune(ch)
+		} else {
+			// Non-whitespace - accumulate word
+			currentWord.WriteRune(ch)
+			inWord = true
+		}
 	}
 
-	var result strings.Builder
-
-	for i, part := range parts {
-		if i > 0 {
-			result.WriteString(" ") // Space between tokens.
-		}
-
+	// Flush last word if any
+	if inWord {
+		word := currentWord.String()
 		switch {
-		case i == 0:
-			// First word = COMMAND (YELLOW).
-			result.WriteString("\033[1;33m") // Bright Yellow.
-			result.WriteString(part)
+		case wordIndex == 0:
+			// First word = COMMAND (YELLOW)
+			result.WriteString("\033[1;33m")
+			result.WriteString(word)
 			result.WriteString("\033[0m")
-		case strings.HasPrefix(part, "-"):
-			// Option (GRAY).
-			result.WriteString("\033[90m") // Dark Gray.
-			result.WriteString(part)
+		case strings.HasPrefix(word, "-"):
+			// Option (GRAY)
+			result.WriteString("\033[90m")
+			result.WriteString(word)
 			result.WriteString("\033[0m")
 		default:
-			// Argument (GREEN).
-			result.WriteString("\033[32m") // Green.
-			result.WriteString(part)
+			// Argument (GREEN)
+			result.WriteString("\033[32m")
+			result.WriteString(word)
 			result.WriteString("\033[0m")
 		}
 	}
@@ -418,6 +475,34 @@ func (m Model) renderHelpOverlay() string {
 	content.WriteString(style.Render(keyStyle, "  exit      ") + " - Exit shell\n")
 
 	return style.Render(boxStyle, content.String())
+}
+
+// countVisibleChars counts visible characters in a string, skipping ANSI escape sequences.
+// This is needed for correct cursor positioning when syntax highlighting is applied.
+func countVisibleChars(s string) int {
+	count := 0
+	inEscape := false
+
+	for _, r := range s {
+		if r == '\033' {
+			// Start of ANSI escape sequence
+			inEscape = true
+			continue
+		}
+
+		if inEscape {
+			// Skip until we find 'm' (end of color code) or other terminator
+			if r == 'm' || r == 'H' || r == 'J' || r == 'K' || r == 'A' || r == 'B' || r == 'C' || r == 'D' {
+				inEscape = false
+			}
+			continue
+		}
+
+		// Visible character
+		count++
+	}
+
+	return count
 }
 
 // shortenPath shortens path for display.

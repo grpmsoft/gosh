@@ -48,7 +48,7 @@ func TestNewBubbleteaREPL(t *testing.T) {
 		assert.NotNil(t, model.executeUseCase)
 		assert.NotNil(t, model.logger)
 		assert.NotNil(t, model.ctx)
-		assert.NotNil(t, model.config)
+		assert.NotNil(t, model.Config)
 		assert.NotNil(t, model.historyNavigator)
 		assert.NotNil(t, model.historyRepo)
 		assert.NotNil(t, model.addToHistoryUC)

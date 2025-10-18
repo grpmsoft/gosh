@@ -39,7 +39,8 @@ import (
 //nolint:gocritic // hugeParam: Bubbletea MVU architecture requires value receivers
 type Model struct {
 	// Core components
-	shellInput       *ShellInput      // Phoenix-based input with history navigation
+	shellInput       *ShellInput      // Phoenix-based input with history navigation (single-line)
+	shellTextArea    *ShellTextArea   // Phoenix-based textarea for multiline editing
 	viewport         *viewport.Viewport // Phoenix-based viewport for scrolling
 	sessionManager   *appsession.Manager
 	executeUseCase   *execute.UseCase
@@ -75,6 +76,9 @@ type Model struct {
 	// Input state (for custom rendering)
 	inputText string
 	cursorPos int
+
+	// Multiline mode
+	multilineMode bool // Toggle between single-line and multiline input
 
 	// Scrolling
 	autoScroll bool // Auto-scroll down on new messages
@@ -177,6 +181,9 @@ func NewBubbleteaREPL(
 	// Create ShellInput (Phoenix TextInput with history integration + syntax highlighting)
 	shellInput := NewShellInput(80, sess.History(), applySyntaxHighlightSimple)
 
+	// Create ShellTextArea (Phoenix TextArea with multiline support)
+	shellTextArea := NewShellTextArea(80, 5, sess.History(), applySyntaxHighlightSimple)
+
 	// Create navigator and use case for adding to history
 	historyNavigator := sess.NewHistoryNavigator()
 	addToHistoryUC := apphistory.NewAddToHistoryUseCase(sess.History(), historyRepo)
@@ -187,6 +194,7 @@ func NewBubbleteaREPL(
 
 	m := &Model{
 		shellInput:       shellInput,
+		shellTextArea:    shellTextArea,
 		viewport:         vp,
 		sessionManager:   sessionManager,
 		executeUseCase:   executeUseCase,
@@ -212,7 +220,8 @@ func NewBubbleteaREPL(
 		beforeCompletion: "",
 		inputText:        "",
 		cursorPos:        0,
-		autoScroll:       true, // Auto-scroll down by default
+		multilineMode:    false, // Start in single-line mode (default)
+		autoScroll:       true,  // Auto-scroll down by default
 		showingHelp:      false,
 		cursorVisible:    true, // Start with cursor visible
 		width:            80,   // Default width
@@ -261,10 +270,13 @@ func NewBubbleteaREPL(
 //
 //nolint:gocritic // hugeParam: Bubbletea MVU requires value receiver
 func (m Model) Init() tea.Cmd {
-	// Start cursor blinking ticker if enabled
-	if m.Config.UI.CursorBlinking {
-		return tickCmd()
-	}
+	// No tick needed - terminal cursor blinks automatically!
+	// Terminal cursor is shown and set to blinking bar style in main.go:
+	//   \033[?25h - Show cursor
+	//   \033[5 q  - Blinking bar style (PowerShell standard)
+	//
+	// Phoenix-rendered cursor is disabled via ShowCursor(false)
+	// No need for manual tick/toggle - terminal handles it!
 	return nil
 }
 

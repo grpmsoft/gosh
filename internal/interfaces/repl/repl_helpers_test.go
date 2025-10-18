@@ -71,7 +71,7 @@ func createTestModelForHelpers(t *testing.T) *Model {
 	addToHistoryUC := apphistory.NewAddToHistoryUseCase(sess.History(), mockRepo)
 
 	// Create shell input and viewport
-	shellInput := NewShellInput(80, sess.History())
+	shellInput := NewShellInput(80, sess.History(), applySyntaxHighlightSimple)
 	vp := viewport.New(80, 24)
 
 	// Create history navigator
@@ -85,7 +85,7 @@ func createTestModelForHelpers(t *testing.T) *Model {
 		addToHistoryUC:   addToHistoryUC,
 		logger:           logger,
 		ctx:              context.Background(),
-		config:           cfg,
+		Config:           cfg,
 		output:           make([]string, 0),
 		historyNavigator: historyNavigator,
 		maxOutputLines:   10000,

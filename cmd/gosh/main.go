@@ -102,16 +102,18 @@ func main() {
 		//
 		// This is executed ONCE at startup, NOT in every View() render!
 		//
-		// NOTE: Some terminals (MSYS/Git Bash) may not support all cursor styles.
-		// If cursor doesn't blink, try different values (0, 1, or 3).
+		// NOTE: Phoenix Input can be configured to NOT render its own cursor.
+		// We use ShowCursor(false) and rely on the terminal's native cursor instead.
+		// This gives us a real blinking cursor like PowerShell.
 		// ═══════════════════════════════════════════════════════════════════════════
-		fmt.Print("\033[?25h")                              // Show cursor
-		fmt.Printf("\033[%d q", model.Config.UI.CursorStyle) // Set cursor style from config
+		fmt.Print("\033[?25h") // Show terminal cursor (Phoenix is configured not to render cursor)
+		fmt.Print("\033[5 q")  // Set blinking bar cursor (PowerShell style)
 
 		defer func() {
 			// Always restore terminal state on exit
 			if oldState != nil {
-				// Reset cursor to terminal default before restoring terminal state
+				// Show cursor before restoring terminal state
+				fmt.Print("\033[?25h") // Show cursor
 				fmt.Print("\033[0 q")  // Restore default cursor style
 				_ = term.Restore(int(os.Stdin.Fd()), oldState)
 			}

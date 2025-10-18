@@ -24,11 +24,12 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 
 	switch msg := msg.(type) {
 	case api.TickMsg:
-		// Toggle cursor visibility for blinking effect
-		if m.Config.UI.CursorBlinking {
-			m.cursorVisible = !m.cursorVisible
-			return m, tickCmd()
-		}
+		// Tick is no longer needed - we use terminal's native blinking cursor!
+		// Terminal cursor blinks automatically (set via \033[5 q in main.go)
+		// Phoenix-rendered cursor (reverse video) is disabled via ShowCursor(false)
+		//
+		// Previously: Tick toggled m.cursorVisible every 500ms for Phoenix cursor
+		// Now: Terminal handles blinking, no perma-redraw needed!
 		return m, nil
 
 	case api.KeyMsg:
@@ -48,6 +49,7 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.shellInput.SetWidth(msg.Width)
+		m.shellTextArea.SetSize(msg.Width, 5) // Fixed height for textarea (5 lines)
 
 		// Update viewport size
 		// Classic mode: prompt inside viewport, use full height (we preserve scroll via YOffset)
@@ -137,11 +139,15 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 		return m, nil
 	}
 
-	// Update shell input
-	m.shellInput, taCmd = m.shellInput.Update(msg)
+	// Update appropriate input component based on mode
+	if m.multilineMode {
+		m.shellTextArea, taCmd = m.shellTextArea.Update(msg)
+		m.inputText = m.shellTextArea.Value()
+	} else {
+		m.shellInput, taCmd = m.shellInput.Update(msg)
+		m.inputText = m.shellInput.Value()
+	}
 
-	// Sync our input state with shell input
-	m.inputText = m.shellInput.Value()
 	// Cursor always at end after normal input (textarea doesn't give position API)
 	m.cursorPos = len([]rune(m.inputText))
 
@@ -160,7 +166,21 @@ func (m Model) handleKeyPress(msg api.KeyMsg) (Model, api.Cmd) {
 	// IMPORTANT: Check msg.Type for Enter FIRST (before String() checks)
 	// Phoenix may send KeyEnter as Type when Enter is pressed after UTF-8 input
 	if msg.Type == api.KeyEnter {
-		// Regular Enter - execute command
+		// Get current input
+		cmd := m.inputText
+
+		// Check if command is incomplete (unclosed quotes, backslash, pipe, etc.)
+		if m.isIncomplete(cmd) && !m.multilineMode {
+			// Switch to multiline mode
+			m.multilineMode = true
+			m.shellTextArea.SetValue(cmd + "\n") // Add newline
+			// Sync state
+			m.inputText = m.shellTextArea.Value()
+			m.cursorPos = len([]rune(m.inputText))
+			return m, nil
+		}
+
+		// Command is complete - execute it
 		m.autoScroll = true
 		return m.executeCommand()
 	}
@@ -188,32 +208,73 @@ func (m Model) handleKeyPress(msg api.KeyMsg) (Model, api.Cmd) {
 		return m, api.Quit()
 
 	case "ctrl+d":
-		if m.shellInput.Value() == "" {
+		// Check if input is empty (respect multilineMode)
+		isEmpty := false
+		if m.multilineMode {
+			isEmpty = m.shellTextArea.Value() == ""
+		} else {
+			isEmpty = m.shellInput.Value() == ""
+		}
+		if isEmpty {
 			m.quitting = true
 			return m, api.Quit()
 		}
 
 	case "ctrl+v":
-		// Paste from clipboard
+		// Paste from clipboard (respect multilineMode)
 		text, err := clipapi.Read()
 		if err == nil && text != "" {
-			// Insert clipboard text at cursor position
-			currentValue := m.shellInput.Value()
-			m.shellInput.SetValue(currentValue + text)
-			m.inputText = m.shellInput.Value()
+			if m.multilineMode {
+				// Insert clipboard text in textarea
+				currentValue := m.shellTextArea.Value()
+				m.shellTextArea.SetValue(currentValue + text)
+				m.inputText = m.shellTextArea.Value()
+			} else {
+				// Insert clipboard text in single-line input
+				currentValue := m.shellInput.Value()
+				m.shellInput.SetValue(currentValue + text)
+				m.inputText = m.shellInput.Value()
+			}
 			m.cursorPos = len([]rune(m.inputText))
 		}
 		return m, nil
 
 	case "enter":
-		// Regular Enter - execute command.
-		m.autoScroll = true // Enable auto-scroll when executing command.
+		// Regular Enter - this case is redundant (handled above via KeyEnter)
+		// But keep for compatibility with string-based key handling
+		cmd := m.inputText
+
+		// Check if command is incomplete (unclosed quotes, backslash, pipe, etc.)
+		if m.isIncomplete(cmd) && !m.multilineMode {
+			// Switch to multiline mode
+			m.multilineMode = true
+			m.shellTextArea.SetValue(cmd + "\n") // Add newline
+			// Sync state
+			m.inputText = m.shellTextArea.Value()
+			m.cursorPos = len([]rune(m.inputText))
+			return m, nil
+		}
+
+		// Command is complete - execute it
+		m.autoScroll = true
 		return m.executeCommand()
 
 	case "alt+enter":
-		// Alt+Enter - multiline input (Phoenix TextInput handles internally).
+		// Alt+Enter - force multiline mode or insert newline
+		if !m.multilineMode {
+			// Switch to multiline mode
+			m.multilineMode = true
+			currentValue := m.inputText
+			m.shellTextArea.SetValue(currentValue + "\n")
+			m.inputText = m.shellTextArea.Value()
+			m.cursorPos = len([]rune(m.inputText))
+			return m, nil
+		}
+		// Already in multiline - insert newline
 		var cmd api.Cmd
-		m.shellInput, cmd = m.shellInput.Update(msg)
+		m.shellTextArea, cmd = m.shellTextArea.Update(api.KeyMsg{Type: api.KeyEnter})
+		m.inputText = m.shellTextArea.Value()
+		m.cursorPos = len([]rune(m.inputText))
 		return m, cmd
 
 	case "up", "down":
@@ -254,17 +315,22 @@ func (m Model) handleKeyPress(msg api.KeyMsg) (Model, api.Cmd) {
 	}
 
 	// Return auto-scroll and show cursor on any input.
-	if msg.Type == api.KeyRune {
+	if msg.Type == api.KeyRune || msg.Type == api.KeySpace {
 		m.autoScroll = true
 		m.cursorVisible = true // Show cursor immediately when typing
 	}
 
+	// CRITICAL: Delegate to appropriate input component based on mode
 	var cmd api.Cmd
-	m.shellInput, cmd = m.shellInput.Update(msg)
+	if m.multilineMode {
+		m.shellTextArea, cmd = m.shellTextArea.Update(msg)
+		m.inputText = m.shellTextArea.Value()
+	} else {
+		m.shellInput, cmd = m.shellInput.Update(msg)
+		m.inputText = m.shellInput.Value()
+	}
 
-	// CRITICAL: Sync input state after update (same as in main Update())
-	// Without this, m.inputText stays stale and other code may use old value
-	m.inputText = m.shellInput.Value()
+	// CRITICAL: Sync cursor position after update
 	m.cursorPos = len([]rune(m.inputText))
 
 	return m, cmd
@@ -427,6 +493,18 @@ func (m Model) handleModeCommand(commandLine string) (Model, api.Cmd) {
 
 // handleTabCompletion handles Tab-completion.
 func (m Model) handleTabCompletion() (Model, api.Cmd) {
+	// Tab-completion only works in single-line mode
+	// In multiline mode, tab should insert tab character (handled by TextArea)
+	if m.multilineMode {
+		// Delegate to textarea (will insert tab or spaces)
+		var cmd api.Cmd
+		m.shellTextArea, cmd = m.shellTextArea.Update(api.KeyMsg{Type: api.KeyTab})
+		m.inputText = m.shellTextArea.Value()
+		m.cursorPos = len([]rune(m.inputText))
+		return m, cmd
+	}
+
+	// Single-line mode - do tab-completion
 	input := m.shellInput.Value()
 
 	// First Tab press - generate completions.

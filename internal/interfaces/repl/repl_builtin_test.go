@@ -95,7 +95,7 @@ func createTestModelForBuiltin(t *testing.T) *Model {
 		executeUseCase: executeUseCase,
 		logger:         logger,
 		ctx:            context.Background(),
-		config:         cfg,
+		Config:         cfg,
 	}
 
 	return model

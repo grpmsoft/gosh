@@ -47,7 +47,7 @@ type Model struct {
 	currentSession   *session.Session
 	logger           *slog.Logger
 	ctx              context.Context
-	config           *config.Config // Configuration
+	Config           *config.Config // Configuration (exported for access in main.go)
 
 	// State
 	output           []string                            // Command output (scrolls up like in terminal)
@@ -193,7 +193,7 @@ func NewBubbleteaREPL(
 		currentSession:   sess,
 		logger:           logger,
 		ctx:              ctx,
-		config:           cfg,
+		Config:           cfg,
 		output:           make([]string, 0),
 		historyNavigator: historyNavigator,
 		historyRepo:      historyRepo,
@@ -260,7 +260,7 @@ func NewBubbleteaREPL(
 //nolint:gocritic // hugeParam: Bubbletea MVU requires value receiver
 func (m Model) Init() api.Cmd {
 	// Start cursor blinking ticker if enabled
-	if m.config.UI.CursorBlinking {
+	if m.Config.UI.CursorBlinking {
 		return tickCmd()
 	}
 	return nil

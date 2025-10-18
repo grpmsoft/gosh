@@ -78,6 +78,20 @@ type UIConfig struct {
 	// true: cursor blinks every 500ms (default)
 	// false: cursor is always visible (static)
 	CursorBlinking bool `json:"cursor_blinking"`
+
+	// CursorStyle - cursor style using DECSCUSR codes (ANSI \033[{n} q)
+	// DECSCUSR - DEC Set Cursor Style:
+	//   0 - Restore terminal default (usually blinking block)
+	//   1 - Blinking block █
+	//   2 - Steady block █
+	//   3 - Blinking underline _
+	//   4 - Steady underline _
+	//   5 - Blinking bar | (DEFAULT - bash/zsh/PowerShell standard)
+	//   6 - Steady bar |
+	//
+	// Note: Some terminals (MSYS/Git Bash) may not support all cursor styles in raw mode.
+	// If blinking doesn't work, try changing to a different code or update terminal.
+	CursorStyle int `json:"cursor_style"`
 }
 
 // ShellConfig shell settings.
@@ -110,9 +124,10 @@ func DefaultConfig() *Config {
 			ShowGitStatus:      true,
 			SyntaxHighlight:    true,
 			CompletionEnabled:  true,
-			AllowModeSwitching: true,  // Allow mode switching via F1-F4
-			OutputSeparator:    "\n",  // Empty line after command output (bash-style)
-			CursorBlinking:     true,  // Blinking cursor like PowerShell (configurable)
+			AllowModeSwitching: true, // Allow mode switching via F1-F4
+			OutputSeparator:    "\n", // Empty line after command output (bash-style)
+			CursorBlinking:     true, // Blinking cursor like PowerShell (configurable)
+			CursorStyle:        0,    // Blinking bar cursor (DECSCUSR code 5 - bash/zsh/PowerShell standard)
 		},
 		Shell: ShellConfig{
 			DefaultShell: "sh",

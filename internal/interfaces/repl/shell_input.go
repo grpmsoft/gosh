@@ -123,9 +123,46 @@ func (s *ShellInput) Update(msg api.Msg) (*ShellInput, api.Cmd) {
 
 // View renders the input with syntax highlighting.
 //
-// PowerShell approach: Apply syntax highlighting to FULL text (preserves context!),
-// then position system cursor using ANSI escape codes.
-// The terminal automatically inverts the character under cursor.
+// ═══════════════════════════════════════════════════════════════════════════
+// CRITICAL UNDERSTANDING: PowerShell vs ANSI Terminal Cursor Blinking
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// PowerShell (PSReadLine/Render.cs:924-1109) approach:
+//   1. _console.CursorVisible = false  (hide cursor)
+//   2. _console.Write(text)             (render text)
+//   3. _console.SetCursorPosition(...)  (position cursor)
+//   4. _console.CursorVisible = true   (show cursor - AUTOMATICALLY BLINKS)
+//
+// PowerShell uses Windows Console API where CursorVisible=true triggers
+// HARDWARE CURSOR BLINKING by the console subsystem. No additional setup needed.
+//
+// ANSI Terminal (bash/zsh/Windows Terminal) in RAW MODE:
+//   - Raw mode DISABLES automatic cursor blinking!
+//   - \033[?25h (show cursor) alone → cursor visible but STEADY (no blink)
+//   - \033[5 q (DECSCUSR) → Set blinking bar cursor style
+//   - Combination of both → Cursor visible AND blinking
+//
+// DECSCUSR (DEC Set Cursor Style) - \033[{n} q:
+//   0 or blank - Restore terminal default (usually blinking block)
+//   1 - Blinking block █
+//   2 - Steady block █
+//   3 - Blinking underline _
+//   4 - Steady underline _
+//   5 - Blinking bar | (STANDARD for shells: bash, zsh, PowerShell)
+//   6 - Steady bar |
+//
+// Our implementation (see cmd/gosh/main.go):
+//   1. Application startup:
+//      - fmt.Print("\033[?25h")  // Show cursor
+//      - fmt.Print("\033[5 q")   // Set blinking bar style
+//   2. Every View() call:
+//      - Render syntax-highlighted text
+//      - Position cursor using ANSI codes (\033[{n}D)
+//   3. Terminal automatically blinks cursor (no manual toggling!)
+//
+// Cursor style is set ONCE at startup in main.go, NOT in every View() call!
+// View() only positions the cursor, blinking is handled by the terminal.
+// ═══════════════════════════════════════════════════════════════════════════
 func (s *ShellInput) View() string {
 	before, at, after := s.ContentParts()
 	fullText := before + at + after
@@ -133,13 +170,12 @@ func (s *ShellInput) View() string {
 	// Apply syntax highlighting to ENTIRE text (preserves command/argument context!)
 	highlighted := applySyntaxHighlighting(fullText)
 
-	// After rendering highlighted text, move cursor back to correct position
-	// We render the full highlighted text, then move cursor left
-	charsAfterCursor := countVisibleChars(at + after)
-	if charsAfterCursor > 0 {
-		// Move cursor left by number of characters after cursor position
-		// ANSI: \033[{n}D = move left n columns
-		highlighted += fmt.Sprintf("\033[%dD", charsAfterCursor)
+	// Position cursor: move left from end of highlighted text
+	// CRITICAL: Use rune count, not byte count (fixes Russian/Chinese positioning!)
+	runesAfterCursor := len([]rune(at + after))
+	if runesAfterCursor > 0 {
+		// ANSI: \033[{n}D = move cursor left n columns
+		highlighted += fmt.Sprintf("\033[%dD", runesAfterCursor)
 	}
 
 	return highlighted
@@ -181,15 +217,14 @@ func (s *ShellInput) renderCursorWithBlink(char string) string {
 
 // applySyntaxHighlighting applies ANSI color codes to shell syntax elements.
 //
-// Highlighting rules (matching repl_render.go for consistency):
-// - Commands (first word): Bright Yellow + Bold (\033[1;33m) - stands out!
-// - Options (-x, --long): Dark Gray (\033[90m) - subdued
-// - Arguments: Green (\033[32m) - visible but not dominant
-// - Strings ("...", '...'): Yellow (\033[33m)
-// - Pipes (|): Bold white (\033[1;37m)
-// - Redirects (>, >>, <): Bold white (\033[1;37m)
-// - Variables ($VAR, ${VAR}): Magenta (\033[35m)
-// - Operators (&&, ||, ;): Bold white (\033[1;37m)
+// Highlighting rules:
+// - Commands (first word): Green
+// - Options (-x, --long): Cyan
+// - Strings ("...", '...'): Yellow
+// - Pipes (|): Bold white
+// - Redirects (>, >>, <): Bold white
+// - Variables ($VAR, ${VAR}): Magenta
+// - Operators (&&, ||, ;): Bold white
 //
 // IMPORTANT: Currently only works with ASCII.
 // For UTF-8 (Russian, Chinese, etc.), returns text as-is to avoid breaking multi-byte sequences.
@@ -329,16 +364,15 @@ func applySyntaxHighlighting(text string) string {
 			// Start of word
 			word := extractWord(text[i:])
 			if strings.HasPrefix(word, "-") {
-				// Option - dark gray (subdued)
-				result.WriteString("\033[90m")
+				// Option - cyan
+				result.WriteString("\033[36m")
 				result.WriteString(string(ch))
 			} else if isFirstWord {
-				// Command (first word) - bright yellow + bold (stands out!)
-				result.WriteString("\033[1;33m")
+				// Command (first word) - green
+				result.WriteString("\033[32m")
 				result.WriteString(string(ch))
 			} else {
-				// Argument - green (visible but not dominant)
-				result.WriteString("\033[32m")
+				// Argument - default color
 				result.WriteString(string(ch))
 			}
 		} else {
@@ -348,9 +382,9 @@ func applySyntaxHighlighting(text string) string {
 
 		// Check if end of word
 		if i == len(text)-1 || text[i+1] == ' ' || text[i+1] == '|' || text[i+1] == '>' || text[i+1] == '<' {
-			// End current color for all colored words (command, option, argument)
+			// End current color
 			word := text[wordStart : i+1]
-			if strings.HasPrefix(word, "-") || (isFirstWord && wordStart == 0) || (!isFirstWord && wordStart > 0) {
+			if strings.HasPrefix(word, "-") || (isFirstWord && wordStart == 0) {
 				result.WriteString("\033[0m")
 			}
 		}

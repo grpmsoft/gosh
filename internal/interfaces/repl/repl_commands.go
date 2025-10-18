@@ -69,7 +69,9 @@ func (m *Model) expandAliases(commandLine string, depth int) (string, error) {
 
 // executeCommand executes entered command.
 func (m Model) executeCommand() (Model, api.Cmd) {
-	value := strings.TrimSpace(m.shellInput.Value())
+	// Get value from m.inputText (already synced with appropriate input component)
+	// This correctly handles both single-line and multiline modes
+	value := strings.TrimSpace(m.inputText)
 
 	// Empty command
 	if value == "" {

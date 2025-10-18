@@ -68,11 +68,21 @@ func (s *ShellInput) Value() string {
 // SetValue sets input text and moves cursor to end.
 func (s *ShellInput) SetValue(text string) {
 	s.base = s.base.SetContent(text, len(text))
+
+	// Clear cache - new text needs re-highlighting
+	// updateHighlightCache() will be called in Update() when text change is detected
+	s.lastPlainText = ""
+	s.cachedHighlighted = ""
 }
 
 // Reset clears input and moves cursor to start.
 func (s *ShellInput) Reset() {
 	s.base = s.base.SetContent("", 0)
+
+	// CRITICAL: Clear highlighting cache!
+	// Without this, View() continues to show old cached highlighted text
+	s.lastPlainText = ""
+	s.cachedHighlighted = ""
 }
 
 // SetWidth updates input width.

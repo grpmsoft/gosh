@@ -301,39 +301,85 @@ func getHistoryFilePath() string {
 // - Command (first word): Bright Yellow
 // - Options (starts with -): Dark Gray
 // - Arguments (other words): Green
+//
+// ═══════════════════════════════════════════════════════════════════════════
+// CRITICAL: Whitespace Preservation (Space Key Fix!)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// DO NOT use strings.Fields() - it REMOVES all whitespace!
+// User types "echo " → Fields returns ["echo"] → spaces lost!
+//
+// CORRECT APPROACH: Character-by-character parsing
+// - Preserve EVERY whitespace character (spaces, tabs) AS-IS
+// - Only highlight words, keep whitespace unchanged
+//
+// This is why space key works correctly now!
+// ═══════════════════════════════════════════════════════════════════════════
 func applySyntaxHighlightSimple(text string) string {
 	if text == "" {
 		return ""
 	}
 
-	// Simple highlighting: split into tokens by spaces.
-	parts := strings.Fields(text)
-	if len(parts) == 0 {
-		return text
+	var result strings.Builder
+	var currentWord strings.Builder
+	wordIndex := 0
+	inWord := false
+
+	for _, ch := range text {
+		if ch == ' ' || ch == '\t' {
+			// Whitespace - flush current word if any
+			if inWord {
+				// Highlight the word
+				word := currentWord.String()
+				switch {
+				case wordIndex == 0:
+					// First word = COMMAND (YELLOW)
+					result.WriteString("\033[1;33m") // Bright Yellow
+					result.WriteString(word)
+					result.WriteString("\033[0m")
+				case strings.HasPrefix(word, "-"):
+					// Option (GRAY)
+					result.WriteString("\033[90m") // Dark Gray
+					result.WriteString(word)
+					result.WriteString("\033[0m")
+				default:
+					// Argument (GREEN)
+					result.WriteString("\033[32m") // Green
+					result.WriteString(word)
+					result.WriteString("\033[0m")
+				}
+				currentWord.Reset()
+				wordIndex++
+				inWord = false
+			}
+			// CRITICAL: Preserve the whitespace character AS-IS!
+			// This is why space key works - we don't lose the space!
+			result.WriteRune(ch)
+		} else {
+			// Non-whitespace - accumulate word
+			currentWord.WriteRune(ch)
+			inWord = true
+		}
 	}
 
-	var result strings.Builder
-
-	for i, part := range parts {
-		if i > 0 {
-			result.WriteString(" ") // Space between tokens.
-		}
-
+	// Flush last word if any
+	if inWord {
+		word := currentWord.String()
 		switch {
-		case i == 0:
-			// First word = COMMAND (YELLOW).
-			result.WriteString("\033[1;33m") // Bright Yellow.
-			result.WriteString(part)
+		case wordIndex == 0:
+			// First word = COMMAND (YELLOW)
+			result.WriteString("\033[1;33m")
+			result.WriteString(word)
 			result.WriteString("\033[0m")
-		case strings.HasPrefix(part, "-"):
-			// Option (GRAY).
-			result.WriteString("\033[90m") // Dark Gray.
-			result.WriteString(part)
+		case strings.HasPrefix(word, "-"):
+			// Option (GRAY)
+			result.WriteString("\033[90m")
+			result.WriteString(word)
 			result.WriteString("\033[0m")
 		default:
-			// Argument (GREEN).
-			result.WriteString("\033[32m") // Green.
-			result.WriteString(part)
+			// Argument (GREEN)
+			result.WriteString("\033[32m")
+			result.WriteString(word)
 			result.WriteString("\033[0m")
 		}
 	}

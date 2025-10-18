@@ -97,10 +97,26 @@ func (m Model) executeCommand() (Model, api.Cmd) {
 	// Other modes: add to viewport buffer
 	if m.Config.UI.Mode == config.UIModeClassic {
 		// Render final command line WITHOUT cursor before freezing
-		// 1. Clear current line (which has cursor)
-		// 2. Render prompt + command (no cursor)
-		// 3. Move to next line - command is now frozen without cursor
-		fmt.Print("\r\033[2K")                                         // Clear line
+		// CRITICAL: In multiline mode, we need to clear ALL lines (not just current line!)
+
+		if m.multilineMode {
+			// Multiline: clear all lines before printing final command
+			lines := m.shellTextArea.Lines()
+			numLines := len(lines)
+
+			if numLines > 1 {
+				// Move cursor up to first line
+				fmt.Printf("\033[%dA", numLines-1)
+			}
+
+			// Clear from cursor to end of screen (removes all multiline lines)
+			fmt.Print("\r\033[J")
+		} else {
+			// Single-line: just clear current line
+			fmt.Print("\r\033[2K")
+		}
+
+		// Render prompt + command (no cursor!)
 		fmt.Print(m.renderPromptForHistoryANSI())                      // Prompt
 		fmt.Print(m.applySyntaxHighlight(value))                       // Command (no cursor!)
 		fmt.Print("\n")                                                // Freeze and move to next line

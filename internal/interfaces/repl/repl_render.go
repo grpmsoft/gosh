@@ -67,13 +67,42 @@ func (m Model) renderClassicMode() string {
 	var b strings.Builder
 
 	// Phoenix writes View() at current cursor position without terminal control.
-	// We need to:
-	// 1. Return cursor to beginning of line (\r)
-	// 2. Clear the line (\033[2K)
-	// 3. Render prompt + input
 	//
-	// This ensures prompt is always visible and properly positioned.
-	b.WriteString("\r\033[2K") // CR + clear entire line
+	// PSReadLine approach (inspired by PSReadLine/Render.cs:924-996):
+	// 1. Hide cursor during rendering
+	// 2. Clear current line
+	// 3. Render all content
+	// 4. Show cursor and position it
+	//
+	// We use ANSI cursor save/restore for multiline:
+	// \033[s = Save cursor position
+	// \033[u = Restore cursor position
+	// \033[?25l = Hide cursor
+	// \033[?25h = Show cursor
+	//
+	// Single-line: simple clear and render
+	// Multiline: hide cursor, render all lines, show cursor
+
+	if m.multilineMode {
+		// Hide cursor for multiline rendering (PSReadLine pattern)
+		b.WriteString("\033[?25l") // Hide cursor
+
+		// CRITICAL: Clear ALL multiline lines before rendering
+		// Problem: \r\033[2K only clears current line, but we have multiple lines!
+		// Solution: Move up to first line, then clear to end of screen
+		lines := m.shellTextArea.Lines()
+		numLines := len(lines)
+
+		if numLines > 1 {
+			// Move cursor up to first line
+			b.WriteString(fmt.Sprintf("\033[%dA", numLines-1))
+		}
+
+		// Move to column 1 and clear from cursor to end of screen
+		b.WriteString("\r\033[J") // CR + clear to end of screen (not just line!)
+	} else {
+		b.WriteString("\r\033[2K") // CR + clear line only
+	}
 
 	// Check multiline mode
 	if m.multilineMode {
@@ -86,6 +115,11 @@ func (m Model) renderClassicMode() string {
 	}
 
 	b.WriteString(m.renderHints())
+
+	// Show cursor after multiline rendering (PSReadLine pattern)
+	if m.multilineMode {
+		b.WriteString("\033[?25h") // Show cursor
+	}
 
 	// Return prompt+input (no viewport, no history rendering).
 	// History is already in terminal via fmt.Println() from Update().

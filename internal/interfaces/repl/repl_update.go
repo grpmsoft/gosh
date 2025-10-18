@@ -166,13 +166,21 @@ func (m Model) handleKeyPress(msg api.KeyMsg) (Model, api.Cmd) {
 	// IMPORTANT: Check msg.Type for Enter FIRST (before String() checks)
 	// Phoenix may send KeyEnter as Type when Enter is pressed after UTF-8 input
 	if msg.Type == api.KeyEnter {
-		// Get current input
-		cmd := m.inputText
+		// Get current input from ACTIVE component (critical for correct multiline switch!)
+		var cmd string
+		if m.multilineMode {
+			cmd = m.shellTextArea.Value()
+		} else {
+			cmd = m.shellInput.Value()
+		}
 
 		// Check if command is incomplete (unclosed quotes, backslash, pipe, etc.)
 		if m.isIncomplete(cmd) && !m.multilineMode {
 			// Switch to multiline mode
 			m.multilineMode = true
+			// CRITICAL: Print newline to start multiline on fresh line
+			// This ensures we have clean space for multiline rendering
+			fmt.Println() // Move to next line
 			m.shellTextArea.SetValue(cmd + "\n") // Add newline
 			// Sync state
 			m.inputText = m.shellTextArea.Value()
@@ -242,12 +250,20 @@ func (m Model) handleKeyPress(msg api.KeyMsg) (Model, api.Cmd) {
 	case "enter":
 		// Regular Enter - this case is redundant (handled above via KeyEnter)
 		// But keep for compatibility with string-based key handling
-		cmd := m.inputText
+		var cmd string
+		if m.multilineMode {
+			cmd = m.shellTextArea.Value()
+		} else {
+			cmd = m.shellInput.Value()
+		}
 
 		// Check if command is incomplete (unclosed quotes, backslash, pipe, etc.)
 		if m.isIncomplete(cmd) && !m.multilineMode {
 			// Switch to multiline mode
 			m.multilineMode = true
+			// CRITICAL: Print newline to start multiline on fresh line
+			// This ensures we have clean space for multiline rendering
+			fmt.Println() // Move to next line
 			m.shellTextArea.SetValue(cmd + "\n") // Add newline
 			// Sync state
 			m.inputText = m.shellTextArea.Value()
@@ -264,7 +280,9 @@ func (m Model) handleKeyPress(msg api.KeyMsg) (Model, api.Cmd) {
 		if !m.multilineMode {
 			// Switch to multiline mode
 			m.multilineMode = true
-			currentValue := m.inputText
+			// CRITICAL: Print newline to start multiline on fresh line
+			fmt.Println() // Move to next line
+			currentValue := m.shellInput.Value() // Use shellInput.Value() directly!
 			m.shellTextArea.SetValue(currentValue + "\n")
 			m.inputText = m.shellTextArea.Value()
 			m.cursorPos = len([]rune(m.inputText))

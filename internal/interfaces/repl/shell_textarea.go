@@ -1,6 +1,7 @@
 package repl
 
 import (
+	"fmt"
 	"strings"
 
 	textarea "github.com/phoenix-tui/phoenix/components/input/textarea/api"
@@ -31,7 +32,9 @@ type ShellTextArea struct {
 // hist: command history for Up/Down navigation
 // highlight: callback for syntax highlighting (use Model.applySyntaxHighlight)
 func NewShellTextArea(width, height int, hist *history.History, highlight func(string) string) *ShellTextArea {
-	ta := textarea.New().Size(width, height)
+	// Disable Phoenix cursor rendering - we'll use the terminal's native cursor instead
+	// This gives us correct cursor positioning without inserting "█" character into text
+	ta := textarea.New().Size(width, height).ShowCursor(false)
 
 	return &ShellTextArea{
 		base:              ta,
@@ -54,7 +57,9 @@ func (s *ShellTextArea) SetValue(text string) {
 	if s == nil {
 		return
 	}
-	s.base = s.base.SetValue(text)
+	// CRITICAL: SetValue() resets cursor to (0,0), so we MUST call MoveCursorToEnd()
+	// to place cursor at end of text (for multiline editing)
+	s.base = s.base.SetValue(text).MoveCursorToEnd()
 }
 
 // Lines returns all lines in the textarea.
@@ -135,28 +140,82 @@ func (s *ShellTextArea) View() string {
 // ViewWithPrompts renders the textarea with custom prompts for each line.
 // primaryPrompt: prompt for first line (e.g., "gosh> ")
 // continuationPrompt: prompt for subsequent lines (e.g., ">>    ")
+//
+// Algorithm (similar to ShellInput.View()):
+// 1. Get plain text content
+// 2. Apply syntax highlighting to entire text
+// 3. Split highlighted text into lines
+// 4. Add prompts to each line
+// 5. Calculate cursor position (row, col) with prompt offset
+// 6. Render all lines + position cursor with ANSI codes
 func (s *ShellTextArea) ViewWithPrompts(primaryPrompt, continuationPrompt string) string {
-	// Get rendered view from Phoenix TextArea (with cursor!)
-	rendered := s.base.View()
+	// Get plain text content
+	plainText := s.base.Value()
 
-	// Split into lines
-	lines := strings.Split(rendered, "\n")
+	// Apply syntax highlighting (if callback provided)
+	var highlightedText string
+	if s.highlightCallback != nil {
+		highlightedText = s.highlightCallback(plainText)
+	} else {
+		highlightedText = plainText
+	}
 
-	// Add prompts to each line
+	// Split highlighted text into lines
+	highlightedLines := strings.Split(highlightedText, "\n")
+
+	// Get cursor position in PLAIN text (row, col)
+	cursorRow, cursorCol := s.base.CursorPosition()
+
+	// Build output with prompts
 	var result strings.Builder
-	for i, line := range lines {
+	for i, line := range highlightedLines {
+		// Add prompt
+		var prompt string
 		if i == 0 {
-			result.WriteString(primaryPrompt)
+			prompt = primaryPrompt
 		} else {
-			result.WriteString(continuationPrompt)
+			prompt = continuationPrompt
 		}
+		result.WriteString(prompt)
 		result.WriteString(line)
 
 		// Add newline (except last line)
-		if i < len(lines)-1 {
+		if i < len(highlightedLines)-1 {
 			result.WriteString("\n")
 		}
 	}
 
-	return result.String()
+	// Calculate cursor positioning
+	// Terminal cursor is at end of rendered text, we need to move it to correct position
+
+	// 1. Count how many lines are AFTER cursor row
+	linesAfterCursor := len(highlightedLines) - cursorRow - 1
+
+	// 2. Get current line's visual length (to know where cursor should be)
+	currentLineHighlighted := highlightedLines[cursorRow]
+	currentLineVisualLen := countVisibleChars(currentLineHighlighted)
+
+	// 3. Calculate how many chars to move left from end of current line
+	moveLeft := currentLineVisualLen - cursorCol
+
+	// Clamp to prevent negative
+	if moveLeft < 0 {
+		moveLeft = 0
+	}
+
+	// 4. Position cursor using ANSI codes
+	var cursorPositioning strings.Builder
+
+	// Move up if cursor is not on last line
+	if linesAfterCursor > 0 {
+		cursorPositioning.WriteString(fmt.Sprintf("\033[%dA", linesAfterCursor))
+	}
+
+	// Move to correct column: move to start of line, then right by (prompt + cursorCol)
+	// Alternative: move left from end by moveLeft
+	if moveLeft > 0 {
+		cursorPositioning.WriteString(fmt.Sprintf("\033[%dD", moveLeft))
+	}
+
+	return result.String() + cursorPositioning.String()
 }

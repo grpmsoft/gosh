@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/grpmsoft/gosh/internal/application/execute"
 	"github.com/grpmsoft/gosh/internal/interfaces/repl"
@@ -148,13 +149,22 @@ func main() {
 	)
 
 	// Inject program reference for ExecProcess (interactive commands: vim, ssh, claude)
-	// MVU pattern copies Model, so we send program via message (not SetProgram directly)
-	// This message is processed in Update() to set m.program in the active Model copy
-	p.Send(repl.SetProgramMsg(p))
-
-	if err := p.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)
+	// Must use Start/Send pattern because Send before Run doesn't work
+	if err := p.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error starting program: %v\n", err)
 		os.Exit(1)
+	}
+
+	// NOW event loop is running, send message to inject program reference
+	if err := p.Send(repl.SetProgramMsg(p)); err != nil {
+		fmt.Fprintf(os.Stderr, "Error sending program reference: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Wait for program to finish by polling IsRunning
+	// TODO: Phoenix should provide Done() channel or Wait() method
+	for p.IsRunning() {
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 

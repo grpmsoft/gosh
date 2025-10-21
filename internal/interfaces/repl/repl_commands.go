@@ -669,6 +669,15 @@ func (m *Model) execInteractiveCommand(commandLine string) api.Cmd {
 	// Phoenix ExecProcess API - executes interactive command with full terminal control
 	// BLOCKING call: TUI automatically pauses/restores, alternate screen management handled
 	return func() api.Msg {
+		// CRITICAL: Check if program is nil (MVU pattern issue)
+		if m.program == nil {
+			return commandExecutedMsg{
+				output:   "",
+				err:      fmt.Errorf("CRITICAL: program reference is nil - MVU message not received"),
+				exitCode: 1,
+			}
+		}
+
 		// Call Phoenix ExecProcess (handles alt screen exit/enter, cursor show/hide, TUI restoration)
 		err := m.program.ExecProcess(osCmd)
 

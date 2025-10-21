@@ -28,6 +28,7 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 		// This message is sent once from main.go after Program creation
 		// MVU pattern copies Model, so program must be set via message not directly
 		m.program = msg.program
+		m.logger.Info("Program reference injected", "is_nil", m.program == nil)
 		return m, nil
 
 	case api.TickMsg:

@@ -45,6 +45,7 @@ type Model struct {
 	shellTextArea    *ShellTextArea      // Phoenix-based textarea for multiline editing
 	viewport         *viewport.Viewport  // Phoenix-based viewport for scrolling
 	terminal         terminal.Terminal   // Phoenix Terminal (10x faster on Windows!) ⭐
+	program          *tea.Program[Model] // Program reference for ExecProcess (interactive commands: vim, ssh, claude)
 	sessionManager   *appsession.Manager
 	executeUseCase   *execute.UseCase
 	pipelineExecutor *executor.OSPipelineExecutor
@@ -272,6 +273,12 @@ func NewBubbleteaREPL(
 	}
 
 	return m, nil
+}
+
+// SetProgram sets the program reference for interactive command execution.
+// Must be called after Program creation in main.go.
+func (m *Model) SetProgram(p *tea.Program[Model]) {
+	m.program = p
 }
 
 // Init initializes the model (Elm Architecture).

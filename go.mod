@@ -7,10 +7,10 @@ require (
 	github.com/phoenix-tui/phoenix/clipboard v0.0.0-00010101000000-000000000000
 	github.com/phoenix-tui/phoenix/components v0.0.0-00010101000000-000000000000
 	github.com/phoenix-tui/phoenix/style v0.0.0-00010101000000-000000000000
-	github.com/phoenix-tui/phoenix/tea v0.1.0-alpha.0
-	github.com/phoenix-tui/phoenix/terminal v0.0.0-00010101000000-000000000000
+	github.com/phoenix-tui/phoenix/tea v0.1.0-beta.1
+	github.com/phoenix-tui/phoenix/terminal v0.1.0-beta.1
 	github.com/stretchr/testify v1.11.1
-	github.com/unilibs/uniwidth v0.0.0-00010101000000-000000000000
+	github.com/unilibs/uniwidth v0.1.0-beta
 	golang.org/x/term v0.36.0
 	mvdan.cc/sh/v3 v3.12.0
 )
@@ -18,7 +18,8 @@ require (
 require (
 	github.com/charmbracelet/x/ansi v0.10.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/phoenix-tui/phoenix/core v0.0.0-00010101000000-000000000000 // indirect
+	github.com/phoenix-tui/phoenix/core v0.1.0-beta.1 // indirect
+	github.com/phoenix-tui/phoenix/testing v0.1.0-beta.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	golang.org/x/sys v0.37.0 // indirect

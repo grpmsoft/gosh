@@ -147,6 +147,10 @@ func main() {
 		api.WithOutput[repl.Model](stdout),
 	)
 
+	// Set program reference in model for interactive command support (vim, ssh, claude)
+	// This enables Model.execInteractiveCommand() to call p.ExecProcess()
+	model.SetProgram(p) // p is already *Program[Model]
+
 	if err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)
 		os.Exit(1)

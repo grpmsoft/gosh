@@ -22,7 +22,7 @@ import (
 // - View() uses cached result (fast!)
 // - No highlighting on cursor movement (arrows) - text unchanged!
 type ShellInput struct {
-	base              *input.Input
+	base              input.Input          // Phoenix Input (value type, not pointer)
 	history           *history.History
 	historyNav        *history.Navigator
 	cursorVisible     bool                 // Cursor blink state (controlled by parent Model tick)

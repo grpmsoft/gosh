@@ -487,6 +487,7 @@ func (m *Model) isInteractiveCommand(cmdName string) bool {
 		"telnet": true,
 		"ftp":    true,
 		"sftp":   true,
+		"claude": true, // Claude Code CLI
 		"python": true, // Python REPL
 		"node":   true, // Node.js REPL
 		"irb":    true, // Ruby REPL
@@ -660,13 +661,31 @@ func (m *Model) execInteractiveCommand(commandLine string) api.Cmd {
 	osCmd.Dir = m.currentSession.WorkingDirectory()
 	osCmd.Env = m.currentSession.Environment().ToSlice()
 
-	// TODO: Phoenix doesn't have ExecProcess yet - need to add it to Phoenix tea/api
-	// For now, return error
+	// Connect command to terminal (full TTY control)
+	osCmd.Stdin = os.Stdin
+	osCmd.Stdout = os.Stdout
+	osCmd.Stderr = os.Stderr
+
+	// Phoenix ExecProcess API - executes interactive command with full terminal control
+	// BLOCKING call: TUI automatically pauses/restores, alternate screen management handled
 	return func() api.Msg {
+		// Call Phoenix ExecProcess (handles alt screen exit/enter, cursor show/hide, TUI restoration)
+		err := m.program.ExecProcess(osCmd)
+
+		// Process exit code
+		exitCode := 0
+		if err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				exitCode = exitErr.ExitCode()
+			} else {
+				exitCode = 1
+			}
+		}
+
 		return commandExecutedMsg{
-			output:   "[Interactive commands not yet supported - Phoenix migration in progress]",
-			err:      fmt.Errorf("ExecProcess not available in Phoenix yet"),
-			exitCode: 1,
+			output:   "", // Interactive commands handle their own output
+			err:      err,
+			exitCode: exitCode,
 		}
 	}
 }

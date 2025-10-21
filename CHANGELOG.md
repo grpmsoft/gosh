@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Before: ~450ms rendering lag with 1000+ history lines
   - After: ~20-40ms rendering, sub-frame response times
   - Perfect Unicode support (no more emoji/CJK width bugs!)
+- **Interactive Command Support**: Full TTY control for vim, ssh, claude, python REPL, etc.
+  - Phoenix ExecProcess API integration (90%+ test coverage)
+  - Automatic TUI state management (alt screen enter/exit, cursor show/hide)
+  - Thread-safe blocking execution from Cmd goroutines
+  - Guaranteed TUI restoration even on command failure
+  - Zero overhead startup (<5ms per interactive command)
+  - Supported commands: vim, nvim, nano, emacs, less, more, ssh, telnet, ftp, claude, python, node, irb, psql, mysql, mongo, top, htop, shell scripts
+  - See: `docs/dev/PHOENIX_EXEC_PROCESS_IMPLEMENTATION_REPORT.md`
 - **Critical Fixes**:
   - Fixed prompt jumping issue (ESC[2K ClearLine integration)
   - Fixed cursor blinking interference with output

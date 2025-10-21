@@ -132,6 +132,12 @@ type commandExecutedMsg struct {
 	exitCode int
 }
 
+// setProgramMsg is sent once after Program creation to inject program reference.
+// This is necessary because MVU pattern copies Model, so program must be set via message.
+type setProgramMsg struct {
+	program *tea.Program[Model]
+}
+
 // NewBubbleteaREPL creates new bubbletea REPL.
 func NewBubbleteaREPL(
 	sessionManager *appsession.Manager,
@@ -275,10 +281,11 @@ func NewBubbleteaREPL(
 	return m, nil
 }
 
-// SetProgram sets the program reference for interactive command execution.
-// Must be called after Program creation in main.go.
-func (m *Model) SetProgram(p *tea.Program[Model]) {
-	m.program = p
+// SetProgramMsg creates a message to inject program reference into Model.
+// This is used because MVU pattern copies Model, so direct assignment doesn't work.
+// Call from main.go: p.Send(repl.SetProgramMsg(p))
+func SetProgramMsg(p *tea.Program[Model]) setProgramMsg {
+	return setProgramMsg{program: p}
 }
 
 // Init initializes the model (Elm Architecture).

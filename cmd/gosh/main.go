@@ -147,9 +147,10 @@ func main() {
 		api.WithOutput[repl.Model](stdout),
 	)
 
-	// Set program reference in model for interactive command support (vim, ssh, claude)
-	// This enables Model.execInteractiveCommand() to call p.ExecProcess()
-	model.SetProgram(p) // p is already *Program[Model]
+	// Inject program reference for ExecProcess (interactive commands: vim, ssh, claude)
+	// MVU pattern copies Model, so we send program via message (not SetProgram directly)
+	// This message is processed in Update() to set m.program in the active Model copy
+	p.Send(repl.SetProgramMsg(p))
 
 	if err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)

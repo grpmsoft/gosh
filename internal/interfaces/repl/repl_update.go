@@ -23,6 +23,13 @@ func (m Model) Update(msg api.Msg) (Model, api.Cmd) {
 	)
 
 	switch msg := msg.(type) {
+	case setProgramMsg:
+		// Inject program reference for ExecProcess (interactive commands)
+		// This message is sent once from main.go after Program creation
+		// MVU pattern copies Model, so program must be set via message not directly
+		m.program = msg.program
+		return m, nil
+
 	case api.TickMsg:
 		// Tick is no longer needed - we use terminal's native blinking cursor!
 		// Terminal cursor blinks automatically (set via \033[5 q in main.go)

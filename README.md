@@ -25,6 +25,7 @@ A modern, cross-platform shell written in Go with beautiful TUI and native scrip
 - **Persistent History**: Commands automatically save to `~/.gosh_history`
 - **Auto-Load**: History loads on shell startup
 - **Up/Down Navigation**: Navigate through command history with arrow keys
+- **Predictive IntelliSense**: PSReadLine-style ghost text suggestions from history — type `cd` and see gray suggestion `cd /projects/...`, press Right arrow to accept
 - **Smart Deduplication**: Consecutive identical commands are automatically deduplicated
 - **Configurable Limit**: History respects 10,000 command limit (configurable)
 
@@ -99,6 +100,11 @@ nano config.yml
 ```bash
 # Navigate history
 # Use Up/Down arrow keys to browse previous commands
+
+# Predictive IntelliSense (PSReadLine-style)
+# Start typing → gray ghost text appears from history
+# Press Right arrow → accept suggestion
+# Example: type "cd" → see "cd /projects/grpmsoft/gosh" in gray → press → to accept
 
 # History is automatically saved to ~/.gosh_history
 # History loads automatically on shell startup
@@ -196,7 +202,7 @@ Third-party library licenses - see [NOTICE](NOTICE) for details.
 
 ### Open Source Libraries
 
-- **[Phoenix TUI](https://github.com/phoenix-tui/phoenix)** v0.2.2 - Next-generation TUI framework with 10x performance
+- **[Phoenix TUI](https://github.com/phoenix-tui/phoenix)** v0.2.3 - Next-generation TUI framework with 10x performance
   - `phoenix/tea` - Elm Architecture event loop with TTY control
   - `phoenix/terminal` - Cross-platform terminal operations
   - `phoenix/style` - CSS-like styling system

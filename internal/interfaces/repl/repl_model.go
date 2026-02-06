@@ -99,8 +99,9 @@ type Model struct {
 	beforeCompletion string // Text before Tab press
 
 	// Input state (for custom rendering)
-	inputText string
-	cursorPos int
+	inputText       string
+	cursorPos       int
+	ghostSuggestion string // PSReadLine-style predictive suggestion from history
 
 	// Multiline mode
 	multilineMode bool // Toggle between single-line and multiline input

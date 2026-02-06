@@ -246,12 +246,30 @@ func (m Model) renderMultilineInput() string {
 //   1. Applies syntax highlighting (via highlightCallback)
 //   2. Renders text using Phoenix Input
 //   3. Positions terminal cursor correctly
+//
+// PSReadLine-style ghost text:
+//   After the highlighted input, appends dim gray suffix from history suggestion.
+//   Cursor stays at user's input position (ghost text is visual-only).
 func (m Model) renderInputWithCursor() string {
 	// Update cursor visibility for blinking animation
 	m.shellInput.SetCursorVisible(m.cursorVisible)
 
 	// ShellInput handles everything: highlighting + cursor positioning
-	return m.shellInput.View()
+	result := m.shellInput.View()
+
+	// Append ghost suggestion (PSReadLine-style predictive IntelliSense)
+	if m.ghostSuggestion != "" && !m.multilineMode && len(m.ghostSuggestion) > len(m.inputText) {
+		suffix := m.ghostSuggestion[len(m.inputText):]
+		// Render suffix in dim gray (ANSI 90m)
+		result += fmt.Sprintf("\033[90m%s\033[0m", suffix)
+		// Move cursor back to original position (ghost text is visual-only)
+		suffixLen := len([]rune(suffix))
+		if suffixLen > 0 {
+			result += fmt.Sprintf("\033[%dD", suffixLen)
+		}
+	}
+
+	return result
 }
 
 // renderHints renders hints (completion, scroll indicator).

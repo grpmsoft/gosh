@@ -298,14 +298,29 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	case "up", "down", "↑", "↓":
 		// Command history (Phoenix returns "↑"/"↓" for arrow keys).
+		m.ghostSuggestion = "" // Clear predictive suggestion during navigation
 		dir := directionUp
 		if msg.String() == "down" || msg.String() == "↓" {
 			dir = directionDown
 		}
 		return m.navigateHistory(dir)
 
+	case "right", "→":
+		// Accept predictive suggestion (PSReadLine behavior)
+		// Only accept when ghost suggestion exists and not in multiline mode
+		if m.ghostSuggestion != "" && !m.multilineMode {
+			m.shellInput.SetValue(m.ghostSuggestion)
+			m.shellInput.RefreshHighlight()
+			m.inputText = m.ghostSuggestion
+			m.cursorPos = len([]rune(m.inputText))
+			m.ghostSuggestion = ""
+			return m, nil
+		}
+		// No suggestion → fall through to normal right arrow (cursor movement)
+
 	case "tab":
 		// Tab-completion.
+		m.ghostSuggestion = "" // Clear predictive suggestion during completion
 		return m.handleTabCompletion()
 
 	case "ctrl+l":
@@ -355,6 +370,12 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	// CRITICAL: Sync cursor position after update
 	m.cursorPos = len([]rune(m.inputText))
+
+	// Update predictive suggestion from history (PSReadLine-style IntelliSense)
+	m.ghostSuggestion = ""
+	if m.inputText != "" && !m.multilineMode && !m.completionActive {
+		m.ghostSuggestion = m.currentSession.History().SearchPrefix(m.inputText)
+	}
 
 	return m, cmd
 }

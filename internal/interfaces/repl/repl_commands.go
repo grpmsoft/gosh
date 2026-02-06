@@ -135,6 +135,7 @@ func (m Model) executeCommand() (Model, tea.Cmd) {
 	// Sync input state
 	m.inputText = ""
 	m.cursorPos = 0
+	m.ghostSuggestion = ""
 
 	// Built-in exit command
 	if value == "exit" || value == "quit" {

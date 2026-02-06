@@ -126,6 +126,28 @@ func (h *History) Search(query string) []string {
 	return results
 }
 
+// SearchPrefix returns the most recent command that starts with prefix.
+// Used for PSReadLine-style predictive IntelliSense (ghost text suggestions).
+// Returns empty string if no match found.
+// Skips exact matches (suggestion must be longer than input).
+func (h *History) SearchPrefix(prefix string) string {
+	if strings.TrimSpace(prefix) == "" {
+		return ""
+	}
+
+	prefixLower := strings.ToLower(prefix)
+
+	// Search from newest to oldest
+	for i := len(h.commands) - 1; i >= 0; i-- {
+		cmd := h.commands[i]
+		if len(cmd) > len(prefix) && strings.HasPrefix(strings.ToLower(cmd), prefixLower) {
+			return cmd
+		}
+	}
+
+	return ""
+}
+
 // GetRecent returns the N most recent commands in reverse chronological order (newest first).
 // If n is greater than history size, returns all commands.
 // If n <= 0, returns empty slice.

@@ -7,50 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added - Phoenix Terminal Integration 🚀
-- **Phoenix TUI Framework**: Migrated from Charm Bubbletea/Lipgloss to Phoenix TUI
-  - Complete architecture overhaul for 10x performance improvement
-  - `phoenix/tea` - Elm Architecture MVU pattern (Event Loop)
-  - `phoenix/terminal` - Terminal operations with perfect Unicode support
-  - `phoenix/style` - CSS-like styling system
-  - `phoenix/components` - Rich UI components (TextInput, Viewport, Spinner)
-  - `phoenix/clipboard` - Cross-platform clipboard support
-  - Local development integration via `replace` directives in go.mod
-  - Future: Will be published to github.com/phoenix-tui/phoenix
+### Added - Phoenix TUI Integration
+- **Phoenix TUI Framework**: Migrated from Charm Bubbletea/Lipgloss to Phoenix TUI v0.2.2
+  - `phoenix/tea` v0.2.2 - Elm Architecture MVU event loop
+  - `phoenix/terminal` v0.2.2 - Terminal operations with Unicode support
+  - `phoenix/style` v0.2.2 - CSS-like styling system
+  - `phoenix/components` v0.2.2 - Rich UI components (ShellInput, Viewport, Spinner)
+  - `phoenix/clipboard` v0.2.2 - Cross-platform clipboard support
 - **10x Performance**: Differential rendering engine, 29,000 FPS capability
   - Before: ~450ms rendering lag with 1000+ history lines
   - After: ~20-40ms rendering, sub-frame response times
-  - Perfect Unicode support (no more emoji/CJK width bugs!)
+  - Perfect Unicode support (no more emoji/CJK width bugs)
 - **Interactive Command Support**: Full TTY control for vim, ssh, claude, python REPL, etc.
-  - Phoenix ExecProcess API integration (90%+ test coverage)
+  - Universal ExecProcessWithTTY - all external commands run with proper TTY control
+  - Level 2 TTY: TransferForeground + CreateProcessGroup for interactive programs
+  - Pipe-based CancelableReader for reliable stdin handoff (MSYS/mintty compatible)
   - Automatic TUI state management (alt screen enter/exit, cursor show/hide)
-  - Thread-safe blocking execution from Cmd goroutines
-  - Guaranteed TUI restoration even on command failure
-  - Zero overhead startup (<5ms per interactive command)
-  - Supported commands: vim, nvim, nano, emacs, less, more, ssh, telnet, ftp, claude, python, node, irb, psql, mysql, mongo, top, htop, shell scripts
-  - See: `docs/dev/PHOENIX_EXEC_PROCESS_IMPLEMENTATION_REPORT.md`
+  - Classic mode: no alt screen (bash-like), Warp/Compact/Chat: alt screen + mouse
 - **Critical Fixes**:
   - Fixed prompt jumping issue (ESC[2K ClearLine integration)
   - Fixed cursor blinking interference with output
-  - Resolved race conditions in terminal output
+  - Fixed ExecProcess stdin race condition on MSYS/mintty (pipe-based CancelableReader)
 
-### Changed - Terminal Backend 🔧
+### Changed - Terminal Backend
 - **Removed Charm dependencies**:
-  - ❌ `github.com/charmbracelet/bubbletea` - replaced by `phoenix/tea`
-  - ❌ `github.com/charmbracelet/lipgloss` - replaced by `phoenix/style`
-  - ❌ `github.com/charmbracelet/bubbles` - replaced by `phoenix/components`
-- **Added Phoenix dependencies**:
-  - ✅ `github.com/phoenix-tui/phoenix/tea` (v0.1.0-alpha.0)
-  - ✅ `github.com/phoenix-tui/phoenix/terminal` (local development)
-  - ✅ `github.com/phoenix-tui/phoenix/style` (local development)
-  - ✅ `github.com/phoenix-tui/phoenix/components` (local development)
-  - ✅ `github.com/phoenix-tui/phoenix/clipboard` (local development)
-- **Architecture**: Now built on DDD-based Phoenix framework with hexagonal architecture
+  - `github.com/charmbracelet/bubbletea` - replaced by `phoenix/tea`
+  - `github.com/charmbracelet/lipgloss` - replaced by `phoenix/style`
+  - `github.com/charmbracelet/bubbles` - replaced by `phoenix/components`
+- **Added Phoenix dependencies** (all at v0.2.2):
+  - `github.com/phoenix-tui/phoenix/tea`
+  - `github.com/phoenix-tui/phoenix/terminal`
+  - `github.com/phoenix-tui/phoenix/style`
+  - `github.com/phoenix-tui/phoenix/components`
+  - `github.com/phoenix-tui/phoenix/clipboard`
+- **Dependency cleanup**: Removed `replace` directives from go.mod (go.work handles local development)
+- **Updated transitive deps**: `golang.org/x/term` v0.39.0, `golang.org/x/sys` v0.40.0, `uniwidth` v0.2.0
 
 ### Planned
 - Ctrl+R fuzzy search UI
 - Command sequences with && and || operators
-- Gather community feedback on Phoenix migration
 - v0.1.0-rc.1 (after feedback collection)
 - v0.1.0 stable release
 

@@ -7,8 +7,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue)](https://github.com/grpmsoft/gosh)
 
-**Version**: 0.1.0-beta.7
-**Status**: Beta - Git-Flow + Cross-Platform Testing
+**Version**: 0.1.0-beta.8-dev
+**Status**: Beta - Phoenix TUI Integration
 **License**: MIT
 
 A modern, cross-platform shell written in Go with beautiful TUI and native script execution.
@@ -30,7 +30,7 @@ A modern, cross-platform shell written in Go with beautiful TUI and native scrip
 
 ### 🚀 **Command Execution**
 - **External Commands**: Execute any system command via os/exec
-- **Interactive Mode**: Full TTY support for programs like vim, ssh, nano
+- **Interactive Mode**: Full TTY support for programs like vim, ssh, nano, claude, python
 - **Native Shell Scripts**: Execute .sh/.bash scripts natively using mvdan.cc/sh (no bash.exe dependency on Windows!)
 - **Script Detection**: Automatically detects .sh, .bash, .bat, .cmd, .ps1 scripts
 
@@ -154,9 +154,9 @@ export GOPATH=$HOME/go
 
 ## 🗺️ Project Status
 
-**Current**: v0.1.0-beta.7 (Git-Flow + Cross-Platform Testing)
+**Current**: v0.1.0-beta.8-dev (Phoenix TUI Integration)
 **Next**: v0.1.0-rc.1 (Community Feedback)
-**Target**: v0.1.0 Stable (Q2 2025)
+**Target**: v0.1.0 Stable
 
 See [ROADMAP.md](ROADMAP.md) for detailed development plan.
 
@@ -196,13 +196,13 @@ Third-party library licenses - see [NOTICE](NOTICE) for details.
 
 ### Open Source Libraries
 
-- **Phoenix TUI** - Next-generation TUI framework with 10x performance
-  - `phoenix/tea` - Elm Architecture event loop
+- **[Phoenix TUI](https://github.com/phoenix-tui/phoenix)** v0.2.2 - Next-generation TUI framework with 10x performance
+  - `phoenix/tea` - Elm Architecture event loop with TTY control
   - `phoenix/terminal` - Cross-platform terminal operations
   - `phoenix/style` - CSS-like styling system
-  - `phoenix/components` - Rich UI components
-- **mvdan.cc/sh** - Native POSIX shell interpreter
-- **uniwidth** - Unicode width calculation library
+  - `phoenix/components` - Rich UI components (ShellInput, Viewport)
+- **[mvdan.cc/sh](https://pkg.go.dev/mvdan.cc/sh/v3)** v3.12.0 - Native POSIX shell interpreter
+- **[uniwidth](https://github.com/unilibs/uniwidth)** v0.2.0 - Unicode width calculation library
 
 ## 📞 Support
 

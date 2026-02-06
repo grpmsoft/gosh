@@ -99,6 +99,46 @@ $ █
 
 ---
 
+### 4. Chat Mode 💬
+
+**Like Telegram/Slack** - conversational interface:
+
+```
+┌────────────────────────────────────────┐
+│ ┌─────────────────────────────────┐    │
+│ │ $ ls -la                        │    │
+│ │ total 588                       │    │ ← Messages as bubbles
+│ │ drwxr-xr-x 1 Andy 197121   0   │    │
+│ └─────────────────────────────────┘    │
+│                                        │
+│ ┌─────────────────────────────────┐    │
+│ │ $ git status                    │    │
+│ │ On branch main                  │    │
+│ └─────────────────────────────────┘    │
+│                                        │
+│ ┌──────────────────────────────────┐   │
+│ │ Type your command...         █  │   │ ← Input at bottom
+│ └──────────────────────────────────┘   │
+└────────────────────────────────────────┘
+```
+
+**Features:**
+- Command input/output displayed as chat bubbles
+- Input prompt at the bottom (like a messenger)
+- Scrollable history of commands and outputs
+- Modern, conversational feel
+
+**Config:**
+```json
+{
+  "ui": {
+    "mode": "chat"
+  }
+}
+```
+
+---
+
 ## How to Choose a Mode?
 
 ### 1. Create config file
@@ -120,9 +160,23 @@ Open `~/.goshrc` and change `mode`:
 }
 ```
 
-### 3. Restart GoSh
+### 3. Switch on-the-fly
 
-Changes apply on next startup.
+Use keyboard shortcuts to switch modes without restarting:
+- **Alt+1** - Classic mode
+- **Alt+2** - Warp mode
+- **Alt+3** - Compact mode
+- **Alt+4** - Chat mode
+
+Or use the `:mode` command:
+```bash
+:mode classic    # Switch to Classic
+:mode warp       # Switch to Warp
+:mode compact    # Switch to Compact
+:mode chat       # Switch to Chat
+```
+
+Changes via config file apply on next startup.
 
 ---
 
@@ -133,6 +187,7 @@ Changes apply on next startup.
 | **classic** | bash/zsh/pwsh users - familiar interface |
 | **warp** | Modern terminal lovers - prompt always visible |
 | **compact** | Minimalists - maximum space for output |
+| **chat** | Messenger fans - conversational style |
 
 **Recommendation:** Start with `classic` (it's the default), then try `warp` - you might like it!
 

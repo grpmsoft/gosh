@@ -16,7 +16,6 @@ require (
 )
 
 require (
-	github.com/charmbracelet/x/ansi v0.10.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/phoenix-tui/phoenix/core v0.1.0-beta.1 // indirect
 	github.com/phoenix-tui/phoenix/testing v0.1.0-beta.2 // indirect

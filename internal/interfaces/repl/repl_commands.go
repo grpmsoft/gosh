@@ -666,20 +666,28 @@ func (m *Model) execInteractiveCommand(commandLine string) api.Cmd {
 	osCmd.Stdout = os.Stdout
 	osCmd.Stderr = os.Stderr
 
-	// Phoenix ExecProcess API - executes interactive command with full terminal control
-	// BLOCKING call: TUI automatically pauses/restores, alternate screen management handled
+	// Phoenix ExecProcess - properly handles stdin/stdout/stderr
+	// Phoenix team fixed inputReader bug (2025-10-21) - now stops reader during ExecProcess
 	return func() api.Msg {
-		// CRITICAL: Check if program is nil (MVU pattern issue)
-		if m.program == nil {
+		// Get global program reference
+		prog := GetGlobalProgram()
+		if prog == nil {
 			return commandExecutedMsg{
 				output:   "",
-				err:      fmt.Errorf("CRITICAL: program reference is nil - MVU message not received"),
+				err:      fmt.Errorf("program reference not set"),
 				exitCode: 1,
 			}
 		}
 
-		// Call Phoenix ExecProcess (handles alt screen exit/enter, cursor show/hide, TUI restoration)
-		err := m.program.ExecProcess(osCmd)
+		// Phoenix ExecProcess handles:
+		// 1. Stop inputReader goroutine (stdin goes to command)
+		// 2. Exit alt screen
+		// 3. Show cursor
+		// 4. Run command (blocking)
+		// 5. Hide cursor
+		// 6. Enter alt screen
+		// 7. Restart inputReader
+		err := prog.ExecProcess(osCmd)
 
 		// Process exit code
 		exitCode := 0
@@ -692,9 +700,20 @@ func (m *Model) execInteractiveCommand(commandLine string) api.Cmd {
 		}
 
 		return commandExecutedMsg{
-			output:   "", // Interactive commands handle their own output
+			output:   "",
 			err:      err,
 			exitCode: exitCode,
 		}
 	}
+}
+
+// getExitCode extracts exit code from error
+func getExitCode(err error) int {
+	if err == nil {
+		return 0
+	}
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		return exitErr.ExitCode()
+	}
+	return 1
 }

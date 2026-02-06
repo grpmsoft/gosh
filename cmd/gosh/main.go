@@ -9,12 +9,10 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/grpmsoft/gosh/internal/application/execute"
 	"github.com/grpmsoft/gosh/internal/interfaces/repl"
 	"github.com/phoenix-tui/phoenix/tea/api"
-	"golang.org/x/term"
 )
 
 // autoFlushWriter wraps an io.Writer and flushes after each Write.
@@ -60,111 +58,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	// TEMPORARY FIX: Enable raw mode for terminal (only if stdin is a TTY)
-	// Phoenix doesn't set up raw mode yet (planned for later weeks)
-	// In raw mode, terminal doesn't echo typed characters - only our View() renders them
-	var oldState *term.State
-	if term.IsTerminal(int(os.Stdin.Fd())) {
-		oldState, err = term.MakeRaw(int(os.Stdin.Fd()))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to set raw mode: %v\n", err)
-			os.Exit(1)
-		}
-
-		// ═══════════════════════════════════════════════════════════════════════════
-		// CRITICAL: Cursor Blinking in Raw Mode
-		// ═══════════════════════════════════════════════════════════════════════════
-		//
-		// Raw mode disables automatic cursor blinking. We must explicitly enable it.
-		//
-		// ANSI Escape Sequences:
-		//   \033[?25h         - Show cursor (DECTCEM: DEC Text Cursor Enable Mode)
-		//   \033[{n} q        - DECSCUSR: Set cursor style (n = 0-6, from config)
-		//
-		// Cursor styles (DECSCUSR):
-		//   \033[0 q or \033[ q  - Restore terminal default (usually blinking block)
-		//   \033[1 q             - Blinking block █
-		//   \033[2 q             - Steady block █
-		//   \033[3 q             - Blinking underline _
-		//   \033[4 q             - Steady underline _
-		//   \033[5 q             - Blinking bar | (DEFAULT - bash/zsh/PowerShell standard)
-		//   \033[6 q             - Steady bar |
-		//
-		// Cursor style is configurable via Config.UI.CursorStyle (default: 5 - blinking bar).
-		// Users can change this in config to suit their terminal and preferences.
-		//
-		// PowerShell equivalent (PSReadLine/Render.cs:924-1109):
-		//   _console.CursorVisible = true  (Windows Console API - blinks automatically)
-		//
-		// Our approach (ANSI terminals):
-		//   1. Show cursor: \033[?25h
-		//   2. Set cursor style from config: \033[{CursorStyle} q
-		//   3. Terminal handles blinking automatically (no manual toggling needed!)
-		//
-		// This is executed ONCE at startup, NOT in every View() render!
-		//
-		// NOTE: Phoenix Input can be configured to NOT render its own cursor.
-		// We use ShowCursor(false) and rely on the terminal's native cursor instead.
-		// This gives us a real blinking cursor like PowerShell.
-		// ═══════════════════════════════════════════════════════════════════════════
-
-		// Show terminal cursor (Phoenix is configured not to render its own cursor via ShowCursor(false))
-		fmt.Print("\033[?25h")
-
-		// Set cursor style from config
-		cursorStyle := model.Config.UI.CursorStyle
-
-		// If blinking is disabled in config, convert to steady style
-		// DECSCUSR: odd numbers = blinking, even numbers = steady
-		// Example: 5 (blinking bar) → 6 (steady bar)
-		if !model.Config.UI.CursorBlinking && cursorStyle%2 == 1 {
-			cursorStyle++ // Convert blinking to steady
-		}
-
-		// Apply cursor style from config (default: 5 - blinking bar, PowerShell style)
-		fmt.Printf("\033[%d q", cursorStyle)
-
-		defer func() {
-			// Always restore terminal state on exit
-			if oldState != nil {
-				// Show cursor before restoring terminal state
-				fmt.Print("\033[?25h") // Show cursor
-				fmt.Print("\033[0 q")  // Restore default cursor style
-				_ = term.Restore(int(os.Stdin.Fd()), oldState)
-			}
-		}()
-	}
-
 	// TEMPORARY FIX: Auto-flush stdout after each write
 	// In raw mode, stdout is buffered and Phoenix doesn't flush
 	// This wrapper flushes automatically after every Write()
 	stdout := newAutoFlushWriter(os.Stdout)
 
-	// Run (without AltScreen - using native terminal scrolling)
-	// Phoenix tea/api requires value type for MVU pattern
-	// Enable mouse support for viewport scrolling + auto-flush output
+	// Phoenix TUI with AltScreen for ExecProcess support
 	p := api.New(*model,
+		api.WithAltScreen[repl.Model](),
 		api.WithMouseAllMotion[repl.Model](),
 		api.WithOutput[repl.Model](stdout),
 	)
 
-	// Inject program reference for ExecProcess (interactive commands: vim, ssh, claude)
-	// Must use Start/Send pattern because Send before Run doesn't work
-	if err := p.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error starting program: %v\n", err)
-		os.Exit(1)
-	}
+	// Set global program reference for ExecProcess compatibility
+	// HACK: This allows execInteractiveCommand to access Program with Run()
+	repl.SetGlobalProgram(p)
 
-	// NOW event loop is running, send message to inject program reference
-	if err := p.Send(repl.SetProgramMsg(p)); err != nil {
-		fmt.Fprintf(os.Stderr, "Error sending program reference: %v\n", err)
+	// Run BLOCKS main thread - this is CRITICAL for ExecProcess!
+	// ExecProcess needs blocking event loop to properly suspend stdin reading
+	if err := p.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)
 		os.Exit(1)
-	}
-
-	// Wait for program to finish by polling IsRunning
-	// TODO: Phoenix should provide Done() channel or Wait() method
-	for p.IsRunning() {
-		time.Sleep(100 * time.Millisecond)
 	}
 }
 

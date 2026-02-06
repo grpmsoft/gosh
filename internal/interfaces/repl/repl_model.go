@@ -1,6 +1,7 @@
 package repl
 
 import (
+	"sync"
 	"context"
 	"fmt"
 	"log/slog"
@@ -25,6 +26,27 @@ import (
 	terminal "github.com/phoenix-tui/phoenix/terminal/api"
 	terminalinfra "github.com/phoenix-tui/phoenix/terminal/infrastructure"
 )
+
+// Global program reference for Run() compatibility
+// TEMPORARY: Until Phoenix provides better mechanism for program injection
+var (
+	globalProgramMu sync.RWMutex
+	globalProgram   *tea.Program[Model]
+)
+
+// SetGlobalProgram sets the global program reference (for Run() compatibility)
+func SetGlobalProgram(p *tea.Program[Model]) {
+	globalProgramMu.Lock()
+	defer globalProgramMu.Unlock()
+	globalProgram = p
+}
+
+// GetGlobalProgram gets the global program reference
+func GetGlobalProgram() *tea.Program[Model] {
+	globalProgramMu.RLock()
+	defer globalProgramMu.RUnlock()
+	return globalProgram
+}
 
 // Model represents REPL state (Elm Architecture).
 //
@@ -281,9 +303,14 @@ func NewBubbleteaREPL(
 	return m, nil
 }
 
+// SetProgram sets the program reference for ExecProcess.
+// MUST be called BEFORE api.New() so the copy gets the reference.
+func (m *Model) SetProgram(p *tea.Program[Model]) {
+	m.program = p
+}
+
 // SetProgramMsg creates a message to inject program reference into Model.
-// This is used because MVU pattern copies Model, so direct assignment doesn't work.
-// Call from main.go: p.Send(repl.SetProgramMsg(p))
+// DEPRECATED: Use SetProgram() instead (called before api.New).
 func SetProgramMsg(p *tea.Program[Model]) setProgramMsg {
 	return setProgramMsg{program: p}
 }

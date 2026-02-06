@@ -22,9 +22,7 @@ type autoFlushWriter struct {
 }
 
 func newAutoFlushWriter(w io.Writer) *autoFlushWriter {
-	return &autoFlushWriter{
-		w: bufio.NewWriter(w),
-	}
+	return &autoFlushWriter{w: bufio.NewWriter(w)}
 }
 
 func (a *autoFlushWriter) Write(p []byte) (n int, err error) {
@@ -58,9 +56,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// TEMPORARY FIX: Auto-flush stdout after each write
-	// In raw mode, stdout is buffered and Phoenix doesn't flush
-	// This wrapper flushes automatically after every Write()
+	// Auto-flush stdout after each write.
+	// In raw mode stdout is buffered and Phoenix doesn't flush.
 	stdout := newAutoFlushWriter(os.Stdout)
 
 	// Phoenix TUI options

@@ -89,6 +89,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.executing = false
 		m.lastExitCode = msg.exitCode
 
+		// Restore cursor visibility after ExecProcess
+		// Phoenix Resume() hides cursor (for TUI alt screen mode), but Classic mode
+		// uses native terminal cursor. Show it once here, not on every render.
+		if m.Config.UI.Mode == config.UIModeClassic {
+			_ = m.terminal.ShowCursor()
+		}
+
 		// Handle output differently based on UI mode
 		if msg.output != "" {
 			if m.Config.UI.Mode == config.UIModeClassic {
@@ -289,9 +296,13 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.cursorPos = len([]rune(m.inputText))
 		return m, cmd
 
-	case "up", "down":
-		// Command history.
-		return m.navigateHistory(msg.String())
+	case "up", "down", "↑", "↓":
+		// Command history (Phoenix returns "↑"/"↓" for arrow keys).
+		dir := directionUp
+		if msg.String() == "down" || msg.String() == "↓" {
+			dir = directionDown
+		}
+		return m.navigateHistory(dir)
 
 	case "tab":
 		// Tab-completion.

@@ -97,17 +97,14 @@ func (m Model) renderClassicMode() string {
 
 		// ClearLines() is 10x faster than manual ANSI on Windows Console!
 		_ = m.terminal.ClearLines(numLines)
-	} else {
-		// Single-line: just clear the line
-		_ = m.terminal.ClearLine()
-	}
 
-	// Check multiline mode
-	if m.multilineMode {
 		// Multiline mode: render with continuation prompts
 		b.WriteString(m.renderMultilineInput())
 	} else {
-		// Single-line mode: normal prompt + input
+		// Single-line: ATOMIC clear + render in ONE string
+		// CRITICAL: \r\033[2K is IN the string (not via ClearLine() direct write)
+		// so the entire clear+render goes through Phoenix as one atomic write.
+		b.WriteString("\r\033[2K")
 		b.WriteString(m.renderPromptForHistoryANSI())
 		b.WriteString(m.renderInputWithCursor())
 	}

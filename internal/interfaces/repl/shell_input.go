@@ -85,6 +85,12 @@ func (s *ShellInput) Reset() {
 	s.cachedHighlighted = ""
 }
 
+// RefreshHighlight forces re-computation of the syntax highlighting cache.
+// Call after SetValue() when the caller manages highlighting externally.
+func (s *ShellInput) RefreshHighlight() {
+	s.updateHighlightCache()
+}
+
 // SetWidth updates input width.
 func (s *ShellInput) SetWidth(width int) {
 	s.base = s.base.Width(width).ShowCursor(false)
@@ -162,7 +168,6 @@ func (s *ShellInput) Update(msg tea.Msg) (*ShellInput, tea.Cmd) {
 		// Text changed - re-apply syntax highlighting!
 		s.updateHighlightCache()
 	}
-	// If text unchanged (e.g., arrow keys) - cache still valid, no re-highlighting!
 
 	return s, cmd
 }

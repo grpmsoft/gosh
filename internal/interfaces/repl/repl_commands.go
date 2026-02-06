@@ -73,8 +73,11 @@ func (m Model) executeCommand() (Model, tea.Cmd) {
 	// This correctly handles both single-line and multiline modes
 	value := strings.TrimSpace(m.inputText)
 
-	// Empty command
+	// Empty command — print newline and new prompt (like bash)
 	if value == "" {
+		if m.Config.UI.Mode == config.UIModeClassic {
+			fmt.Println() // Move to next line (bash behavior)
+		}
 		return m, nil
 	}
 
@@ -630,13 +633,9 @@ func (m *Model) execInteractiveCommand(commandLine string) tea.Cmd {
 		}
 
 		// Phoenix ExecProcessWithTTY (Level 2):
-		// - TransferForeground: передать TTY control child процессу
-		// - CreateProcessGroup: создать отдельную process group
-		// Это нужно для интерактивных команд (vim, ssh, python, claude, etc.)
-		err := prog.ExecProcessWithTTY(osCmd, tea.TTYOptions{
-			TransferForeground: true,
-			CreateProcessGroup: true,
-		})
+		// Uses Suspend → console mode setup → child → Resume pattern.
+		// Provides proper TTY control for interactive commands (vim, claude, ssh).
+		err := prog.ExecProcessWithTTY(osCmd, tea.TTYOptions{})
 
 		// Process exit code
 		exitCode := 0

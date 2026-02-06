@@ -36,6 +36,7 @@ func (m Model) navigateHistory(direction string) (Model, tea.Cmd) {
 			m.shellTextArea.SetValue(cmd)
 		} else {
 			m.shellInput.SetValue(cmd)
+			m.shellInput.RefreshHighlight()
 		}
 		// Sync input state
 		m.inputText = cmd

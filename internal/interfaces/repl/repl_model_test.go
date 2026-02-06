@@ -55,7 +55,7 @@ func TestNewBubbleteaREPL(t *testing.T) {
 
 		// Verify default values
 		assert.Equal(t, 10000, model.maxOutputLines)
-		assert.False(t, model.ready)
+		assert.True(t, model.ready) // Phoenix doesn't auto-send WindowSizeMsg, so ready=true at start
 		assert.False(t, model.quitting)
 		assert.False(t, model.executing)
 		assert.Equal(t, 0, model.lastExitCode)

@@ -12,7 +12,7 @@ import (
 
 	"github.com/grpmsoft/gosh/internal/application/execute"
 	"github.com/grpmsoft/gosh/internal/interfaces/repl"
-	"github.com/phoenix-tui/phoenix/tea/api"
+	"github.com/phoenix-tui/phoenix/tea"
 )
 
 // autoFlushWriter wraps an io.Writer and flushes after each Write.
@@ -63,12 +63,21 @@ func main() {
 	// This wrapper flushes automatically after every Write()
 	stdout := newAutoFlushWriter(os.Stdout)
 
-	// Phoenix TUI with AltScreen for ExecProcess support
-	p := api.New(*model,
-		api.WithAltScreen[repl.Model](),
-		api.WithMouseAllMotion[repl.Model](),
-		api.WithOutput[repl.Model](stdout),
+	// Phoenix TUI options
+	// Classic mode: NO alt screen (bash-like - output stays in terminal)
+	// Other modes: WITH alt screen (TUI experience)
+	var opts []tea.Option[repl.Model]
+	if model.Config.UI.Mode != "classic" {
+		opts = append(opts,
+			tea.WithAltScreen[repl.Model](),
+			tea.WithMouseAllMotion[repl.Model](),
+		)
+	}
+	opts = append(opts,
+		tea.WithOutput[repl.Model](stdout),
 	)
+
+	p := tea.New(*model, opts...)
 
 	// Set global program reference for ExecProcess compatibility
 	// HACK: This allows execInteractiveCommand to access Program with Run()

@@ -7,7 +7,7 @@ import (
 	"github.com/grpmsoft/gosh/internal/domain/history"
 	"github.com/grpmsoft/gosh/internal/domain/session"
 	"github.com/grpmsoft/gosh/internal/domain/shared"
-	"github.com/phoenix-tui/phoenix/tea/api"
+	"github.com/phoenix-tui/phoenix/tea"
 )
 
 // BenchmarkShellInputUpdate measures ShellInput Update performance
@@ -15,7 +15,7 @@ func BenchmarkShellInputUpdate(b *testing.B) {
 	hist := history.NewHistory(history.DefaultConfig())
 	input := NewShellInput(80, hist, applySyntaxHighlightSimple)
 
-	msg := api.KeyMsg{Type: api.KeyRune, Rune: 'a'}
+	msg := tea.KeyMsg{Type: tea.KeyRune, Rune: 'a'}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -71,8 +71,8 @@ func BenchmarkHistoryNavigation(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		input.Update(api.KeyMsg{Type: api.KeyUp})
-		input.Update(api.KeyMsg{Type: api.KeyDown})
+		input.Update(tea.KeyMsg{Type: tea.KeyUp})
+		input.Update(tea.KeyMsg{Type: tea.KeyDown})
 	}
 }
 

@@ -15,7 +15,7 @@ import (
 	"github.com/grpmsoft/gosh/internal/domain/session"
 	"github.com/grpmsoft/gosh/internal/interfaces/parser"
 
-	"github.com/phoenix-tui/phoenix/tea/api"
+	"github.com/phoenix-tui/phoenix/tea"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/interp"
 	"mvdan.cc/sh/v3/syntax"
@@ -68,7 +68,7 @@ func (m *Model) expandAliases(commandLine string, depth int) (string, error) {
 }
 
 // executeCommand executes entered command.
-func (m Model) executeCommand() (Model, api.Cmd) {
+func (m Model) executeCommand() (Model, tea.Cmd) {
 	// Get value from m.inputText (already synced with appropriate input component)
 	// This correctly handles both single-line and multiline modes
 	value := strings.TrimSpace(m.inputText)
@@ -136,7 +136,7 @@ func (m Model) executeCommand() (Model, api.Cmd) {
 	// Built-in exit command
 	if value == "exit" || value == "quit" {
 		m.quitting = true
-		return m, api.Quit()
+		return m, tea.Quit()
 	}
 
 	// Built-in clear command
@@ -171,23 +171,12 @@ func (m Model) executeCommand() (Model, api.Cmd) {
 	// Determine command type and execution method
 	cmdName, cmdArgs := m.extractCommandName(value)
 
-	// Check if this is a shell script
+	// Check if this is a shell script - execute natively via mvdan.cc/sh for performance
 	scriptPath, isScript := m.isShellScript(cmdName)
-
 	if isScript {
-		// Shell script (.sh/.bash)
-		if m.isInteractiveCommand(cmdName) {
-			// Interactive script (with read, clear, menu) - via bash + tea.ExecProcess
-			return m, m.execInteractiveCommand(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
-		}
-		// Regular script - execute NATIVELY via mvdan.cc/sh
+		// Execute shell script NATIVELY via mvdan.cc/sh (no bash.exe needed!)
 		m.executing = true
 		return m, m.executeShellScriptNative(scriptPath, cmdArgs) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
-	}
-
-	// Interactive command (vim, ssh, etc.) - via tea.ExecProcess
-	if m.isInteractiveCommand(cmdName) {
-		return m, m.execInteractiveCommand(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 	}
 
 	// Check if this is a builtin command (cd, export, unset)
@@ -197,9 +186,20 @@ func (m Model) executeCommand() (Model, api.Cmd) {
 		return m, m.execBuiltinCommand(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 	}
 
-	// Regular command - execute asynchronously with output capture
+	// Check for pipeline
+	hasPipeline := strings.Contains(value, "|")
+	if hasPipeline {
+		// Pipeline → async (need to capture for pipe)
+		m.executing = true
+		return m, m.execCommandAsync(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
+	}
+
+	// All external commands → ExecProcess (direct TTY like bash)
+	// Works for both:
+	// - Non-interactive (ls, ps, echo) - output captured and shown
+	// - Interactive (vim, claude, ssh, python) - get keyboard access
 	m.executing = true
-	return m, m.execCommandAsync(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
+	return m, m.execInteractiveCommand(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 }
 
 // showHelp shows help (text version for help command).
@@ -234,8 +234,8 @@ func (m *Model) showHelp() {
 }
 
 // execCommandAsync executes command in background.
-func (m *Model) execCommandAsync(commandLine string) api.Cmd {
-	return func() api.Msg {
+func (m *Model) execCommandAsync(commandLine string) tea.Cmd {
+	return func() tea.Msg {
 		// Parse command
 		cmd, pipe, err := parser.ParseCommandLine(commandLine)
 		if err != nil {
@@ -452,60 +452,9 @@ func (m *Model) extractCommandName(commandLine string) (cmdName string, cmdArgs 
 	return cmd.Name(), cmd.Args()
 }
 
-// isInteractiveCommand determines if command requires interactive terminal.
-func (m *Model) isInteractiveCommand(cmdName string) bool {
-	// Check if this is a script (universal check for all OS)
-	if strings.HasPrefix(cmdName, ".") || strings.ContainsRune(cmdName, filepath.Separator) || filepath.IsAbs(cmdName) {
-		var scriptPath string
-		if filepath.IsAbs(cmdName) {
-			scriptPath = cmdName
-		} else {
-			scriptPath = filepath.Join(m.currentSession.WorkingDirectory(), cmdName)
-		}
-
-		// Check file extension
-		ext := strings.ToLower(filepath.Ext(scriptPath))
-		switch ext {
-		case extSh, extBash, ".bat", ".cmd", ".ps1":
-			// Scripts may require interactive mode (read, input, etc.)
-			return true
-		}
-	}
-
-	// List of known interactive commands
-	interactiveCommands := map[string]bool{
-		"vi":     true,
-		"vim":    true,
-		"nvim":   true,
-		"nano":   true,
-		"emacs":  true,
-		"less":   true,
-		"more":   true,
-		"top":    true,
-		"htop":   true,
-		"ssh":    true,
-		"telnet": true,
-		"ftp":    true,
-		"sftp":   true,
-		"claude": true, // Claude Code CLI
-		"python": true, // Python REPL
-		"node":   true, // Node.js REPL
-		"irb":    true, // Ruby REPL
-		"psql":   true, // PostgreSQL
-		"mysql":  true, // MySQL
-		"mongo":  true, // MongoDB
-	}
-
-	// Check base command name (without path)
-	baseName := filepath.Base(cmdName)
-	baseName = strings.TrimSuffix(baseName, filepath.Ext(baseName))
-
-	return interactiveCommands[baseName]
-}
-
 // executeShellScriptNative executes .sh/.bash script natively via mvdan.cc/sh.
-func (m *Model) executeShellScriptNative(scriptPath string, args []string) api.Cmd {
-	return func() api.Msg {
+func (m *Model) executeShellScriptNative(scriptPath string, args []string) tea.Cmd {
+	return func() tea.Msg {
 		// Open script file
 		file, err := os.Open(scriptPath) //nolint:gosec // G304: This is a shell - dynamic script execution is expected
 		if err != nil {
@@ -620,13 +569,13 @@ func expandEnv(sess *session.Session) expand.Environ {
 	return &sessionEnviron{sess: sess}
 }
 
-// execInteractiveCommand executes interactive command via api.ExecProcess.
+// execInteractiveCommand executes interactive command via tea.ExecProcess.
 // Used for scripts requiring full TTY (clear, read, menu).
-func (m *Model) execInteractiveCommand(commandLine string) api.Cmd {
+func (m *Model) execInteractiveCommand(commandLine string) tea.Cmd {
 	// Parse command
 	cmd, pipe, err := parser.ParseCommandLine(commandLine)
 	if err != nil {
-		return func() api.Msg {
+		return func() tea.Msg {
 			return commandExecutedMsg{
 				err:      err,
 				exitCode: 1,
@@ -636,7 +585,7 @@ func (m *Model) execInteractiveCommand(commandLine string) api.Cmd {
 
 	// Pipes not yet supported in interactive mode
 	if pipe != nil {
-		return func() api.Msg {
+		return func() tea.Msg {
 			return commandExecutedMsg{
 				output:   "[Interactive pipes not yet supported]",
 				exitCode: 1,
@@ -645,7 +594,7 @@ func (m *Model) execInteractiveCommand(commandLine string) api.Cmd {
 	}
 
 	if cmd == nil {
-		return func() api.Msg {
+		return func() tea.Msg {
 			return commandExecutedMsg{
 				output:   "",
 				exitCode: 0,
@@ -661,14 +610,15 @@ func (m *Model) execInteractiveCommand(commandLine string) api.Cmd {
 	osCmd.Dir = m.currentSession.WorkingDirectory()
 	osCmd.Env = m.currentSession.Environment().ToSlice()
 
-	// Connect command to terminal (full TTY control)
+	// Give command REAL TTY like bash does
+	// Interactive programs (vim, claude, ssh) REQUIRE real file descriptor, not bytes.Buffer!
 	osCmd.Stdin = os.Stdin
 	osCmd.Stdout = os.Stdout
 	osCmd.Stderr = os.Stderr
 
 	// Phoenix ExecProcess - properly handles stdin/stdout/stderr
 	// Phoenix team fixed inputReader bug (2025-10-21) - now stops reader during ExecProcess
-	return func() api.Msg {
+	return func() tea.Msg {
 		// Get global program reference
 		prog := GetGlobalProgram()
 		if prog == nil {
@@ -679,15 +629,14 @@ func (m *Model) execInteractiveCommand(commandLine string) api.Cmd {
 			}
 		}
 
-		// Phoenix ExecProcess handles:
-		// 1. Stop inputReader goroutine (stdin goes to command)
-		// 2. Exit alt screen
-		// 3. Show cursor
-		// 4. Run command (blocking)
-		// 5. Hide cursor
-		// 6. Enter alt screen
-		// 7. Restart inputReader
-		err := prog.ExecProcess(osCmd)
+		// Phoenix ExecProcessWithTTY (Level 2):
+		// - TransferForeground: передать TTY control child процессу
+		// - CreateProcessGroup: создать отдельную process group
+		// Это нужно для интерактивных команд (vim, ssh, python, claude, etc.)
+		err := prog.ExecProcessWithTTY(osCmd, tea.TTYOptions{
+			TransferForeground: true,
+			CreateProcessGroup: true,
+		})
 
 		// Process exit code
 		exitCode := 0
@@ -699,6 +648,8 @@ func (m *Model) execInteractiveCommand(commandLine string) api.Cmd {
 			}
 		}
 
+		// No output captured - command wrote directly to real TTY
+		// User already saw output in terminal
 		return commandExecutedMsg{
 			output:   "",
 			err:      err,

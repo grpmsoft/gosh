@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	textarea "github.com/phoenix-tui/phoenix/components/input/textarea/api"
-	"github.com/phoenix-tui/phoenix/tea/api"
+	"github.com/phoenix-tui/phoenix/components/input"
+	"github.com/phoenix-tui/phoenix/tea"
 	"github.com/grpmsoft/gosh/internal/domain/history"
 )
 
@@ -20,7 +20,7 @@ import (
 //
 // This wrapper adds shell-specific functionality to the universal Phoenix TextArea component.
 type ShellTextArea struct {
-	base              textarea.TextArea
+	base              input.TextArea
 	history           *history.History
 	historyNav        *history.Navigator
 	highlightCallback func(string) string // Callback for syntax highlighting
@@ -34,7 +34,7 @@ type ShellTextArea struct {
 func NewShellTextArea(width, height int, hist *history.History, highlight func(string) string) *ShellTextArea {
 	// Disable Phoenix cursor rendering - we'll use the terminal's native cursor instead
 	// This gives us correct cursor positioning without inserting "█" character into text
-	ta := textarea.New().Size(width, height).ShowCursor(false)
+	ta := input.NewTextArea().Size(width, height).ShowCursor(false)
 
 	return &ShellTextArea{
 		base:              ta,
@@ -117,10 +117,10 @@ func (s *ShellTextArea) ContentParts() (string, string, string) {
 // This matches bash behavior - multiline editing prioritizes cursor navigation.
 //
 // Returns updated ShellTextArea and any commands to execute.
-func (s *ShellTextArea) Update(msg api.Msg) (*ShellTextArea, api.Cmd) {
+func (s *ShellTextArea) Update(msg tea.Msg) (*ShellTextArea, tea.Cmd) {
 	// Delegate ALL events to base TextArea
 	// No special handling needed - TextArea handles everything
-	var cmd api.Cmd
+	var cmd tea.Cmd
 	s.base, cmd = s.base.Update(msg)
 	return s, cmd
 }

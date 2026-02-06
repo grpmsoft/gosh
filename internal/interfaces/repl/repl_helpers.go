@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/phoenix-tui/phoenix/tea/api"
+	"github.com/phoenix-tui/phoenix/tea"
 )
 
 // All methods in this file use Bubbletea's MVU (Model-View-Update) pattern,.
@@ -19,7 +19,7 @@ const (
 )
 
 // navigateHistory navigates command history via History.Navigator.
-func (m Model) navigateHistory(direction string) (Model, api.Cmd) {
+func (m Model) navigateHistory(direction string) (Model, tea.Cmd) {
 	var cmd string
 	var ok bool
 

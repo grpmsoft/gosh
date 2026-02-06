@@ -15,7 +15,8 @@ import (
 	"github.com/grpmsoft/gosh/internal/infrastructure/builtin"
 	"github.com/grpmsoft/gosh/internal/infrastructure/executor"
 
-	viewport "github.com/phoenix-tui/phoenix/components/viewport/api"
+	viewport "github.com/phoenix-tui/phoenix/components/viewport"
+	"github.com/phoenix-tui/phoenix/terminal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -77,8 +78,12 @@ func createTestModelForHelpers(t *testing.T) *Model {
 	// Create history navigator
 	historyNavigator := sess.NewHistoryNavigator()
 
+	shellTextArea := NewShellTextArea(80, 5, sess.History(), applySyntaxHighlightSimple)
+	term := terminal.New()
+
 	model := &Model{
 		shellInput:       shellInput,
+		shellTextArea:    shellTextArea,
 		viewport:         vp,
 		currentSession:   sess,
 		executeUseCase:   executeUseCase,
@@ -93,6 +98,7 @@ func createTestModelForHelpers(t *testing.T) *Model {
 		cursorPos:        0,
 		autoScroll:       true,
 		styles:           makeProfessionalStyles(),
+		terminal:         term,
 	}
 
 	return model

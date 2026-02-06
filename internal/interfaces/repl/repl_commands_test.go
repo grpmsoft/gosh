@@ -190,148 +190,6 @@ func TestExtractCommandName(t *testing.T) {
 	})
 }
 
-func TestIsInteractiveCommand(t *testing.T) {
-	t.Run("recognizes vim as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("vim")
-
-		// Assert
-		assert.True(t, isInteractive)
-	})
-
-	t.Run("recognizes nano as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("nano")
-
-		// Assert
-		assert.True(t, isInteractive)
-	})
-
-	t.Run("recognizes ssh as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("ssh")
-
-		// Assert
-		assert.True(t, isInteractive)
-	})
-
-	t.Run("recognizes less as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("less")
-
-		// Assert
-		assert.True(t, isInteractive)
-	})
-
-	t.Run("recognizes top as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("top")
-
-		// Assert
-		assert.True(t, isInteractive)
-	})
-
-	t.Run("recognizes htop as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("htop")
-
-		// Assert
-		assert.True(t, isInteractive)
-	})
-
-	t.Run("recognizes python REPL as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("python")
-
-		// Assert
-		assert.True(t, isInteractive, "Python REPL should be interactive")
-	})
-
-	t.Run("recognizes node REPL as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("node")
-
-		// Assert
-		assert.True(t, isInteractive, "Node.js REPL should be interactive")
-	})
-
-	t.Run("recognizes psql as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("psql")
-
-		// Assert
-		assert.True(t, isInteractive, "PostgreSQL client should be interactive")
-	})
-
-	t.Run("non-interactive command returns false", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("ls")
-
-		// Assert
-		assert.False(t, isInteractive)
-	})
-
-	t.Run("empty command returns false", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("")
-
-		// Assert
-		assert.False(t, isInteractive)
-	})
-
-	t.Run("recognizes shell scripts as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("./script.sh")
-
-		// Assert
-		assert.True(t, isInteractive, "Shell scripts may require interactive mode")
-	})
-
-	t.Run("recognizes batch scripts as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("./script.bat")
-
-		// Assert
-		assert.True(t, isInteractive, "Batch scripts may require interactive mode")
-	})
-
-	t.Run("recognizes PowerShell scripts as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("./script.ps1")
-
-		// Assert
-		assert.True(t, isInteractive, "PowerShell scripts may require interactive mode")
-	})
-}
-
 func TestIsShellScript(t *testing.T) {
 	t.Run("checks for script extension", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
@@ -529,6 +387,7 @@ func TestExecuteCommand(t *testing.T) {
 		m.addOutputRaw("line 1")
 		m.addOutputRaw("line 2")
 		m.shellInput.SetValue("clear")
+		m.inputText = "clear"
 
 		// Act
 		m2, _ := m.executeCommand()
@@ -541,6 +400,7 @@ func TestExecuteCommand(t *testing.T) {
 	t.Run("handles help command", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
 		m.shellInput.SetValue("help")
+		m.inputText = "help"
 		initialLen := len(m.output)
 
 		// Act
@@ -555,6 +415,7 @@ func TestExecuteCommand(t *testing.T) {
 		m := createTestModelForHelpers(t)
 		m.Config.UI.AllowModeSwitching = true
 		m.shellInput.SetValue(":mode")
+		m.inputText = ":mode"
 
 		// Act
 		m2, _ := m.executeCommand()
@@ -573,6 +434,7 @@ func TestExecuteCommand(t *testing.T) {
 		m.completionIndex = 1
 		m.beforeCompletion = "te"
 		m.shellInput.SetValue("clear")
+		m.inputText = "clear"
 
 		// Act
 		m2, _ := m.executeCommand()
@@ -586,7 +448,7 @@ func TestExecuteCommand(t *testing.T) {
 
 	t.Run("syncs input state on execute", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.inputText = "old text"
+		m.inputText = "clear"
 		m.cursorPos = 5
 		m.shellInput.SetValue("clear")
 
@@ -602,6 +464,7 @@ func TestExecuteCommand(t *testing.T) {
 		m := createTestModelForHelpers(t)
 		m.addOutputRaw("line 1")
 		m.shellInput.SetValue("cls")
+		m.inputText = "cls"
 
 		// Act
 		m2, _ := m.executeCommand()
@@ -614,6 +477,7 @@ func TestExecuteCommand(t *testing.T) {
 	t.Run("handles quit command same as exit", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
 		m.shellInput.SetValue("quit")
+		m.inputText = "quit"
 
 		// Act
 		m2, cmd := m.executeCommand()

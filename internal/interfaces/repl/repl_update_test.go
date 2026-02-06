@@ -5,7 +5,7 @@ import (
 
 	"github.com/grpmsoft/gosh/internal/domain/config"
 
-	"github.com/phoenix-tui/phoenix/tea/api"
+	"github.com/phoenix-tui/phoenix/tea"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -335,7 +335,7 @@ func TestUpdateWindowSize(t *testing.T) {
 		m.ready = false
 
 		// Act
-		msg := api.WindowSizeMsg{Width: 100, Height: 30}
+		msg := tea.WindowSizeMsg{Width: 100, Height: 30}
 		m2, _ := m.Update(msg)
 
 		// Assert
@@ -349,7 +349,7 @@ func TestUpdateWindowSize(t *testing.T) {
 		m.Config.UI.Mode = config.UIModeClassic
 
 		// Act
-		msg := api.WindowSizeMsg{Width: 80, Height: 24}
+		msg := tea.WindowSizeMsg{Width: 80, Height: 24}
 		m2, _ := m.Update(msg)
 
 		// Assert
@@ -362,7 +362,7 @@ func TestUpdateWindowSize(t *testing.T) {
 		m.Config.UI.Mode = config.UIModeCompact
 
 		// Act
-		msg := api.WindowSizeMsg{Width: 80, Height: 24}
+		msg := tea.WindowSizeMsg{Width: 80, Height: 24}
 		m2, _ := m.Update(msg)
 
 		// Assert
@@ -375,7 +375,7 @@ func TestUpdateWindowSize(t *testing.T) {
 		m.Config.UI.Mode = config.UIModeWarp
 
 		// Act
-		msg := api.WindowSizeMsg{Width: 80, Height: 24}
+		msg := tea.WindowSizeMsg{Width: 80, Height: 24}
 		m2, _ := m.Update(msg)
 
 		// Assert
@@ -389,7 +389,7 @@ func TestHandleKeyPress(t *testing.T) {
 		m := createTestModelForHelpers(t)
 
 		// Act
-		msg := api.KeyMsg{Type: api.KeyCtrlC} // Dedicated Ctrl+C type
+		msg := tea.KeyMsg{Type: tea.KeyCtrlC} // Dedicated Ctrl+C type
 		m2, cmd := m.handleKeyPress(msg)
 
 		// Assert
@@ -402,7 +402,7 @@ func TestHandleKeyPress(t *testing.T) {
 		m.shellInput.SetValue("")
 
 		// Act
-		msg := api.KeyMsg{Type: api.KeyRune, Rune: 'd', Ctrl: true} // Ctrl+D
+		msg := tea.KeyMsg{Type: tea.KeyRune, Rune: 'd', Ctrl: true} // Ctrl+D
 		m2, _ := m.handleKeyPress(msg)
 
 		// Assert
@@ -414,7 +414,7 @@ func TestHandleKeyPress(t *testing.T) {
 		m.shellInput.SetValue("some text")
 
 		// Act
-		msg := api.KeyMsg{Type: api.KeyRune, Rune: 'd', Ctrl: true} // Ctrl+D
+		msg := tea.KeyMsg{Type: tea.KeyRune, Rune: 'd', Ctrl: true} // Ctrl+D
 		m2, _ := m.handleKeyPress(msg)
 
 		// Assert
@@ -426,7 +426,7 @@ func TestHandleKeyPress(t *testing.T) {
 		m.showingHelp = false
 
 		// Act
-		msg := api.KeyMsg{Type: api.KeyF1}
+		msg := tea.KeyMsg{Type: tea.KeyF1}
 		m2, _ := m.handleKeyPress(msg)
 
 		// Assert
@@ -438,7 +438,7 @@ func TestHandleKeyPress(t *testing.T) {
 		m.showingHelp = true
 
 		// Act
-		msg := api.KeyMsg{Type: api.KeyEsc}
+		msg := tea.KeyMsg{Type: tea.KeyEsc}
 		m2, _ := m.handleKeyPress(msg)
 
 		// Assert
@@ -452,7 +452,7 @@ func TestHandleKeyPress(t *testing.T) {
 		initialLen := len(m.output)
 
 		// Act
-		msg := api.KeyMsg{Type: api.KeyRune, Rune: 'l', Ctrl: true} // Ctrl+L
+		msg := tea.KeyMsg{Type: tea.KeyRune, Rune: 'l', Ctrl: true} // Ctrl+L
 		m2, _ := m.handleKeyPress(msg)
 
 		// Assert
@@ -465,7 +465,7 @@ func TestHandleKeyPress(t *testing.T) {
 		m.autoScroll = true
 
 		// Act
-		msg := api.KeyMsg{Type: api.KeyPgUp}
+		msg := tea.KeyMsg{Type: tea.KeyPgUp}
 		m2, _ := m.handleKeyPress(msg)
 
 		// Assert
@@ -477,7 +477,7 @@ func TestHandleKeyPress(t *testing.T) {
 		m.autoScroll = false
 
 		// Act
-		msg := api.KeyMsg{Type: api.KeyRune, Rune: 'a'}
+		msg := tea.KeyMsg{Type: tea.KeyRune, Rune: 'a'}
 		m2, _ := m.handleKeyPress(msg)
 
 		// Assert
@@ -491,7 +491,7 @@ func TestHandleKeyPress(t *testing.T) {
 		m.completionIndex = 0
 
 		// Act
-		msg := api.KeyMsg{Type: api.KeyRune, Rune: 'a'}
+		msg := tea.KeyMsg{Type: tea.KeyRune, Rune: 'a'}
 		m2, _ := m.handleKeyPress(msg)
 
 		// Assert
@@ -561,7 +561,7 @@ func TestUpdateMouseMsg(t *testing.T) {
 		m.autoScroll = true
 
 		// Act
-		msg := api.MouseMsg{Action: api.MouseActionPress, Button: api.MouseButtonWheelUp}
+		msg := tea.MouseMsg{Action: tea.MouseActionPress, Button: tea.MouseButtonWheelUp}
 		m2, _ := m.Update(msg)
 
 		// Assert

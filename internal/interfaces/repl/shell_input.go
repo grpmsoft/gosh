@@ -3,8 +3,8 @@ package repl
 import (
 	"fmt"
 
-	input "github.com/phoenix-tui/phoenix/components/input/api"
-	"github.com/phoenix-tui/phoenix/tea/api"
+	input "github.com/phoenix-tui/phoenix/components/input"
+	"github.com/phoenix-tui/phoenix/tea"
 	"github.com/grpmsoft/gosh/internal/domain/history"
 )
 
@@ -118,14 +118,14 @@ func (s *ShellInput) SetCursorVisible(visible bool) {
 // - If unchanged (cursor movement): use cached highlighting
 //
 // Returns updated ShellInput and any commands to execute.
-func (s *ShellInput) Update(msg api.Msg) (*ShellInput, api.Cmd) {
+func (s *ShellInput) Update(msg tea.Msg) (*ShellInput, tea.Cmd) {
 	// Save old text for comparison
 	oldText := s.base.Value()
 
 	switch msg := msg.(type) {
-	case api.KeyMsg:
+	case tea.KeyMsg:
 		switch msg.Type {
-		case api.KeyUp:
+		case tea.KeyUp:
 			// History navigation (Up arrow - older commands)
 			if cmd, ok := s.historyNav.Backward(); ok {
 				s.SetValue(cmd)
@@ -136,7 +136,7 @@ func (s *ShellInput) Update(msg api.Msg) (*ShellInput, api.Cmd) {
 			// If no history or already at oldest, ignore
 			return s, nil
 
-		case api.KeyDown:
+		case tea.KeyDown:
 			// History navigation (Down arrow - newer commands)
 			if cmd, ok := s.historyNav.Forward(); ok {
 				s.SetValue(cmd)
@@ -153,7 +153,7 @@ func (s *ShellInput) Update(msg api.Msg) (*ShellInput, api.Cmd) {
 	}
 
 	// Delegate all other events to base TextInput
-	var cmd api.Cmd
+	var cmd tea.Cmd
 	s.base, cmd = s.base.Update(msg)
 
 	// CRITICAL: Check if text content changed

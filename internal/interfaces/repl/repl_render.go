@@ -8,7 +8,7 @@ import (
 
 	"github.com/grpmsoft/gosh/internal/domain/config"
 
-	"github.com/phoenix-tui/phoenix/style/api"
+	"github.com/phoenix-tui/phoenix/style"
 )
 
 // All methods in this file use Bubbletea's MVU (Model-View-Update) pattern,.
@@ -424,6 +424,13 @@ func (m Model) renderWithHelpOverlay() string {
 
 	verticalPadding := (m.height - len(lines)) / 2
 	horizontalPadding := (m.width - maxLen) / 2
+
+	if verticalPadding < 0 {
+		verticalPadding = 0
+	}
+	if horizontalPadding < 0 {
+		horizontalPadding = 0
+	}
 
 	var result strings.Builder
 	for i := 0; i < verticalPadding; i++ {

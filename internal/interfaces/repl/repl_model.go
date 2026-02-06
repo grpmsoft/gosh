@@ -20,11 +20,10 @@ import (
 	historyInfra "github.com/grpmsoft/gosh/internal/infrastructure/history"
 
 	"github.com/google/uuid"
-	viewport "github.com/phoenix-tui/phoenix/components/viewport/api"
-	"github.com/phoenix-tui/phoenix/style/api"
-	tea "github.com/phoenix-tui/phoenix/tea/api"
-	terminal "github.com/phoenix-tui/phoenix/terminal/api"
-	terminalinfra "github.com/phoenix-tui/phoenix/terminal/infrastructure"
+	viewport "github.com/phoenix-tui/phoenix/components/viewport"
+	"github.com/phoenix-tui/phoenix/style"
+	tea "github.com/phoenix-tui/phoenix/tea"
+	"github.com/phoenix-tui/phoenix/terminal"
 )
 
 // Global program reference for Run() compatibility
@@ -226,7 +225,7 @@ func NewBubbleteaREPL(
 
 	// Create Phoenix Terminal with auto-detection (Windows Console API or ANSI fallback)
 	// Week 16: This gives GoSh PowerShell-level performance on Windows! ⚡
-	term := terminalinfra.NewTerminal()
+	term := terminal.New()
 
 	m := &Model{
 		shellInput:       shellInput,
@@ -304,13 +303,13 @@ func NewBubbleteaREPL(
 }
 
 // SetProgram sets the program reference for ExecProcess.
-// MUST be called BEFORE api.New() so the copy gets the reference.
+// MUST be called BEFORE tea.New() so the copy gets the reference.
 func (m *Model) SetProgram(p *tea.Program[Model]) {
 	m.program = p
 }
 
 // SetProgramMsg creates a message to inject program reference into Model.
-// DEPRECATED: Use SetProgram() instead (called before api.New).
+// DEPRECATED: Use SetProgram() instead (called before tea.New).
 func SetProgramMsg(p *tea.Program[Model]) setProgramMsg {
 	return setProgramMsg{program: p}
 }

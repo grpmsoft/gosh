@@ -28,19 +28,35 @@ func (m Model) View() string {
 
 	// If showing help overlay - render it on top of main UI
 	if m.showingHelp {
+		if m.Config.UI.Mode != config.UIModeClassic {
+			return "\033[H" + m.renderWithHelpOverlay() + "\033[J"
+		}
 		return m.renderWithHelpOverlay()
 	}
 
-	// Choose rendering based on UI mode
+	// Choose rendering based on UI mode.
+	// Classic mode uses native terminal scrolling (no alt screen).
+	// All other modes use alt screen and need explicit cursor positioning:
+	//   \033[H  = cursor home (0,0) — start rendering from top-left
+	//   \033[J  = clear from cursor to end — remove stale content from previous frame
+	// Phoenix's renderer is append-only (no built-in full-screen redraw).
 	switch m.Config.UI.Mode {
 	case config.UIModeClassic:
 		return m.renderClassicMode()
 	case config.UIModeWarp:
-		return m.renderWarpMode()
+		// Hide cursor → render → reposition → show cursor (flicker-free redraw).
+		content := "\033[?25l\033[H" + m.renderWarpMode() + "\033[J"
+		if !m.executing {
+			promptLen := countVisibleChars(m.renderPromptForHistoryANSI())
+			cursorCol := promptLen + m.cursorPos
+			content += fmt.Sprintf("\033[H\033[%dC", cursorCol)
+		}
+		content += "\033[?25h"
+		return content
 	case config.UIModeCompact:
-		return m.renderCompactMode()
+		return "\033[?25l\033[H" + m.renderCompactMode() + "\033[J\033[?25h"
 	case config.UIModeChat:
-		return m.renderChatMode()
+		return "\033[?25l\033[H" + m.renderChatMode() + "\033[J\033[?25h"
 	default:
 		return m.renderClassicMode() // Fallback.
 	}
@@ -146,14 +162,23 @@ func (m Model) renderWarpMode() string {
 	// Hints.
 	b.WriteString(m.renderHints())
 
+	// Clear remaining old chars on prompt line (input shrinks after Enter).
+	b.WriteString("\033[K")
+
 	b.WriteString("\n")
 
 	// Separator.
 	b.WriteString(strings.Repeat("─", m.width))
-	b.WriteString("\n")
+	b.WriteString("\033[K\n")
 
 	// Output history at BOTTOM.
-	b.WriteString(m.viewport.View())
+	// Add \033[K after each viewport line to clear old content.
+	vpContent := m.viewport.View()
+	if vpContent != "" {
+		vpContent = strings.ReplaceAll(vpContent, "\n", "\033[K\n")
+		vpContent += "\033[K"
+	}
+	b.WriteString(vpContent)
 
 	return b.String()
 }

@@ -37,6 +37,7 @@ func (a *autoFlushWriter) Write(p []byte) (n int, err error) {
 func main() {
 	// Parse command line flags
 	commandFlag := flag.String("c", "", "Execute command and exit (non-interactive mode)")
+	modeFlag := flag.String("mode", "", "UI mode: classic, warp, compact, chat")
 	flag.Parse()
 
 	// Setup
@@ -49,39 +50,44 @@ func main() {
 		os.Exit(exitCode)
 	}
 
-	// Interactive mode: Bootstrap REPL
-	model, err := bootstrapREPL(logger, ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create REPL: %v\n", err)
-		os.Exit(1)
+	// Validate --mode flag
+	modeOverride := strings.ToLower(strings.TrimSpace(*modeFlag))
+	if modeOverride != "" {
+		switch modeOverride {
+		case "classic", "warp", "compact", "chat":
+			// valid
+		default:
+			fmt.Fprintf(os.Stderr, "Unknown mode: %s (available: classic, warp, compact, chat)\n", *modeFlag)
+			os.Exit(1)
+		}
 	}
 
 	// Auto-flush stdout after each write.
 	// In raw mode stdout is buffered and Phoenix doesn't flush.
 	stdout := newAutoFlushWriter(os.Stdout)
 
-	// Phoenix TUI options
-	// Classic mode: NO alt screen (bash-like - output stays in terminal)
-	// Other modes: WITH alt screen (TUI experience)
-	var opts []tea.Option[repl.Model]
-	if model.Config.UI.Mode != "classic" {
-		opts = append(opts,
-			tea.WithAltScreen[repl.Model](),
-			tea.WithMouseAllMotion[repl.Model](),
-		)
+	// Bootstrap REPL
+	model, err := bootstrapREPL(logger, ctx, modeOverride)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create REPL: %v\n", err)
+		os.Exit(1)
 	}
+
+	// Phoenix TUI options — NEVER use WithAltScreen.
+	// Alt screen is managed manually by the Model (enter/exit via ANSI sequences).
+	// This allows runtime mode switching without restarting the Program.
+	var opts []tea.Option[repl.Model]
 	opts = append(opts,
+		tea.WithInput[repl.Model](os.Stdin),
 		tea.WithOutput[repl.Model](stdout),
 	)
 
 	p := tea.New(*model, opts...)
 
 	// Set global program reference for ExecProcess compatibility
-	// HACK: This allows execInteractiveCommand to access Program with Run()
 	repl.SetGlobalProgram(p)
 
-	// Run BLOCKS main thread - this is CRITICAL for ExecProcess!
-	// ExecProcess needs blocking event loop to properly suspend stdin reading
+	// Run BLOCKS main thread (single program, no restart loop)
 	if err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)
 		os.Exit(1)

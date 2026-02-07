@@ -139,6 +139,9 @@ func (m Model) executeCommand() (Model, tea.Cmd) {
 
 	// Built-in exit command
 	if value == "exit" || value == "quit" {
+		if m.Config.UI.Mode != config.UIModeClassic {
+			fmt.Print("\033[?1049l") // Exit alt screen before quit
+		}
 		m.quitting = true
 		return m, tea.Quit()
 	}
@@ -198,12 +201,14 @@ func (m Model) executeCommand() (Model, tea.Cmd) {
 		return m, m.execCommandAsync(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 	}
 
-	// All external commands → ExecProcess (direct TTY like bash)
-	// Works for both:
-	// - Non-interactive (ls, ps, echo) - output captured and shown
-	// - Interactive (vim, claude, ssh, python) - get keyboard access
+	// Route external commands based on UI mode:
+	// - Classic mode: ExecProcessWithTTY for direct TTY access (bash-like behavior)
+	// - Non-classic modes: async capture for viewport display (no Suspend/Resume disruption)
 	m.executing = true
-	return m, m.execInteractiveCommand(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
+	if m.Config.UI.Mode == config.UIModeClassic {
+		return m, m.execInteractiveCommand(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
+	}
+	return m, m.execCommandAsync(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 }
 
 // showHelp shows help (text version for help command).

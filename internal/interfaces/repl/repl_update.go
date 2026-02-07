@@ -79,7 +79,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			viewportHeight = 1
 		}
 		// Phoenix Viewport uses fluent SetSize() API
-		m.viewport = m.viewport.SetSize(msg.Width, viewportHeight)
+		// Width set to large value — viewport's truncateLine() counts ANSI escape
+		// bytes as visible width, garbling colors. Terminal wraps natively.
+		m.viewport = m.viewport.SetSize(10000, viewportHeight)
 		m.updateViewportContent()
 
 		m.ready = true
@@ -213,6 +215,9 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "ctrl+c":
+		if m.Config.UI.Mode != config.UIModeClassic {
+			fmt.Print("\033[?1049l") // Exit alt screen before quit
+		}
 		m.quitting = true
 		return m, tea.Quit()
 
@@ -225,6 +230,9 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (Model, tea.Cmd) {
 			isEmpty = m.shellInput.Value() == ""
 		}
 		if isEmpty {
+			if m.Config.UI.Mode != config.UIModeClassic {
+				fmt.Print("\033[?1049l") // Exit alt screen before quit
+			}
 			m.quitting = true
 			return m, tea.Quit()
 		}
@@ -380,7 +388,8 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
-// switchUIMode switches UI mode.
+// switchUIMode switches UI mode with manual alt screen management.
+// No Program restart needed — alt screen is toggled via ANSI escape sequences.
 func (m Model) switchUIMode(key string) (Model, tea.Cmd) {
 	var newMode config.UIMode
 
@@ -402,12 +411,24 @@ func (m Model) switchUIMode(key string) (Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Switch mode.
 	oldMode := m.Config.UI.Mode
+	wasClassic := oldMode == config.UIModeClassic
+	isClassic := newMode == config.UIModeClassic
+
+	// Toggle alt screen when crossing classic ↔ non-classic boundary.
+	if wasClassic && !isClassic {
+		// Classic → non-classic: enter alt screen
+		fmt.Print("\033[?1049h")
+		m.altScreenActive = true
+	} else if !wasClassic && isClassic {
+		// Non-classic → classic: exit alt screen (restores normal terminal buffer)
+		fmt.Print("\033[?1049l")
+		m.altScreenActive = false
+	}
+
 	m.Config.UI.Mode = newMode
 
 	// Recalculate viewport height for new mode.
-	// Classic: prompt inside, full height; Others: prompt outside, reserve space.
 	var viewportHeight int
 	switch newMode {
 	case config.UIModeClassic:
@@ -421,8 +442,7 @@ func (m Model) switchUIMode(key string) (Model, tea.Cmd) {
 	if viewportHeight < 1 {
 		viewportHeight = 1
 	}
-	// Phoenix Viewport uses fluent SetSize() API
-	m.viewport = m.viewport.SetSize(m.width, viewportHeight)
+	m.viewport = m.viewport.SetSize(10000, viewportHeight)
 
 	// Log switch.
 	m.logger.Info("UI mode switched", "from", oldMode, "to", newMode)
@@ -430,11 +450,8 @@ func (m Model) switchUIMode(key string) (Model, tea.Cmd) {
 	// Show mode switch notification.
 	notification := fmt.Sprintf("\033[90m[UI Mode: %s]\033[0m", newMode)
 	if newMode == config.UIModeClassic {
-		// Classic mode: print notification directly to stdout.
 		fmt.Println(notification)
 	} else {
-		// Other modes: add to viewport buffer.
-		// FollowMode handles auto-scroll in render functions
 		m.addOutputRaw(notification)
 		m.updateViewportContent()
 	}
@@ -495,12 +512,22 @@ func (m Model) handleModeCommand(commandLine string) (Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Switch mode.
+	// Toggle alt screen when crossing classic ↔ non-classic boundary.
+	wasClassic := m.Config.UI.Mode == config.UIModeClassic
+	isClassic := newMode == config.UIModeClassic
+
+	if wasClassic && !isClassic {
+		fmt.Print("\033[?1049h") // Enter alt screen
+		m.altScreenActive = true
+	} else if !wasClassic && isClassic {
+		fmt.Print("\033[?1049l") // Exit alt screen
+		m.altScreenActive = false
+	}
+
 	oldMode := m.Config.UI.Mode
 	m.Config.UI.Mode = newMode
 
 	// Recalculate viewport height for new mode.
-	// Classic: prompt inside, full height; Others: prompt outside, reserve space.
 	var viewportHeight int
 	switch newMode {
 	case config.UIModeClassic:
@@ -514,8 +541,7 @@ func (m Model) handleModeCommand(commandLine string) (Model, tea.Cmd) {
 	if viewportHeight < 1 {
 		viewportHeight = 1
 	}
-	// Phoenix Viewport uses fluent SetSize() API
-	m.viewport = m.viewport.SetSize(m.width, viewportHeight)
+	m.viewport = m.viewport.SetSize(10000, viewportHeight)
 
 	// Log switch.
 	m.logger.Info("UI mode switched via :mode command", "from", oldMode, "to", newMode)
@@ -527,7 +553,6 @@ func (m Model) handleModeCommand(commandLine string) (Model, tea.Cmd) {
 		fmt.Println(notification)
 	} else {
 		// Other modes: add to viewport buffer.
-		// FollowMode handles auto-scroll in render functions
 		m.addOutputRaw(notification)
 		m.updateViewportContent()
 	}

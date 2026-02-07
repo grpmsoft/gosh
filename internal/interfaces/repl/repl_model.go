@@ -47,6 +47,13 @@ func GetGlobalProgram() *tea.Program[Model] {
 	return globalProgram
 }
 
+// RestoreAliases restores aliases from a map.
+func (m *Model) RestoreAliases(aliases map[string]string) {
+	for name, cmd := range aliases {
+		_ = m.currentSession.SetAlias(name, cmd)
+	}
+}
+
 // Model represents REPL state (Elm Architecture).
 //
 // IMPORTANT: Bubbletea's MVU (Model-View-Update) pattern requires value receivers.
@@ -111,6 +118,9 @@ type Model struct {
 
 	// Help overlay
 	showingHelp bool // Help overlay display flag
+
+	// Alt screen (managed manually, NOT by Phoenix — allows runtime mode switching)
+	altScreenActive bool // True when in alternate screen buffer
 
 	// Cursor blinking
 	cursorVisible bool // Cursor blink state (toggles every 500ms)
@@ -178,7 +188,10 @@ func NewBubbleteaREPL(
 	styles := makeProfessionalStyles()
 
 	// Create viewport for scrolling (Phoenix Viewport)
-	vp := viewport.New(80, 24).MouseEnabled(true)
+	// Width set to large value to prevent ANSI truncation — Phoenix viewport's
+	// truncateLine() counts escape sequence bytes as visible width, garbling colors.
+	// Terminal handles visual line wrapping natively (ANSI codes are zero-width).
+	vp := viewport.New(10000, 24).MouseEnabled(true)
 	// Phoenix Viewport's Update() doesn't interfere with parent Model.Update(),
 	// so Up/Down keys work for command history without explicit disabling
 
@@ -316,16 +329,19 @@ func SetProgramMsg(p *tea.Program[Model]) setProgramMsg {
 }
 
 // Init initializes the model (Elm Architecture).
+// Called by Phoenix Run() AFTER EnterRawMode() and BEFORE first renderView().
 //
 //nolint:gocritic // hugeParam: Bubbletea MVU requires value receiver
 func (m Model) Init() tea.Cmd {
-	// No tick needed - terminal cursor blinks automatically!
-	// Terminal cursor is shown and set to blinking bar style in main.go:
-	//   \033[?25h - Show cursor
-	//   \033[5 q  - Blinking bar style (PowerShell standard)
-	//
-	// Phoenix-rendered cursor is disabled via ShowCursor(false)
-	// No need for manual tick/toggle - terminal handles it!
+	// Enter alt screen for non-classic modes.
+	// Written directly to stdout (not through Phoenix — we manage alt screen ourselves).
+	// Init() runs after EnterRawMode(), so the terminal processes escape sequences.
+	if m.Config.UI.Mode != config.UIModeClassic {
+		fmt.Print("\033[?1049h") // Enter alternate screen buffer
+		// altScreenActive is set in the Model via pointer — but MVU copies Model.
+		// We track it via Config.UI.Mode instead (non-classic == alt screen active).
+	}
+
 	return nil
 }
 

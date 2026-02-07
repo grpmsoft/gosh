@@ -8,6 +8,7 @@ import (
 
 	"github.com/grpmsoft/gosh/internal/application/execute"
 	appsession "github.com/grpmsoft/gosh/internal/application/session"
+	"github.com/grpmsoft/gosh/internal/domain/config"
 	"github.com/grpmsoft/gosh/internal/infrastructure/builtin"
 	configLoader "github.com/grpmsoft/gosh/internal/infrastructure/config"
 	"github.com/grpmsoft/gosh/internal/infrastructure/executor"
@@ -28,12 +29,27 @@ func setupLogger() *slog.Logger {
 }
 
 // bootstrapREPL creates and configures REPL with dependencies.
-func bootstrapREPL(logger *slog.Logger, ctx context.Context) (*repl.Model, error) {
+// modeOverride overrides UI mode from --mode CLI flag (empty = use config default).
+func bootstrapREPL(logger *slog.Logger, ctx context.Context, modeOverride string) (*repl.Model, error) {
 	// Load configuration
 	loader := configLoader.NewLoader()
 	cfg, err := loader.Load()
 	if err != nil {
 		logger.Warn("Failed to load config, using defaults", "error", err)
+	}
+
+	// Override UI mode from CLI flag (before creating model — affects welcome messages)
+	if modeOverride != "" {
+		switch modeOverride {
+		case "classic":
+			cfg.UI.Mode = config.UIModeClassic
+		case "warp":
+			cfg.UI.Mode = config.UIModeWarp
+		case "compact":
+			cfg.UI.Mode = config.UIModeCompact
+		case "chat":
+			cfg.UI.Mode = config.UIModeChat
+		}
 	}
 
 	// Create dependencies (Dependency Injection)

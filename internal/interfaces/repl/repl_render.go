@@ -54,9 +54,23 @@ func (m Model) View() string {
 		content += "\033[?25h"
 		return content
 	case config.UIModeCompact:
-		return "\033[?25l\033[H" + m.renderCompactMode() + "\033[J\033[?25h"
+		// Compact: viewport at top, "$ " prompt at last rendered line.
+		// After \033[J cursor stays on the prompt line — just reposition column.
+		content := "\033[?25l\033[H" + m.renderCompactMode() + "\033[J"
+		if !m.executing {
+			content += fmt.Sprintf("\r\033[%dC", 2+m.cursorPos) // "$ " = 2 chars
+		}
+		content += "\033[?25h"
+		return content
 	case config.UIModeChat:
-		return "\033[?25l\033[H" + m.renderChatMode() + "\033[J\033[?25h"
+		// Chat: viewport at top, separator, "→ " prompt at last rendered line.
+		// After \033[J cursor stays on the prompt line — just reposition column.
+		content := "\033[?25l\033[H" + m.renderChatMode() + "\033[J"
+		if !m.executing {
+			content += fmt.Sprintf("\r\033[%dC", 2+m.cursorPos) // "→ " = 2 chars
+		}
+		content += "\033[?25h"
+		return content
 	default:
 		return m.renderClassicMode() // Fallback.
 	}
@@ -192,7 +206,13 @@ func (m Model) renderCompactMode() string {
 	var b strings.Builder
 
 	// Output history at TOP.
-	b.WriteString(m.viewport.View())
+	// Add \033[K after each line to clear stale content from previous render.
+	vpContent := m.viewport.View()
+	if vpContent != "" {
+		vpContent = strings.ReplaceAll(vpContent, "\n", "\033[K\n")
+		vpContent += "\033[K"
+	}
+	b.WriteString(vpContent)
 	b.WriteString("\n")
 
 	// Executing indicator (compact) or prompt.
@@ -213,19 +233,50 @@ func (m Model) renderCompactMode() string {
 
 // renderChatMode renders chat mode (Telegram/ChatGPT-like).
 // Input fixed at bottom, history scrolls at top.
+// Layout: messages grow from top, prompt always pinned at bottom (like Telegram).
 func (m Model) renderChatMode() string {
+	// Get actual terminal size — m.height may lag behind real terminal dimensions.
+	termHeight := m.height
+	termWidth := m.width
+	if w, h, err := m.terminal.Size(); err == nil && h > 0 {
+		termHeight = h
+		termWidth = w
+	}
+
+	// Resize viewport to match actual terminal height (not stale m.height).
+	viewportHeight := termHeight - 2 // reserve: separator + prompt
+	if viewportHeight < 1 {
+		viewportHeight = 1
+	}
+	m.viewport = m.viewport.SetSize(10000, viewportHeight)
+
 	// Update viewport content (Phoenix fluent API with FollowMode)
 	m.viewport = m.viewport.FollowMode(m.autoScroll).SetContent(strings.Join(m.output, "\n"))
 
 	var b strings.Builder
 
 	// Output history at TOP (main screen area).
-	b.WriteString(m.viewport.View())
+	// Add \033[K after each line to clear stale content from previous render.
+	vpContent := m.viewport.View()
+	if vpContent != "" {
+		vpContent = strings.ReplaceAll(vpContent, "\n", "\033[K\n")
+		vpContent += "\033[K"
+	}
+	b.WriteString(vpContent)
+
+	// Pad viewport to fill allocated height (prompt always at bottom like Telegram).
+	renderedLines := 0
+	if vpContent != "" {
+		renderedLines = strings.Count(vpContent, "\n") + 1
+	}
+	for i := renderedLines; i < viewportHeight; i++ {
+		b.WriteString("\n\033[K")
+	}
 	b.WriteString("\n")
 
 	// Separator.
-	b.WriteString(strings.Repeat("─", m.width))
-	b.WriteString("\n")
+	b.WriteString(strings.Repeat("─", termWidth))
+	b.WriteString("\033[K\n")
 
 	// Executing indicator or prompt.
 	if m.executing {

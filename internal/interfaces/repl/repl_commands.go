@@ -450,34 +450,11 @@ func (m *Model) isInteractiveCommand(cmdName string) bool {
 		}
 	}
 
-	// List of known interactive commands
-	interactiveCommands := map[string]bool{
-		"vi":     true,
-		"vim":    true,
-		"nvim":   true,
-		"nano":   true,
-		"emacs":  true,
-		"less":   true,
-		"more":   true,
-		"top":    true,
-		"htop":   true,
-		"ssh":    true,
-		"telnet": true,
-		"ftp":    true,
-		"sftp":   true,
-		"python": true, // Python REPL
-		"node":   true, // Node.js REPL
-		"irb":    true, // Ruby REPL
-		"psql":   true, // PostgreSQL
-		"mysql":  true, // MySQL
-		"mongo":  true, // MongoDB
-	}
-
 	// Check base command name (without path)
 	baseName := filepath.Base(cmdName)
 	baseName = strings.TrimSuffix(baseName, filepath.Ext(baseName))
 
-	return interactiveCommands[baseName]
+	return !m.isBuiltinCommand(baseName)
 }
 
 // executeShellScriptNative executes .sh/.bash script natively via mvdan.cc/sh.

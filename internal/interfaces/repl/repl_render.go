@@ -65,6 +65,7 @@ func (m Model) renderClassicMode() string {
 	// When executing, simply don't render anything - command output will appear naturally.
 	if !m.executing {
 		// Normal prompt with input.
+		b.WriteString("\r\033[2K")
 		b.WriteString(m.renderPromptForHistoryANSI())
 		b.WriteString(m.renderInputWithCursor())
 		b.WriteString(m.renderHints())

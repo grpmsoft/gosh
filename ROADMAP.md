@@ -44,13 +44,32 @@ This document outlines the planned development roadmap for GoSh, organized by re
 
 ---
 
-## 🎯 Next: v0.1.0-rc.1 (Q1 2025)
+## 🔄 In Progress: v0.1.0-beta.8 (Phoenix TUI Integration)
+
+**Status**: Active Development
+**Focus**: Phoenix TUI v0.2.1 Migration + Interactive Commands
+
+### What's New
+- ✅ **Phoenix TUI v0.2.2**: Complete migration from Charm Bubbletea/Lipgloss
+  - 10x performance (differential rendering, 29,000 FPS)
+  - Perfect Unicode support (emoji, CJK width)
+  - TTY Control System for interactive commands
+- ✅ **Interactive Commands**: Universal ExecProcessWithTTY
+  - All external commands run with proper TTY control (like bash)
+  - vim, ssh, claude, python REPL — all work natively
+  - Pipe-based CancelableReader (MSYS/mintty compatible)
+- ✅ **Classic Mode**: No alt screen (true bash-like behavior)
+- ✅ **Dependency cleanup**: Removed go.mod replace directives
+
+---
+
+## 🎯 Next: v0.1.0-rc.1
 
 **Status**: Planning
 **Focus**: Community Feedback & Bug Fixes
 
 ### Goals
-- [ ] Gather and address community feedback from beta.4
+- [ ] Gather and address community feedback
 - [ ] Fix critical bugs reported by users
 - [ ] Performance optimizations based on real-world usage
 - [ ] Final polish before stable release
@@ -64,7 +83,7 @@ This document outlines the planned development roadmap for GoSh, organized by re
 
 ---
 
-## 🚀 Target: v0.1.0 Stable (Q2 2025)
+## 🚀 Target: v0.1.0 Stable
 
 **Status**: Future
 **Focus**: Production-Ready Stable Release
@@ -84,7 +103,7 @@ This document outlines the planned development roadmap for GoSh, organized by re
 
 ---
 
-## 🌟 Future: v0.2.0 (Q3 2025)
+## 🌟 Future: v0.2.0
 
 **Status**: Planned
 **Focus**: Enhanced User Experience
@@ -103,7 +122,7 @@ This document outlines the planned development roadmap for GoSh, organized by re
 
 ---
 
-## 🔮 Long-Term Vision (2026+)
+## 🔮 Long-Term Vision
 
 ### Potential Features (Under Research)
 
@@ -180,7 +199,7 @@ This roadmap is a living document and will be updated based on:
 - Resource availability and priorities
 - Real-world usage patterns
 
-**Last Updated**: 2025-10-14
+**Last Updated**: 2026-02-06
 **Next Review**: After v0.1.0-rc.1 release
 
 ---

@@ -190,148 +190,6 @@ func TestExtractCommandName(t *testing.T) {
 	})
 }
 
-func TestIsInteractiveCommand(t *testing.T) {
-	t.Run("recognizes vim as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("vim")
-
-		// Assert
-		assert.True(t, isInteractive)
-	})
-
-	t.Run("recognizes nano as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("nano")
-
-		// Assert
-		assert.True(t, isInteractive)
-	})
-
-	t.Run("recognizes ssh as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("ssh")
-
-		// Assert
-		assert.True(t, isInteractive)
-	})
-
-	t.Run("recognizes less as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("less")
-
-		// Assert
-		assert.True(t, isInteractive)
-	})
-
-	t.Run("recognizes top as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("top")
-
-		// Assert
-		assert.True(t, isInteractive)
-	})
-
-	t.Run("recognizes htop as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("htop")
-
-		// Assert
-		assert.True(t, isInteractive)
-	})
-
-	t.Run("recognizes python REPL as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("python")
-
-		// Assert
-		assert.True(t, isInteractive, "Python REPL should be interactive")
-	})
-
-	t.Run("recognizes node REPL as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("node")
-
-		// Assert
-		assert.True(t, isInteractive, "Node.js REPL should be interactive")
-	})
-
-	t.Run("recognizes psql as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("psql")
-
-		// Assert
-		assert.True(t, isInteractive, "PostgreSQL client should be interactive")
-	})
-
-	t.Run("non-interactive command returns false", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("ls")
-
-		// Assert
-		assert.False(t, isInteractive)
-	})
-
-	t.Run("empty command returns false", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("")
-
-		// Assert
-		assert.False(t, isInteractive)
-	})
-
-	t.Run("recognizes shell scripts as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("./script.sh")
-
-		// Assert
-		assert.True(t, isInteractive, "Shell scripts may require interactive mode")
-	})
-
-	t.Run("recognizes batch scripts as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("./script.bat")
-
-		// Assert
-		assert.True(t, isInteractive, "Batch scripts may require interactive mode")
-	})
-
-	t.Run("recognizes PowerShell scripts as interactive", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-
-		// Act
-		isInteractive := m.isInteractiveCommand("./script.ps1")
-
-		// Assert
-		assert.True(t, isInteractive, "PowerShell scripts may require interactive mode")
-	})
-}
-
 func TestIsShellScript(t *testing.T) {
 	t.Run("checks for script extension", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
@@ -486,7 +344,7 @@ func TestShowHelp(t *testing.T) {
 
 	t.Run("help shows UI mode switching when enabled", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = true
+		m.Config.UI.AllowModeSwitching = true
 
 		// Act
 		m.showHelp()
@@ -515,70 +373,59 @@ func TestShowHelp(t *testing.T) {
 func TestExecuteCommand(t *testing.T) {
 	t.Run("handles empty command", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.textarea.SetValue("")
+		m.shellInput.SetValue("")
 
 		// Act
-		updatedModel, _ := m.executeCommand()
-		m2 := updatedModel.(Model)
+		m2, _ := m.executeCommand()
 
-		// Assert - should clear textarea
-		assert.Empty(t, m2.textarea.Value())
+		// Assert - should clear shellInput
+		assert.Empty(t, m2.shellInput.Value())
 	})
 
 	t.Run("handles clear command", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
 		m.addOutputRaw("line 1")
 		m.addOutputRaw("line 2")
-		m.textarea.SetValue("clear")
+		m.shellInput.SetValue("clear")
+		m.inputText = "clear"
 
 		// Act
-		updatedModel, _ := m.executeCommand()
-		m2 := updatedModel.(Model)
+		m2, _ := m.executeCommand()
 
 		// Assert
-		assert.Empty(t, m2.textarea.Value())
+		assert.Empty(t, m2.shellInput.Value())
 		// Output should be cleared
 	})
 
 	t.Run("handles help command", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.textarea.SetValue("help")
+		m.shellInput.SetValue("help")
+		m.inputText = "help"
 		initialLen := len(m.output)
 
 		// Act
-		updatedModel, _ := m.executeCommand()
-		m2 := updatedModel.(Model)
+		m2, _ := m.executeCommand()
 
 		// Assert
-		assert.Empty(t, m2.textarea.Value())
+		assert.Empty(t, m2.shellInput.Value())
 		assert.Greater(t, len(m2.output), initialLen)
 	})
 
 	t.Run("handles mode command", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.config.UI.AllowModeSwitching = true
-		m.textarea.SetValue(":mode")
+		m.Config.UI.AllowModeSwitching = true
+		m.shellInput.SetValue(":mode")
+		m.inputText = ":mode"
 
 		// Act
-		updatedModel, _ := m.executeCommand()
-		m2 := updatedModel.(Model)
+		m2, _ := m.executeCommand()
 
 		// Assert
-		assert.Empty(t, m2.textarea.Value())
+		assert.Empty(t, m2.shellInput.Value())
 	})
 
-	t.Run("resets textarea height on execute", func(t *testing.T) {
-		m := createTestModelForHelpers(t)
-		m.textarea.SetHeight(3)
-		m.textarea.SetValue("clear")
-
-		// Act
-		updatedModel, _ := m.executeCommand()
-		m2 := updatedModel.(Model)
-
-		// Assert
-		assert.Equal(t, 1, m2.textarea.Height(), "Textarea height should reset to 1 after execution")
-	})
+	// NOTE: Height test removed - Phoenix ShellInput doesn't have Height() method
+	// Multiline is handled automatically via Alt+Enter
 
 	t.Run("clears completion state on execute", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
@@ -586,11 +433,11 @@ func TestExecuteCommand(t *testing.T) {
 		m.completions = []string{"test1", "test2"}
 		m.completionIndex = 1
 		m.beforeCompletion = "te"
-		m.textarea.SetValue("clear")
+		m.shellInput.SetValue("clear")
+		m.inputText = "clear"
 
 		// Act
-		updatedModel, _ := m.executeCommand()
-		m2 := updatedModel.(Model)
+		m2, _ := m.executeCommand()
 
 		// Assert
 		assert.False(t, m2.completionActive, "Completion should be cleared")
@@ -601,13 +448,12 @@ func TestExecuteCommand(t *testing.T) {
 
 	t.Run("syncs input state on execute", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.inputText = "old text"
+		m.inputText = "clear"
 		m.cursorPos = 5
-		m.textarea.SetValue("clear")
+		m.shellInput.SetValue("clear")
 
 		// Act
-		updatedModel, _ := m.executeCommand()
-		m2 := updatedModel.(Model)
+		m2, _ := m.executeCommand()
 
 		// Assert
 		assert.Empty(t, m2.inputText, "Input text should be cleared")
@@ -617,24 +463,24 @@ func TestExecuteCommand(t *testing.T) {
 	t.Run("handles cls command same as clear", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
 		m.addOutputRaw("line 1")
-		m.textarea.SetValue("cls")
+		m.shellInput.SetValue("cls")
+		m.inputText = "cls"
 
 		// Act
-		updatedModel, _ := m.executeCommand()
-		m2 := updatedModel.(Model)
+		m2, _ := m.executeCommand()
 
 		// Assert
-		assert.Empty(t, m2.textarea.Value())
+		assert.Empty(t, m2.shellInput.Value())
 		// Output should be cleared (same as clear command)
 	})
 
 	t.Run("handles quit command same as exit", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
-		m.textarea.SetValue("quit")
+		m.shellInput.SetValue("quit")
+		m.inputText = "quit"
 
 		// Act
-		updatedModel, cmd := m.executeCommand()
-		m2 := updatedModel.(Model)
+		m2, cmd := m.executeCommand()
 
 		// Assert
 		assert.True(t, m2.quitting, "Should set quitting flag")

@@ -1,11 +1,13 @@
 package repl
 
 import (
+	"sync"
 	"context"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/grpmsoft/gosh/internal/application/execute"
@@ -17,13 +19,40 @@ import (
 	"github.com/grpmsoft/gosh/internal/infrastructure/executor"
 	historyInfra "github.com/grpmsoft/gosh/internal/infrastructure/history"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
+	viewport "github.com/phoenix-tui/phoenix/components/viewport"
+	"github.com/phoenix-tui/phoenix/style"
+	tea "github.com/phoenix-tui/phoenix/tea"
+	"github.com/phoenix-tui/phoenix/terminal"
 )
+
+// Global program reference for Run() compatibility
+// TEMPORARY: Until Phoenix provides better mechanism for program injection
+var (
+	globalProgramMu sync.RWMutex
+	globalProgram   *tea.Program[Model]
+)
+
+// SetGlobalProgram sets the global program reference (for Run() compatibility)
+func SetGlobalProgram(p *tea.Program[Model]) {
+	globalProgramMu.Lock()
+	defer globalProgramMu.Unlock()
+	globalProgram = p
+}
+
+// GetGlobalProgram gets the global program reference
+func GetGlobalProgram() *tea.Program[Model] {
+	globalProgramMu.RLock()
+	defer globalProgramMu.RUnlock()
+	return globalProgram
+}
+
+// RestoreAliases restores aliases from a map.
+func (m *Model) RestoreAliases(aliases map[string]string) {
+	for name, cmd := range aliases {
+		_ = m.currentSession.SetAlias(name, cmd)
+	}
+}
 
 // Model represents REPL state (Elm Architecture).
 //
@@ -40,8 +69,11 @@ import (
 //nolint:gocritic // hugeParam: Bubbletea MVU architecture requires value receivers
 type Model struct {
 	// Core components
-	textarea         textarea.Model
-	viewport         viewport.Model
+	shellInput       *ShellInput         // Phoenix-based input with history navigation (single-line)
+	shellTextArea    *ShellTextArea      // Phoenix-based textarea for multiline editing
+	viewport         *viewport.Viewport  // Phoenix-based viewport for scrolling
+	terminal         terminal.Terminal   // Phoenix Terminal (10x faster on Windows!) ⭐
+	program          *tea.Program[Model] // Program reference for ExecProcess (interactive commands: vim, ssh, claude)
 	sessionManager   *appsession.Manager
 	executeUseCase   *execute.UseCase
 	pipelineExecutor *executor.OSPipelineExecutor
@@ -49,7 +81,7 @@ type Model struct {
 	currentSession   *session.Session
 	logger           *slog.Logger
 	ctx              context.Context
-	config           *config.Config // Configuration
+	Config           *config.Config // Configuration (exported for access in main.go)
 
 	// State
 	output           []string                            // Command output (scrolls up like in terminal)
@@ -67,9 +99,6 @@ type Model struct {
 	gitBranch        string
 	gitDirty         bool
 
-	// Spinner for execution
-	executingSpinner spinner.Model
-
 	// Tab completion
 	completions      []string
 	completionIndex  int
@@ -77,8 +106,12 @@ type Model struct {
 	beforeCompletion string // Text before Tab press
 
 	// Input state (for custom rendering)
-	inputText string
-	cursorPos int
+	inputText       string
+	cursorPos       int
+	ghostSuggestion string // PSReadLine-style predictive suggestion from history
+
+	// Multiline mode
+	multilineMode bool // Toggle between single-line and multiline input
 
 	// Scrolling
 	autoScroll bool // Auto-scroll down on new messages
@@ -86,35 +119,42 @@ type Model struct {
 	// Help overlay
 	showingHelp bool // Help overlay display flag
 
+	// Alt screen (managed manually, NOT by Phoenix — allows runtime mode switching)
+	altScreenActive bool // True when in alternate screen buffer
+
+	// Cursor blinking
+	cursorVisible bool // Cursor blink state (toggles every 500ms)
+
 	// Styles
 	styles Styles
 }
 
 // Styles contains all UI styles (PowerShell/Git Bash inspired).
+// Uses Phoenix TUI Framework's style library.
 type Styles struct {
 	// Prompt styles
-	PromptUser     lipgloss.Style
-	PromptPath     lipgloss.Style
-	PromptGit      lipgloss.Style
-	PromptGitDirty lipgloss.Style
-	PromptArrow    lipgloss.Style
-	PromptError    lipgloss.Style
+	PromptUser     style.Style
+	PromptPath     style.Style
+	PromptGit      style.Style
+	PromptGitDirty style.Style
+	PromptArrow    style.Style
+	PromptError    style.Style
 
 	// Output styles
-	Output    lipgloss.Style
-	OutputErr lipgloss.Style
+	Output    style.Style
+	OutputErr style.Style
 
 	// Executing spinner
-	Executing lipgloss.Style
+	Executing style.Style
 
 	// Completion hint
-	CompletionHint lipgloss.Style
+	CompletionHint style.Style
 
 	// Syntax highlighting (inline in textarea)
-	SyntaxCommand lipgloss.Style // First word - command
-	SyntaxOption  lipgloss.Style // --option or -o
-	SyntaxArg     lipgloss.Style // Regular arguments
-	SyntaxString  lipgloss.Style // "quoted strings"
+	SyntaxCommand style.Style // First word - command
+	SyntaxOption  style.Style // --option or -o
+	SyntaxArg     style.Style // Regular arguments
+	SyntaxString  style.Style // "quoted strings"
 }
 
 // commandExecutedMsg message about executed command.
@@ -122,6 +162,12 @@ type commandExecutedMsg struct {
 	output   string
 	err      error
 	exitCode int
+}
+
+// setProgramMsg is sent once after Program creation to inject program reference.
+// This is necessary because MVU pattern copies Model, so program must be set via message.
+type setProgramMsg struct {
+	program *tea.Program[Model]
 }
 
 // NewBubbleteaREPL creates new bubbletea REPL.
@@ -138,35 +184,16 @@ func NewBubbleteaREPL(
 		return nil, err
 	}
 
-	// Create textarea (for multiline with Alt+Enter)
-	ta := textarea.New()
-	ta.Placeholder = ""
-	ta.Focus()
-	ta.CharLimit = 0
-	ta.SetWidth(80)
-	ta.SetHeight(1) // Start with one line
-	ta.Prompt = ""  // We'll render our own prompt
-	ta.ShowLineNumbers = false
-
-	// Styles for textarea
-	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
-	ta.FocusedStyle.Base = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
-
 	// Create styles
 	styles := makeProfessionalStyles()
 
-	// Create spinner
-	execSpinner := spinner.New()
-	execSpinner.Spinner = spinner.Dot
-	execSpinner.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("12")) // Blue
-
-	// Create viewport for scrolling
-	vp := viewport.New(80, 24)
-	vp.MouseWheelEnabled = true
-	// Disable default up/down keys (needed for command history)
-	vp.KeyMap.Up.SetEnabled(false)
-	vp.KeyMap.Down.SetEnabled(false)
-	// Keep PageUp/PageDown enabled
+	// Create viewport for scrolling (Phoenix Viewport)
+	// Width set to large value to prevent ANSI truncation — Phoenix viewport's
+	// truncateLine() counts escape sequence bytes as visible width, garbling colors.
+	// Terminal handles visual line wrapping natively (ANSI codes are zero-width).
+	vp := viewport.New(10000, 24).MouseEnabled(true)
+	// Phoenix Viewport's Update() doesn't interfere with parent Model.Update(),
+	// so Up/Down keys work for command history without explicit disabling
 
 	// Create history repository and use cases
 	historyFilePath := getHistoryFilePath()
@@ -196,6 +223,12 @@ func NewBubbleteaREPL(
 		}
 	}
 
+	// Create ShellInput (Phoenix TextInput with history integration + syntax highlighting)
+	shellInput := NewShellInput(80, sess.History(), applySyntaxHighlightSimple)
+
+	// Create ShellTextArea (Phoenix TextArea with multiline support)
+	shellTextArea := NewShellTextArea(80, 5, sess.History(), applySyntaxHighlightSimple)
+
 	// Create navigator and use case for adding to history
 	historyNavigator := sess.NewHistoryNavigator()
 	addToHistoryUC := apphistory.NewAddToHistoryUseCase(sess.History(), historyRepo)
@@ -204,9 +237,15 @@ func NewBubbleteaREPL(
 	pipelineExecutor := executor.NewOSPipelineExecutor(logger)
 	commandExecutor := executor.NewOSCommandExecutor(logger)
 
+	// Create Phoenix Terminal with auto-detection (Windows Console API or ANSI fallback)
+	// Week 16: This gives GoSh PowerShell-level performance on Windows! ⚡
+	term := terminal.New()
+
 	m := &Model{
-		textarea:         ta,
+		shellInput:       shellInput,
+		shellTextArea:    shellTextArea,
 		viewport:         vp,
+		terminal:         term,
 		sessionManager:   sessionManager,
 		executeUseCase:   executeUseCase,
 		pipelineExecutor: pipelineExecutor,
@@ -214,26 +253,29 @@ func NewBubbleteaREPL(
 		currentSession:   sess,
 		logger:           logger,
 		ctx:              ctx,
-		config:           cfg,
+		Config:           cfg,
 		output:           make([]string, 0),
 		historyNavigator: historyNavigator,
 		historyRepo:      historyRepo,
 		addToHistoryUC:   addToHistoryUC,
 		maxOutputLines:   10000,
-		ready:            false,
+		ready:            true, // Start ready (Phoenix doesn't auto-send WindowSizeMsg yet)
 		quitting:         false,
 		executing:        false,
 		startTime:        time.Now(),
 		styles:           styles,
-		executingSpinner: execSpinner,
 		completions:      []string{},
 		completionIndex:  -1,
 		completionActive: false,
 		beforeCompletion: "",
 		inputText:        "",
 		cursorPos:        0,
-		autoScroll:       true, // Auto-scroll down by default
+		multilineMode:    false, // Start in single-line mode (default)
+		autoScroll:       true,  // Auto-scroll down by default
 		showingHelp:      false,
+		cursorVisible:    true, // Start with cursor visible
+		width:            80,   // Default width
+		height:           24,   // Default height
 	}
 
 	// Determine Git status
@@ -274,11 +316,38 @@ func NewBubbleteaREPL(
 	return m, nil
 }
 
+// SetProgram sets the program reference for ExecProcess.
+// MUST be called BEFORE tea.New() so the copy gets the reference.
+func (m *Model) SetProgram(p *tea.Program[Model]) {
+	m.program = p
+}
+
+// SetProgramMsg creates a message to inject program reference into Model.
+// DEPRECATED: Use SetProgram() instead (called before tea.New).
+func SetProgramMsg(p *tea.Program[Model]) setProgramMsg {
+	return setProgramMsg{program: p}
+}
+
 // Init initializes the model (Elm Architecture).
+// Called by Phoenix Run() AFTER EnterRawMode() and BEFORE first renderView().
 //
 //nolint:gocritic // hugeParam: Bubbletea MVU requires value receiver
 func (m Model) Init() tea.Cmd {
-	return textarea.Blink
+	// Enter alt screen for non-classic modes.
+	// Written directly to stdout (not through Phoenix — we manage alt screen ourselves).
+	// Init() runs after EnterRawMode(), so the terminal processes escape sequences.
+	if m.Config.UI.Mode != config.UIModeClassic {
+		fmt.Print("\033[?1049h") // Enter alternate screen buffer
+		// altScreenActive is set in the Model via pointer — but MVU copies Model.
+		// We track it via Config.UI.Mode instead (non-classic == alt screen active).
+	}
+
+	return nil
+}
+
+// tickCmd sends a tick message every 500ms for cursor blinking.
+func tickCmd() tea.Cmd {
+	return tea.Tick(500 * time.Millisecond)
 }
 
 // getHistoryFilePath returns the path to the history file.
@@ -288,4 +357,97 @@ func getHistoryFilePath() string {
 		return "/tmp/.gosh_history"
 	}
 	return filepath.Join(home, ".gosh_history")
+}
+
+// applySyntaxHighlightSimple applies simple bash syntax highlighting.
+// This is used by ShellInput for real-time highlighting during typing.
+//
+// Highlighting rules:
+// - Command (first word): Bright Yellow
+// - Options (starts with -): Dark Gray
+// - Arguments (other words): Green
+//
+// ═══════════════════════════════════════════════════════════════════════════
+// CRITICAL: Whitespace Preservation (Space Key Fix!)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// DO NOT use strings.Fields() - it REMOVES all whitespace!
+// User types "echo " → Fields returns ["echo"] → spaces lost!
+//
+// CORRECT APPROACH: Character-by-character parsing
+// - Preserve EVERY whitespace character (spaces, tabs) AS-IS
+// - Only highlight words, keep whitespace unchanged
+//
+// This is why space key works correctly now!
+// ═══════════════════════════════════════════════════════════════════════════
+func applySyntaxHighlightSimple(text string) string {
+	if text == "" {
+		return ""
+	}
+
+	var result strings.Builder
+	var currentWord strings.Builder
+	wordIndex := 0
+	inWord := false
+
+	for _, ch := range text {
+		if ch == ' ' || ch == '\t' {
+			// Whitespace - flush current word if any
+			if inWord {
+				// Highlight the word
+				word := currentWord.String()
+				switch {
+				case wordIndex == 0:
+					// First word = COMMAND (YELLOW)
+					result.WriteString("\033[1;33m") // Bright Yellow
+					result.WriteString(word)
+					result.WriteString("\033[0m")
+				case strings.HasPrefix(word, "-"):
+					// Option (GRAY)
+					result.WriteString("\033[90m") // Dark Gray
+					result.WriteString(word)
+					result.WriteString("\033[0m")
+				default:
+					// Argument (GREEN)
+					result.WriteString("\033[32m") // Green
+					result.WriteString(word)
+					result.WriteString("\033[0m")
+				}
+				currentWord.Reset()
+				wordIndex++
+				inWord = false
+			}
+			// CRITICAL: Preserve the whitespace character AS-IS!
+			// This is why space key works - we don't lose the space!
+			result.WriteRune(ch)
+		} else {
+			// Non-whitespace - accumulate word
+			currentWord.WriteRune(ch)
+			inWord = true
+		}
+	}
+
+	// Flush last word if any
+	if inWord {
+		word := currentWord.String()
+		switch {
+		case wordIndex == 0:
+			// First word = COMMAND (YELLOW)
+			result.WriteString("\033[1;33m")
+			result.WriteString(word)
+			result.WriteString("\033[0m")
+		case strings.HasPrefix(word, "-"):
+			// Option (GRAY)
+			result.WriteString("\033[90m")
+			result.WriteString(word)
+			result.WriteString("\033[0m")
+		default:
+			// Argument (GREEN)
+			result.WriteString("\033[32m")
+			result.WriteString(word)
+			result.WriteString("\033[0m")
+		}
+	}
+
+	return result.String()
 }

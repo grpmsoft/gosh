@@ -15,8 +15,8 @@ import (
 	"github.com/grpmsoft/gosh/internal/infrastructure/builtin"
 	"github.com/grpmsoft/gosh/internal/infrastructure/executor"
 
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/viewport"
+	viewport "github.com/phoenix-tui/phoenix/components/viewport"
+	"github.com/phoenix-tui/phoenix/terminal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -71,23 +71,26 @@ func createTestModelForHelpers(t *testing.T) *Model {
 	mockRepo := &mockHistoryRepository{}
 	addToHistoryUC := apphistory.NewAddToHistoryUseCase(sess.History(), mockRepo)
 
-	// Create textarea and viewport
-	ta := textarea.New()
-	ta.SetValue("")
+	// Create shell input and viewport
+	shellInput := NewShellInput(80, sess.History(), applySyntaxHighlightSimple)
 	vp := viewport.New(80, 24)
 
 	// Create history navigator
 	historyNavigator := sess.NewHistoryNavigator()
 
+	shellTextArea := NewShellTextArea(80, 5, sess.History(), applySyntaxHighlightSimple)
+	term := terminal.New()
+
 	model := &Model{
-		textarea:         ta,
+		shellInput:       shellInput,
+		shellTextArea:    shellTextArea,
 		viewport:         vp,
 		currentSession:   sess,
 		executeUseCase:   executeUseCase,
 		addToHistoryUC:   addToHistoryUC,
 		logger:           logger,
 		ctx:              context.Background(),
-		config:           cfg,
+		Config:           cfg,
 		output:           make([]string, 0),
 		historyNavigator: historyNavigator,
 		maxOutputLines:   10000,
@@ -95,6 +98,7 @@ func createTestModelForHelpers(t *testing.T) *Model {
 		cursorPos:        0,
 		autoScroll:       true,
 		styles:           makeProfessionalStyles(),
+		terminal:         term,
 	}
 
 	return model
@@ -113,15 +117,13 @@ func TestNavigateHistory(t *testing.T) {
 		m.historyNavigator = m.currentSession.NewHistoryNavigator()
 
 		// Navigate up
-		updatedModel, _ := m.navigateHistory("up")
-		m2 := updatedModel.(Model)
-		assert.Equal(t, "command3", m2.textarea.Value())
+		m2, _ := m.navigateHistory("up")
+		assert.Equal(t, "command3", m2.shellInput.Value())
 
 		// Navigate up again
 		m2.historyNavigator = m.historyNavigator
-		updatedModel2, _ := m2.navigateHistory("up")
-		m3 := updatedModel2.(Model)
-		assert.Equal(t, "command2", m3.textarea.Value())
+		m3, _ := m2.navigateHistory("up")
+		assert.Equal(t, "command2", m3.shellInput.Value())
 	})
 
 	t.Run("navigate down through history", func(t *testing.T) {
@@ -136,17 +138,14 @@ func TestNavigateHistory(t *testing.T) {
 		m.historyNavigator = m.currentSession.NewHistoryNavigator()
 
 		// Navigate up twice
-		updatedModel, _ := m.navigateHistory("up")
-		m2 := updatedModel.(Model)
+		m2, _ := m.navigateHistory("up")
 		m2.historyNavigator = m.historyNavigator
-		updatedModel2, _ := m2.navigateHistory("up")
-		m3 := updatedModel2.(Model)
+		m3, _ := m2.navigateHistory("up")
 
 		// Navigate down
 		m3.historyNavigator = m.historyNavigator
-		updatedModel3, _ := m3.navigateHistory("down")
-		m4 := updatedModel3.(Model)
-		assert.Equal(t, "command3", m4.textarea.Value())
+		m4, _ := m3.navigateHistory("down")
+		assert.Equal(t, "command3", m4.shellInput.Value())
 	})
 
 	t.Run("navigate down at end returns empty", func(t *testing.T) {
@@ -157,25 +156,22 @@ func TestNavigateHistory(t *testing.T) {
 
 		// Reset navigator and navigate up
 		m.historyNavigator = m.currentSession.NewHistoryNavigator()
-		updatedModel, _ := m.navigateHistory("up")
-		m2 := updatedModel.(Model)
+		m2, _ := m.navigateHistory("up")
 
 		// Navigate down (should return empty)
 		m2.historyNavigator = m.historyNavigator
-		updatedModel2, _ := m2.navigateHistory("down")
-		m3 := updatedModel2.(Model)
-		assert.Equal(t, "", m3.textarea.Value())
+		m3, _ := m2.navigateHistory("down")
+		assert.Equal(t, "", m3.shellInput.Value())
 	})
 
 	t.Run("navigate up on empty history", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
 
 		// Navigate up on empty history
-		updatedModel, _ := m.navigateHistory("up")
-		m2 := updatedModel.(Model)
+		m2, _ := m.navigateHistory("up")
 
 		// Value should remain unchanged
-		assert.Equal(t, "", m2.textarea.Value())
+		assert.Equal(t, "", m2.shellInput.Value())
 	})
 }
 

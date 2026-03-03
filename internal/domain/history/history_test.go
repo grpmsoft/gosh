@@ -264,6 +264,74 @@ func TestHistory_Clear(t *testing.T) {
 	})
 }
 
+// TestHistory_SearchPrefix tests prefix search for predictive IntelliSense.
+func TestHistory_SearchPrefix(t *testing.T) {
+	t.Run("finds most recent command with prefix", func(t *testing.T) {
+		h := history.NewHistory(history.DefaultConfig())
+		h.Add("cd /tmp")
+		h.Add("cd /projects/grpmsoft/gosh")
+		h.Add("echo hello")
+
+		result := h.SearchPrefix("cd")
+		assert.Equal(t, "cd /projects/grpmsoft/gosh", result)
+	})
+
+	t.Run("returns empty for no match", func(t *testing.T) {
+		h := history.NewHistory(history.DefaultConfig())
+		h.Add("echo hello")
+		h.Add("ls -la")
+
+		result := h.SearchPrefix("git")
+		assert.Equal(t, "", result)
+	})
+
+	t.Run("is case insensitive", func(t *testing.T) {
+		h := history.NewHistory(history.DefaultConfig())
+		h.Add("Git Status")
+
+		result := h.SearchPrefix("git")
+		assert.Equal(t, "Git Status", result)
+	})
+
+	t.Run("skips exact matches", func(t *testing.T) {
+		h := history.NewHistory(history.DefaultConfig())
+		h.Add("echo")
+		h.Add("echo hello")
+
+		// "echo" should not match itself, should find "echo hello"
+		result := h.SearchPrefix("echo")
+		assert.Equal(t, "echo hello", result)
+	})
+
+	t.Run("returns empty for empty prefix", func(t *testing.T) {
+		h := history.NewHistory(history.DefaultConfig())
+		h.Add("echo hello")
+
+		result := h.SearchPrefix("")
+		assert.Equal(t, "", result)
+
+		result = h.SearchPrefix("   ")
+		assert.Equal(t, "", result)
+	})
+
+	t.Run("returns empty for empty history", func(t *testing.T) {
+		h := history.NewHistory(history.DefaultConfig())
+
+		result := h.SearchPrefix("cd")
+		assert.Equal(t, "", result)
+	})
+
+	t.Run("returns newest matching command", func(t *testing.T) {
+		h := history.NewHistory(history.DefaultConfig())
+		h.Add("cd /tmp")
+		h.Add("cd /home")
+		h.Add("cd /projects")
+
+		result := h.SearchPrefix("cd")
+		assert.Equal(t, "cd /projects", result)
+	})
+}
+
 // TestHistory_Navigation tests history navigation (Up/Down arrows).
 func TestHistory_Navigation(t *testing.T) {
 	t.Run("navigates backward through history", func(t *testing.T) {

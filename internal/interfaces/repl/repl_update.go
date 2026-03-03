@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/grpmsoft/gosh/internal/domain/config"
-
-	tea "github.com/charmbracelet/bubbletea"
+	clipapi "github.com/phoenix-tui/phoenix/clipboard"
+	"github.com/phoenix-tui/phoenix/tea"
 )
 
 // All methods in this file use Bubbletea's MVU (Model-View-Update) pattern,.
@@ -17,21 +17,38 @@ import (
 //nolint:gocritic // All Model methods: Bubbletea MVU requires value receivers
 
 // Update handles messages (Elm Architecture).
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var (
 		taCmd tea.Cmd
-		vpCmd tea.Cmd
-		spCmd tea.Cmd
 	)
 
 	switch msg := msg.(type) {
+	case setProgramMsg:
+		// Inject program reference for ExecProcess (interactive commands)
+		// This message is sent once from main.go after Program creation
+		// MVU pattern copies Model, so program must be set via message not directly
+		m.program = msg.program
+		m.logger.Info("Program reference injected", "is_nil", m.program == nil)
+		return m, nil
+
+	case tea.TickMsg:
+		// Tick is no longer needed - we use terminal's native blinking cursor!
+		// Terminal cursor blinks automatically (set via \033[5 q in main.go)
+		// Phoenix-rendered cursor (reverse video) is disabled via ShowCursor(false)
+		//
+		// Previously: Tick toggled m.cursorVisible every 500ms for Phoenix cursor
+		// Now: Terminal handles blinking, no perma-redraw needed!
+		return m, nil
+
 	case tea.KeyMsg:
 		return m.handleKeyPress(msg)
 
 	case tea.MouseMsg:
-		// Handle mouse wheel for viewport
+		// Handle mouse wheel for viewport (Phoenix Viewport uses api types now)
 		if msg.Action == tea.MouseActionPress && (msg.Button == tea.MouseButtonWheelUp || msg.Button == tea.MouseButtonWheelDown) {
 			m.autoScroll = false // Disable auto-scroll on manual scrolling
+			// Phoenix Viewport.Update() returns (*Viewport, tea.Cmd) directly
+			var vpCmd tea.Cmd
 			m.viewport, vpCmd = m.viewport.Update(msg)
 			return m, vpCmd
 		}
@@ -39,13 +56,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.textarea.SetWidth(msg.Width)
+		m.shellInput.SetWidth(msg.Width)
+		m.shellTextArea.SetSize(msg.Width, 5) // Fixed height for textarea (5 lines)
 
 		// Update viewport size
 		// Classic mode: prompt inside viewport, use full height (we preserve scroll via YOffset)
 		// Other modes: prompt outside viewport, reserve space
 		var viewportHeight int
-		switch m.config.UI.Mode {
+		switch m.Config.UI.Mode {
 		case config.UIModeClassic:
 			// Classic mode - prompt inside viewport, full screen height
 			viewportHeight = msg.Height
@@ -60,8 +78,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if viewportHeight < 1 {
 			viewportHeight = 1
 		}
-		m.viewport.Width = msg.Width
-		m.viewport.Height = viewportHeight
+		// Phoenix Viewport uses fluent SetSize() API
+		// Width set to large value — viewport's truncateLine() counts ANSI escape
+		// bytes as visible width, garbling colors. Terminal wraps natively.
+		m.viewport = m.viewport.SetSize(10000, viewportHeight)
 		m.updateViewportContent()
 
 		m.ready = true
@@ -71,33 +91,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.executing = false
 		m.lastExitCode = msg.exitCode
 
+		// Restore cursor visibility after ExecProcess
+		// Phoenix Resume() hides cursor (for TUI alt screen mode), but Classic mode
+		// uses native terminal cursor. Show it once here, not on every render.
+		if m.Config.UI.Mode == config.UIModeClassic {
+			_ = m.terminal.ShowCursor()
+		}
+
 		// Handle output differently based on UI mode
 		if msg.output != "" {
-			if m.config.UI.Mode == config.UIModeClassic {
-				// Classic mode: Print directly to stdout (native terminal scrolling)
-				// Output sequence (bash-style):
-				// 1. User types command: "user@host $ ls█"
-				// 2. Presses Enter → command line is frozen in history
-				// 3. Output prints line by line
-				// 4. Separator printed (configurable via OutputSeparator)
-				// 5. Prompt reappears below output
-
-				// Print command output line by line
+			if m.Config.UI.Mode == config.UIModeClassic {
+				// Classic mode: Print directly to stdout (NO alt screen, NO viewport!)
+				// Output stays in terminal history like bash
 				lines := strings.Split(strings.TrimRight(msg.output, "\n"), "\n")
 				for _, line := range lines {
-					fmt.Println(line) // Each line includes \n
+					fmt.Println(line)
 				}
 
 				// Print separator after output (configurable)
-				if m.config.UI.OutputSeparator != "" {
-					fmt.Print(m.config.UI.OutputSeparator)
+				if m.Config.UI.OutputSeparator != "" {
+					fmt.Print(m.Config.UI.OutputSeparator)
 				}
 			} else {
-				// Other modes (Warp/Compact/Chat): Use viewport for scrolling
-				// Add blank line for visual separation
+				// Other modes: Use viewport for scrolling
 				m.addOutputRaw("")
-
-				// Split output into lines and store in viewport buffer
 				lines := strings.Split(strings.TrimRight(msg.output, "\n"), "\n")
 				for _, line := range lines {
 					m.addOutputRaw(line)
@@ -105,14 +122,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// Show additional error if present (e.g. "exit status 1")
-		// Usually msg.err contains only exit status, real stderr is already in msg.output
+		// Show additional error if present
 		if msg.err != nil && msg.output == "" {
-			if m.config.UI.Mode == config.UIModeClassic {
-				// Classic mode: print error directly to stdout
+			if m.Config.UI.Mode == config.UIModeClassic {
 				fmt.Println("\033[31mError: " + msg.err.Error() + "\033[0m")
 			} else {
-				// Other modes: add to viewport buffer
 				m.addOutputRaw("\033[31mError: " + msg.err.Error() + "\033[0m")
 			}
 		}
@@ -120,39 +134,68 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Update Git status after each command
 		m.updateGitInfo()
 
-		// Update viewport content and scroll (only for non-Classic modes)
-		if m.config.UI.Mode != config.UIModeClassic {
+		// Update viewport content (only for non-Classic modes)
+		if m.Config.UI.Mode != config.UIModeClassic {
 			m.updateViewportContent()
-			if m.autoScroll {
-				m.viewport.GotoBottom()
-			}
 		}
 
 		return m, nil
 	}
 
-	// Update textarea
-	m.textarea, taCmd = m.textarea.Update(msg)
+	// Update appropriate input component based on mode
+	if m.multilineMode {
+		m.shellTextArea, taCmd = m.shellTextArea.Update(msg)
+		m.inputText = m.shellTextArea.Value()
+	} else {
+		m.shellInput, taCmd = m.shellInput.Update(msg)
+		m.inputText = m.shellInput.Value()
+	}
 
-	// Sync our input state with textarea
-	m.inputText = m.textarea.Value()
 	// Cursor always at end after normal input (textarea doesn't give position API)
 	m.cursorPos = len([]rune(m.inputText))
 
-	// Update viewport (for PageUp/PageDown scrolling)
-	m.viewport, vpCmd = m.viewport.Update(msg)
+	// Update viewport (for PageUp/PageDown scrolling) - Phoenix Viewport
+	// Note: Viewport handles its own key bindings internally
+	// We don't need to update it here since we're handling keys in handleKeyPress
 
-	// Update spinner if executing
-	if m.executing {
-		m.executingSpinner, spCmd = m.executingSpinner.Update(msg)
-		return m, tea.Batch(taCmd, vpCmd, spCmd)
-	}
+	// No spinner update needed - Phoenix migration removed spinner
+	// Executing state is shown via text in render functions
 
-	return m, tea.Batch(taCmd, vpCmd)
+	return m, taCmd
 }
 
 // handleKeyPress handles key presses.
-func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) handleKeyPress(msg tea.KeyMsg) (Model, tea.Cmd) {
+	// IMPORTANT: Check msg.Type for Enter FIRST (before String() checks)
+	// Phoenix may send KeyEnter as Type when Enter is pressed after UTF-8 input
+	if msg.Type == tea.KeyEnter {
+		// Get current input from ACTIVE component (critical for correct multiline switch!)
+		var cmd string
+		if m.multilineMode {
+			cmd = m.shellTextArea.Value()
+		} else {
+			cmd = m.shellInput.Value()
+		}
+
+		// Check if command is incomplete (unclosed quotes, backslash, pipe, etc.)
+		if m.isIncomplete(cmd) && !m.multilineMode {
+			// Switch to multiline mode
+			m.multilineMode = true
+			// CRITICAL: Print newline to start multiline on fresh line
+			// This ensures we have clean space for multiline rendering
+			fmt.Println() // Move to next line
+			m.shellTextArea.SetValue(cmd + "\n") // Add newline
+			// Sync state
+			m.inputText = m.shellTextArea.Value()
+			m.cursorPos = len([]rune(m.inputText))
+			return m, nil
+		}
+
+		// Command is complete - execute it
+		m.autoScroll = true
+		return m.executeCommand()
+	}
+
 	// ESC - close help overlay (if open).
 	if msg.String() == "esc" && m.showingHelp {
 		m.showingHelp = false
@@ -160,7 +203,7 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// F1 or ? - open help overlay.
-	if msg.String() == "f1" || msg.String() == "?" {
+	if msg.String() == "F1" || msg.String() == "?" {
 		m.showingHelp = true
 		return m, nil
 	}
@@ -172,37 +215,120 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "ctrl+c":
+		if m.Config.UI.Mode != config.UIModeClassic {
+			fmt.Print("\033[?1049l") // Exit alt screen before quit
+		}
 		m.quitting = true
-		return m, tea.Quit
+		return m, tea.Quit()
 
 	case "ctrl+d":
-		if m.textarea.Value() == "" {
+		// Check if input is empty (respect multilineMode)
+		isEmpty := false
+		if m.multilineMode {
+			isEmpty = m.shellTextArea.Value() == ""
+		} else {
+			isEmpty = m.shellInput.Value() == ""
+		}
+		if isEmpty {
+			if m.Config.UI.Mode != config.UIModeClassic {
+				fmt.Print("\033[?1049l") // Exit alt screen before quit
+			}
 			m.quitting = true
-			return m, tea.Quit
+			return m, tea.Quit()
 		}
 
+	case "ctrl+v":
+		// Paste from clipboard (respect multilineMode)
+		text, err := clipapi.Read()
+		if err == nil && text != "" {
+			if m.multilineMode {
+				// Insert clipboard text in textarea
+				currentValue := m.shellTextArea.Value()
+				m.shellTextArea.SetValue(currentValue + text)
+				m.inputText = m.shellTextArea.Value()
+			} else {
+				// Insert clipboard text in single-line input
+				currentValue := m.shellInput.Value()
+				m.shellInput.SetValue(currentValue + text)
+				m.inputText = m.shellInput.Value()
+			}
+			m.cursorPos = len([]rune(m.inputText))
+		}
+		return m, nil
+
 	case "enter":
-		// Regular Enter - execute command.
-		m.autoScroll = true // Enable auto-scroll when executing command.
+		// Regular Enter - this case is redundant (handled above via KeyEnter)
+		// But keep for compatibility with string-based key handling
+		var cmd string
+		if m.multilineMode {
+			cmd = m.shellTextArea.Value()
+		} else {
+			cmd = m.shellInput.Value()
+		}
+
+		// Check if command is incomplete (unclosed quotes, backslash, pipe, etc.)
+		if m.isIncomplete(cmd) && !m.multilineMode {
+			// Switch to multiline mode
+			m.multilineMode = true
+			// CRITICAL: Print newline to start multiline on fresh line
+			// This ensures we have clean space for multiline rendering
+			fmt.Println() // Move to next line
+			m.shellTextArea.SetValue(cmd + "\n") // Add newline
+			// Sync state
+			m.inputText = m.shellTextArea.Value()
+			m.cursorPos = len([]rune(m.inputText))
+			return m, nil
+		}
+
+		// Command is complete - execute it
+		m.autoScroll = true
 		return m.executeCommand()
 
 	case "alt+enter":
-		// Alt+Enter - add new line (multiline).
-		currentHeight := m.textarea.Height()
-		if currentHeight < 10 {
-			m.textarea.SetHeight(currentHeight + 1)
+		// Alt+Enter - force multiline mode or insert newline
+		if !m.multilineMode {
+			// Switch to multiline mode
+			m.multilineMode = true
+			// CRITICAL: Print newline to start multiline on fresh line
+			fmt.Println() // Move to next line
+			currentValue := m.shellInput.Value() // Use shellInput.Value() directly!
+			m.shellTextArea.SetValue(currentValue + "\n")
+			m.inputText = m.shellTextArea.Value()
+			m.cursorPos = len([]rune(m.inputText))
+			return m, nil
 		}
-		// Let textarea handle new line insertion.
+		// Already in multiline - insert newline
 		var cmd tea.Cmd
-		m.textarea, cmd = m.textarea.Update(msg)
+		m.shellTextArea, cmd = m.shellTextArea.Update(tea.KeyMsg{Type: tea.KeyEnter})
+		m.inputText = m.shellTextArea.Value()
+		m.cursorPos = len([]rune(m.inputText))
 		return m, cmd
 
-	case "up", "down":
-		// Command history.
-		return m.navigateHistory(msg.String())
+	case "up", "down", "↑", "↓":
+		// Command history (Phoenix returns "↑"/"↓" for arrow keys).
+		m.ghostSuggestion = "" // Clear predictive suggestion during navigation
+		dir := directionUp
+		if msg.String() == "down" || msg.String() == "↓" {
+			dir = directionDown
+		}
+		return m.navigateHistory(dir)
+
+	case "right", "→":
+		// Accept predictive suggestion (PSReadLine behavior)
+		// Only accept when ghost suggestion exists and not in multiline mode
+		if m.ghostSuggestion != "" && !m.multilineMode {
+			m.shellInput.SetValue(m.ghostSuggestion)
+			m.shellInput.RefreshHighlight()
+			m.inputText = m.ghostSuggestion
+			m.cursorPos = len([]rune(m.inputText))
+			m.ghostSuggestion = ""
+			return m, nil
+		}
+		// No suggestion → fall through to normal right arrow (cursor movement)
 
 	case "tab":
 		// Tab-completion.
+		m.ghostSuggestion = "" // Clear predictive suggestion during completion
 		return m.handleTabCompletion()
 
 	case "ctrl+l":
@@ -210,18 +336,18 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.output = make([]string, 0)
 		m.updateViewportContent()
 		m.autoScroll = true
-		return m, tea.ClearScreen
+		return m, nil // Phoenix doesn't have ClearScreen, we handle it in View
 
 	case "pgup", "pgdown":
-		// Viewport scrolling.
+		// Viewport scrolling - Phoenix Viewport handles internally (uses api types)
 		m.autoScroll = false
-		var cmd tea.Cmd
-		m.viewport, cmd = m.viewport.Update(msg)
-		return m, cmd
+		var vpCmd tea.Cmd
+		m.viewport, vpCmd = m.viewport.Update(msg)
+		return m, vpCmd
 
 	// Hotkeys for switching UI modes (Alt+1-4).
 	case "alt+1", "alt+2", "alt+3", "alt+4":
-		if m.config.UI.AllowModeSwitching {
+		if m.Config.UI.AllowModeSwitching {
 			return m.switchUIMode(msg.String())
 		}
 	}
@@ -234,18 +360,37 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.beforeCompletion = ""
 	}
 
-	// Return auto-scroll on any input.
-	if msg.Type == tea.KeyRunes {
+	// Return auto-scroll and show cursor on any input.
+	if msg.Type == tea.KeyRune || msg.Type == tea.KeySpace {
 		m.autoScroll = true
+		m.cursorVisible = true // Show cursor immediately when typing
 	}
 
+	// CRITICAL: Delegate to appropriate input component based on mode
 	var cmd tea.Cmd
-	m.textarea, cmd = m.textarea.Update(msg)
+	if m.multilineMode {
+		m.shellTextArea, cmd = m.shellTextArea.Update(msg)
+		m.inputText = m.shellTextArea.Value()
+	} else {
+		m.shellInput, cmd = m.shellInput.Update(msg)
+		m.inputText = m.shellInput.Value()
+	}
+
+	// CRITICAL: Sync cursor position after update
+	m.cursorPos = len([]rune(m.inputText))
+
+	// Update predictive suggestion from history (PSReadLine-style IntelliSense)
+	m.ghostSuggestion = ""
+	if m.inputText != "" && !m.multilineMode && !m.completionActive {
+		m.ghostSuggestion = m.currentSession.History().SearchPrefix(m.inputText)
+	}
+
 	return m, cmd
 }
 
-// switchUIMode switches UI mode.
-func (m Model) switchUIMode(key string) (tea.Model, tea.Cmd) {
+// switchUIMode switches UI mode with manual alt screen management.
+// No Program restart needed — alt screen is toggled via ANSI escape sequences.
+func (m Model) switchUIMode(key string) (Model, tea.Cmd) {
 	var newMode config.UIMode
 
 	switch key {
@@ -262,16 +407,28 @@ func (m Model) switchUIMode(key string) (tea.Model, tea.Cmd) {
 	}
 
 	// If already in this mode - do nothing.
-	if m.config.UI.Mode == newMode {
+	if m.Config.UI.Mode == newMode {
 		return m, nil
 	}
 
-	// Switch mode.
-	oldMode := m.config.UI.Mode
-	m.config.UI.Mode = newMode
+	oldMode := m.Config.UI.Mode
+	wasClassic := oldMode == config.UIModeClassic
+	isClassic := newMode == config.UIModeClassic
+
+	// Toggle alt screen when crossing classic ↔ non-classic boundary.
+	if wasClassic && !isClassic {
+		// Classic → non-classic: enter alt screen
+		fmt.Print("\033[?1049h")
+		m.altScreenActive = true
+	} else if !wasClassic && isClassic {
+		// Non-classic → classic: exit alt screen (restores normal terminal buffer)
+		fmt.Print("\033[?1049l")
+		m.altScreenActive = false
+	}
+
+	m.Config.UI.Mode = newMode
 
 	// Recalculate viewport height for new mode.
-	// Classic: prompt inside, full height; Others: prompt outside, reserve space.
 	var viewportHeight int
 	switch newMode {
 	case config.UIModeClassic:
@@ -285,7 +442,7 @@ func (m Model) switchUIMode(key string) (tea.Model, tea.Cmd) {
 	if viewportHeight < 1 {
 		viewportHeight = 1
 	}
-	m.viewport.Height = viewportHeight
+	m.viewport = m.viewport.SetSize(10000, viewportHeight)
 
 	// Log switch.
 	m.logger.Info("UI mode switched", "from", oldMode, "to", newMode)
@@ -293,31 +450,22 @@ func (m Model) switchUIMode(key string) (tea.Model, tea.Cmd) {
 	// Show mode switch notification.
 	notification := fmt.Sprintf("\033[90m[UI Mode: %s]\033[0m", newMode)
 	if newMode == config.UIModeClassic {
-		// Classic mode: print notification directly to stdout.
 		fmt.Println(notification)
 	} else {
-		// Other modes: add to viewport buffer.
 		m.addOutputRaw(notification)
 		m.updateViewportContent()
-
-		// Scroll down if auto-scroll enabled.
-		if m.autoScroll {
-			m.viewport.GotoBottom()
-		}
 	}
 
 	return m, nil
 }
 
 // handleModeCommand handles :mode command for switching UI modes.
-func (m Model) handleModeCommand(commandLine string) (tea.Model, tea.Cmd) {
+func (m Model) handleModeCommand(commandLine string) (Model, tea.Cmd) {
 	// Check if mode switching is enabled.
-	if !m.config.UI.AllowModeSwitching {
+	if !m.Config.UI.AllowModeSwitching {
 		m.addOutputRaw("\033[31mError: UI mode switching is disabled in config\033[0m")
 		m.updateViewportContent()
-		if m.autoScroll {
-			m.viewport.GotoBottom()
-		}
+		// FollowMode handles auto-scroll in render functions
 		return m, nil
 	}
 
@@ -326,13 +474,11 @@ func (m Model) handleModeCommand(commandLine string) (tea.Model, tea.Cmd) {
 
 	// If only ":mode" without arguments - show current mode.
 	if len(parts) == 1 {
-		m.addOutputRaw(fmt.Sprintf("\033[90mCurrent UI mode: \033[1;32m%s\033[0m", m.config.UI.Mode))
+		m.addOutputRaw(fmt.Sprintf("\033[90mCurrent UI mode: \033[1;32m%s\033[0m", m.Config.UI.Mode))
 		m.addOutputRaw("\033[90mAvailable modes: classic, warp, compact, chat\033[0m")
 		m.addOutputRaw("\033[90mUsage: :mode <name>\033[0m")
 		m.updateViewportContent()
-		if m.autoScroll {
-			m.viewport.GotoBottom()
-		}
+		// FollowMode handles auto-scroll in render functions
 		return m, nil
 	}
 
@@ -354,28 +500,34 @@ func (m Model) handleModeCommand(commandLine string) (tea.Model, tea.Cmd) {
 		m.addOutputRaw(fmt.Sprintf("\033[31mError: unknown mode '%s'\033[0m", modeName))
 		m.addOutputRaw("\033[90mAvailable modes: classic, warp, compact, chat\033[0m")
 		m.updateViewportContent()
-		if m.autoScroll {
-			m.viewport.GotoBottom()
-		}
+		// FollowMode handles auto-scroll in render functions
 		return m, nil
 	}
 
 	// If already in this mode - just notify.
-	if m.config.UI.Mode == newMode {
+	if m.Config.UI.Mode == newMode {
 		m.addOutputRaw(fmt.Sprintf("\033[90mAlready in %s mode\033[0m", newMode))
 		m.updateViewportContent()
-		if m.autoScroll {
-			m.viewport.GotoBottom()
-		}
+		// FollowMode handles auto-scroll in render functions
 		return m, nil
 	}
 
-	// Switch mode.
-	oldMode := m.config.UI.Mode
-	m.config.UI.Mode = newMode
+	// Toggle alt screen when crossing classic ↔ non-classic boundary.
+	wasClassic := m.Config.UI.Mode == config.UIModeClassic
+	isClassic := newMode == config.UIModeClassic
+
+	if wasClassic && !isClassic {
+		fmt.Print("\033[?1049h") // Enter alt screen
+		m.altScreenActive = true
+	} else if !wasClassic && isClassic {
+		fmt.Print("\033[?1049l") // Exit alt screen
+		m.altScreenActive = false
+	}
+
+	oldMode := m.Config.UI.Mode
+	m.Config.UI.Mode = newMode
 
 	// Recalculate viewport height for new mode.
-	// Classic: prompt inside, full height; Others: prompt outside, reserve space.
 	var viewportHeight int
 	switch newMode {
 	case config.UIModeClassic:
@@ -389,7 +541,7 @@ func (m Model) handleModeCommand(commandLine string) (tea.Model, tea.Cmd) {
 	if viewportHeight < 1 {
 		viewportHeight = 1
 	}
-	m.viewport.Height = viewportHeight
+	m.viewport = m.viewport.SetSize(10000, viewportHeight)
 
 	// Log switch.
 	m.logger.Info("UI mode switched via :mode command", "from", oldMode, "to", newMode)
@@ -403,19 +555,26 @@ func (m Model) handleModeCommand(commandLine string) (tea.Model, tea.Cmd) {
 		// Other modes: add to viewport buffer.
 		m.addOutputRaw(notification)
 		m.updateViewportContent()
-
-		// Scroll down if auto-scroll enabled.
-		if m.autoScroll {
-			m.viewport.GotoBottom()
-		}
 	}
 
 	return m, nil
 }
 
 // handleTabCompletion handles Tab-completion.
-func (m Model) handleTabCompletion() (tea.Model, tea.Cmd) {
-	input := m.textarea.Value()
+func (m Model) handleTabCompletion() (Model, tea.Cmd) {
+	// Tab-completion only works in single-line mode
+	// In multiline mode, tab should insert tab character (handled by TextArea)
+	if m.multilineMode {
+		// Delegate to textarea (will insert tab or spaces)
+		var cmd tea.Cmd
+		m.shellTextArea, cmd = m.shellTextArea.Update(tea.KeyMsg{Type: tea.KeyTab})
+		m.inputText = m.shellTextArea.Value()
+		m.cursorPos = len([]rune(m.inputText))
+		return m, cmd
+	}
+
+	// Single-line mode - do tab-completion
+	input := m.shellInput.Value()
 
 	// First Tab press - generate completions.
 	if !m.completionActive {
@@ -429,7 +588,7 @@ func (m Model) handleTabCompletion() (tea.Model, tea.Cmd) {
 
 		m.completionActive = true
 		m.completionIndex = 0
-		m.textarea.SetValue(m.completions[0])
+		m.shellInput.SetValue(m.completions[0])
 		// Sync input state.
 		m.inputText = m.completions[0]
 		m.cursorPos = len([]rune(m.inputText))
@@ -439,7 +598,7 @@ func (m Model) handleTabCompletion() (tea.Model, tea.Cmd) {
 	// Repeated Tab presses - cycle through variants.
 	if len(m.completions) > 0 {
 		m.completionIndex = (m.completionIndex + 1) % len(m.completions)
-		m.textarea.SetValue(m.completions[m.completionIndex])
+		m.shellInput.SetValue(m.completions[m.completionIndex])
 		// Sync input state.
 		m.inputText = m.completions[m.completionIndex]
 		m.cursorPos = len([]rune(m.inputText))

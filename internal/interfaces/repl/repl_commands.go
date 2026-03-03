@@ -15,7 +15,7 @@ import (
 	"github.com/grpmsoft/gosh/internal/domain/session"
 	"github.com/grpmsoft/gosh/internal/interfaces/parser"
 
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/phoenix-tui/phoenix/tea"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/interp"
 	"mvdan.cc/sh/v3/syntax"
@@ -68,11 +68,16 @@ func (m *Model) expandAliases(commandLine string, depth int) (string, error) {
 }
 
 // executeCommand executes entered command.
-func (m Model) executeCommand() (tea.Model, tea.Cmd) {
-	value := strings.TrimSpace(m.textarea.Value())
+func (m Model) executeCommand() (Model, tea.Cmd) {
+	// Get value from m.inputText (already synced with appropriate input component)
+	// This correctly handles both single-line and multiline modes
+	value := strings.TrimSpace(m.inputText)
 
-	// Empty command
+	// Empty command — print newline and new prompt (like bash)
 	if value == "" {
+		if m.Config.UI.Mode == config.UIModeClassic {
+			fmt.Println() // Move to next line (bash behavior)
+		}
 		return m, nil
 	}
 
@@ -93,32 +98,58 @@ func (m Model) executeCommand() (tea.Model, tea.Cmd) {
 	// Show command in output with prompt and syntax highlighting (ANSI codes only)
 	// Classic mode: print directly to stdout (like bash)
 	// Other modes: add to viewport buffer
-	if m.config.UI.Mode == config.UIModeClassic {
-		// Print command line with prompt (freezes it in terminal history)
-		fmt.Println(m.renderPromptForHistoryANSI() + m.applySyntaxHighlight(value))
+	if m.Config.UI.Mode == config.UIModeClassic {
+		// Render final command line WITHOUT cursor before freezing
+		// CRITICAL: In multiline mode, we need to clear ALL lines (not just current line!)
+
+		if m.multilineMode {
+			// Multiline: clear all lines before printing final command
+			// Phoenix Terminal API - 10x faster on Windows Console! ⚡
+			lines := m.shellTextArea.Lines()
+			numLines := len(lines)
+
+			// ClearLines() uses Windows Console API when available!
+			_ = m.terminal.ClearLines(numLines)
+		} else {
+			// Single-line: just clear current line
+			// Phoenix Terminal API - platform-optimized
+			_ = m.terminal.ClearLine()
+		}
+
+		// Render prompt + command (no cursor!)
+		fmt.Print(m.renderPromptForHistoryANSI())                      // Prompt
+		fmt.Print(m.applySyntaxHighlight(value))                       // Command (no cursor!)
+		fmt.Print("\n")                                                // Freeze and move to next line
 	} else {
 		// Add to viewport buffer
 		m.addOutputRaw(m.renderPromptForHistoryANSI() + m.applySyntaxHighlight(value))
 	}
 
-	// Clear textarea and return height to 1
-	m.textarea.SetValue("")
-	m.textarea.SetHeight(1)
+	// Clear both input components
+	m.shellInput.Reset()
+	m.shellTextArea.Reset()
+
+	// Reset to single-line mode
+	m.multilineMode = false
 
 	// Sync input state
 	m.inputText = ""
 	m.cursorPos = 0
+	m.ghostSuggestion = ""
 
 	// Built-in exit command
 	if value == "exit" || value == "quit" {
+		if m.Config.UI.Mode != config.UIModeClassic {
+			fmt.Print("\033[?1049l") // Exit alt screen before quit
+		}
 		m.quitting = true
-		return m, tea.Quit
+		return m, tea.Quit()
 	}
 
 	// Built-in clear command
 	if value == "clear" || value == "cls" {
 		m.output = make([]string, 0)
-		return m, tea.ClearScreen
+		return m, nil // Phoenix doesn't have ClearScreen, we handle it in View
 	}
 
 	// Built-in help command
@@ -137,9 +168,7 @@ func (m Model) executeCommand() (tea.Model, tea.Cmd) {
 	if err != nil {
 		m.addOutputRaw("\033[31mError: " + err.Error() + "\033[0m")
 		m.updateViewportContent()
-		if m.autoScroll {
-			m.viewport.GotoBottom()
-		}
+		// FollowMode handles auto-scroll in render functions
 		return m, nil
 	}
 
@@ -149,23 +178,12 @@ func (m Model) executeCommand() (tea.Model, tea.Cmd) {
 	// Determine command type and execution method
 	cmdName, cmdArgs := m.extractCommandName(value)
 
-	// Check if this is a shell script
+	// Check if this is a shell script - execute natively via mvdan.cc/sh for performance
 	scriptPath, isScript := m.isShellScript(cmdName)
-
 	if isScript {
-		// Shell script (.sh/.bash)
-		if m.isInteractiveCommand(cmdName) {
-			// Interactive script (with read, clear, menu) - via bash + tea.ExecProcess
-			return m, m.execInteractiveCommand(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
-		}
-		// Regular script - execute NATIVELY via mvdan.cc/sh
+		// Execute shell script NATIVELY via mvdan.cc/sh (no bash.exe needed!)
 		m.executing = true
 		return m, m.executeShellScriptNative(scriptPath, cmdArgs) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
-	}
-
-	// Interactive command (vim, ssh, etc.) - via tea.ExecProcess
-	if m.isInteractiveCommand(cmdName) {
-		return m, m.execInteractiveCommand(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 	}
 
 	// Check if this is a builtin command (cd, export, unset)
@@ -175,8 +193,21 @@ func (m Model) executeCommand() (tea.Model, tea.Cmd) {
 		return m, m.execBuiltinCommand(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 	}
 
-	// Regular command - execute asynchronously with output capture
+	// Check for pipeline
+	hasPipeline := strings.Contains(value, "|")
+	if hasPipeline {
+		// Pipeline → async (need to capture for pipe)
+		m.executing = true
+		return m, m.execCommandAsync(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
+	}
+
+	// Route external commands based on UI mode:
+	// - Classic mode: ExecProcessWithTTY for direct TTY access (bash-like behavior)
+	// - Non-classic modes: async capture for viewport display (no Suspend/Resume disruption)
 	m.executing = true
+	if m.Config.UI.Mode == config.UIModeClassic {
+		return m, m.execInteractiveCommand(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
+	}
 	return m, m.execCommandAsync(value) //nolint:gocritic // evalOrder: Bubbletea MVU pattern requires this format
 }
 
@@ -200,7 +231,7 @@ func (m *Model) showHelp() {
 	m.addOutputRaw("")
 
 	// UI modes (if switching allowed)
-	if m.config.UI.AllowModeSwitching {
+	if m.Config.UI.AllowModeSwitching {
 		m.addOutputRaw("\033[1;33mUI Mode Switching:\033[0m")
 		m.addOutputRaw("  :mode        - Show current UI mode")
 		m.addOutputRaw("  :mode <name> - Switch UI mode (classic/warp/compact/chat)")
@@ -430,56 +461,6 @@ func (m *Model) extractCommandName(commandLine string) (cmdName string, cmdArgs 
 	return cmd.Name(), cmd.Args()
 }
 
-// isInteractiveCommand determines if command requires interactive terminal.
-func (m *Model) isInteractiveCommand(cmdName string) bool {
-	// Check if this is a script (universal check for all OS)
-	if strings.HasPrefix(cmdName, ".") || strings.ContainsRune(cmdName, filepath.Separator) || filepath.IsAbs(cmdName) {
-		var scriptPath string
-		if filepath.IsAbs(cmdName) {
-			scriptPath = cmdName
-		} else {
-			scriptPath = filepath.Join(m.currentSession.WorkingDirectory(), cmdName)
-		}
-
-		// Check file extension
-		ext := strings.ToLower(filepath.Ext(scriptPath))
-		switch ext {
-		case extSh, extBash, ".bat", ".cmd", ".ps1":
-			// Scripts may require interactive mode (read, input, etc.)
-			return true
-		}
-	}
-
-	// List of known interactive commands
-	interactiveCommands := map[string]bool{
-		"vi":     true,
-		"vim":    true,
-		"nvim":   true,
-		"nano":   true,
-		"emacs":  true,
-		"less":   true,
-		"more":   true,
-		"top":    true,
-		"htop":   true,
-		"ssh":    true,
-		"telnet": true,
-		"ftp":    true,
-		"sftp":   true,
-		"python": true, // Python REPL
-		"node":   true, // Node.js REPL
-		"irb":    true, // Ruby REPL
-		"psql":   true, // PostgreSQL
-		"mysql":  true, // MySQL
-		"mongo":  true, // MongoDB
-	}
-
-	// Check base command name (without path)
-	baseName := filepath.Base(cmdName)
-	baseName = strings.TrimSuffix(baseName, filepath.Ext(baseName))
-
-	return interactiveCommands[baseName]
-}
-
 // executeShellScriptNative executes .sh/.bash script natively via mvdan.cc/sh.
 func (m *Model) executeShellScriptNative(scriptPath string, args []string) tea.Cmd {
 	return func() tea.Msg {
@@ -638,24 +619,57 @@ func (m *Model) execInteractiveCommand(commandLine string) tea.Cmd {
 	osCmd.Dir = m.currentSession.WorkingDirectory()
 	osCmd.Env = m.currentSession.Environment().ToSlice()
 
-	// Create exec.Cmd for interactive execution
-	return tea.ExecProcess(osCmd, func(err error) tea.Msg {
+	// Give command REAL TTY like bash does
+	// Interactive programs (vim, claude, ssh) REQUIRE real file descriptor, not bytes.Buffer!
+	osCmd.Stdin = os.Stdin
+	osCmd.Stdout = os.Stdout
+	osCmd.Stderr = os.Stderr
+
+	// Phoenix ExecProcess - properly handles stdin/stdout/stderr
+	// Phoenix team fixed inputReader bug (2025-10-21) - now stops reader during ExecProcess
+	return func() tea.Msg {
+		// Get global program reference
+		prog := GetGlobalProgram()
+		if prog == nil {
+			return commandExecutedMsg{
+				output:   "",
+				err:      fmt.Errorf("program reference not set"),
+				exitCode: 1,
+			}
+		}
+
+		// Phoenix ExecProcessWithTTY (Level 2):
+		// Uses Suspend → console mode setup → child → Resume pattern.
+		// Provides proper TTY control for interactive commands (vim, claude, ssh).
+		err := prog.ExecProcessWithTTY(osCmd, tea.TTYOptions{})
+
+		// Process exit code
 		exitCode := 0
 		if err != nil {
-			var exitErr *exec.ExitError
-			if errors.As(err, &exitErr) {
+			if exitErr, ok := err.(*exec.ExitError); ok {
 				exitCode = exitErr.ExitCode()
 			} else {
 				exitCode = 1
 			}
 		}
 
-		// Return completion message
-		// Output was already shown directly to terminal
+		// No output captured - command wrote directly to real TTY
+		// User already saw output in terminal
 		return commandExecutedMsg{
-			output:   "", // Empty - output was interactive
+			output:   "",
 			err:      err,
 			exitCode: exitCode,
 		}
-	})
+	}
+}
+
+// getExitCode extracts exit code from error
+func getExitCode(err error) int {
+	if err == nil {
+		return 0
+	}
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		return exitErr.ExitCode()
+	}
+	return 1
 }

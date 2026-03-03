@@ -4,8 +4,7 @@ package repl
 import (
 	"github.com/grpmsoft/gosh/internal/application/execute"
 	"github.com/grpmsoft/gosh/internal/interfaces/parser"
-
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/phoenix-tui/phoenix/tea"
 )
 
 // isBuiltinCommand checks if command is builtin (cd, export, unset).

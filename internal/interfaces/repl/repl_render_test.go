@@ -142,6 +142,7 @@ func TestApplySyntaxHighlight(t *testing.T) {
 func TestRenderInputWithCursor(t *testing.T) {
 	t.Run("renders input with cursor", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
+		m.shellInput.SetValue("test command")
 		m.inputText = "test command"
 		m.cursorPos = 4
 
@@ -168,6 +169,7 @@ func TestRenderInputWithCursor(t *testing.T) {
 
 	t.Run("renders input with cursor at end", func(t *testing.T) {
 		m := createTestModelForHelpers(t)
+		m.shellInput.SetValue("test")
 		m.inputText = "test"
 		m.cursorPos = 4 // After last character
 

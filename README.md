@@ -221,3 +221,14 @@ Third-party library licenses - see [NOTICE](NOTICE) for details.
 **Built with ❤️ using Go and modern software architecture practices**
 
 *GoSh aims to be the best cross-platform shell with native script execution and beautiful UI* 🚀
+
+
+## Star History
+
+<a href="https://starhistory.io">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.starhistory.io/png?repos=grpmsoft/gosh&style=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.starhistory.io/png?repos=grpmsoft/gosh&style=professional" />
+   <img alt="Star History Chart" src="https://api.starhistory.io/png?repos=grpmsoft/gosh" width="800" />
+ </picture>
+</a>
